@@ -91,7 +91,7 @@ except pyvisa.VisaIOWarning as e:
     print(f'Error {e} occurred')
 
 try:
-    rf_gen = RsInstrument('TCPIP0::169.254.2.20::inst0::INSTR', id_query=False, reset=False)
+    rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
 except TimeoutException as e:
     print(e.args[0])
     print('Timeout Error \n')
@@ -383,24 +383,6 @@ def saves1p(filename):
         print('Status Error \n')
     finally:
         zva.visa_timeout = 5000
-
-
-def s1p_config():
-    print("Configuring ZVA for s1p measurement")
-    zva.write()
-    pass
-
-
-def s2p_config():
-    print("Configuring ZVA for s1p measurement")
-    zva.write()
-    pass
-
-
-def s3p_config():
-    print("Configuring ZVA for s1p measurement")
-    zva.write()
-    pass
 
 
 def file_get(filename, zva_file_dir=ZVA_File_Dir, pc_file_dir=PC_File_Dir, extension='s2p'):

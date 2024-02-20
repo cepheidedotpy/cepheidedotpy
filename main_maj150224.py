@@ -412,6 +412,21 @@ def close_ressources():  # Calls close_all_ressources to close all ressources
     Rstest.close_all_ressources()
 
 
+def call_s3p_config():
+    Rstest.load_config(pc_file=Rstest.pc_file_s3p, inst_file=Rstest.instrument_file)
+    pass
+
+
+def call_s2p_config():
+    Rstest.load_config(pc_file=Rstest.pc_file_s2p, inst_file=Rstest.instrument_file)
+    pass
+
+
+def call_s1p_config():
+    Rstest.load_config(pc_file=Rstest.pc_file_s1p, inst_file=Rstest.instrument_file)
+    pass
+
+
 class Window(tk.Tk, Toplevel):
     def __init__(self, master=None, *args, **kwargs):
         tk.Tk.__init__(self, master)
@@ -837,11 +852,11 @@ class Window(tk.Tk, Toplevel):
                                                                                                     ipady=tab_padx)
         add_Button(tab=frame12, button_name='Exit', command=lambda: [self._quit(), close_ressources()], col=1,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame12, button_name='S1P config', command=self.call_s1p_config, col=0, row=4).grid(
+        add_Button(tab=frame12, button_name='S1P config', command=call_s1p_config, col=0, row=4).grid(
             ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame12, button_name='S2P config', command=self.call_s2p_config, col=1, row=4).grid(
+        add_Button(tab=frame12, button_name='S2P config', command=call_s2p_config, col=1, row=4).grid(
             ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame12, button_name='S3P config', command=self.call_s3p_config, col=2, row=4).grid(
+        add_Button(tab=frame12, button_name='S3P config', command=call_s3p_config, col=2, row=4).grid(
             ipadx=tab_padx, ipady=tab_padx)
 
         # ==============================================================================
@@ -1261,15 +1276,6 @@ class Window(tk.Tk, Toplevel):
                 color='gray',
                 linewidth=1, )
             cursor2.visible
-
-    def call_s1p_config(self):
-        pass
-
-    def call_s2p_config(self):
-        pass
-
-    def call_s3p_config(self):
-        pass
 
     def plot_s1p_snp_test(self):  # Display function that calls skrf Module to plot s1p files (used in SNP test TAB)
         entered_filename = self.text.get()
