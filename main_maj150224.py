@@ -33,7 +33,7 @@ from os.path import isfile, join
 # %matplotlib inline
 
 """ This GUI is used to display S Parameters inside a Folder chosen by the user."""
-_version = '9'
+_version = '9.1'
 
 
 # This code is dated to 15/02/24
@@ -1323,15 +1323,18 @@ class Window(tk.Tk, Toplevel):
             v_bias = data_np[:, 0].copy()
             v_logamp = data_np[:, 1].copy()
             # Acquiring the indexes that correspond to both positive and negative bias triangles
-            # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
+            # The indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
             positive_bias = np.extract((v_bias > 2), v_bias)
             negative_bias = np.extract((v_bias < -2), v_bias)
 
+            print(f'positive bias array:\n {positive_bias}\nnegative bias array:\n{negative_bias}')
+
             # Position of the first positive bias index along v_bias array
             first_index_pos = np.where(v_bias == positive_bias[0])[0]
-
+            print(f'first index pos array={first_index_pos}')
             # Position of the first negative bias index along v_bias array
             first_index_neg = np.where(v_bias == negative_bias[0])[0]
+            print(f'first index neg array={first_index_neg}')
             # Position of the last negative bias index along v_bias array
             last_index_neg = np.where(v_bias == negative_bias[-1])[0]
             # Calculating the max and min indexes in both casses
@@ -1363,10 +1366,13 @@ class Window(tk.Tk, Toplevel):
 
             tenpercent_iso = 0.1 * iso_min_descent
             ninetypercent_iso = 0.9 * iso_max_ascent
-
-            pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-            vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
-
+            try:
+                pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
+                vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
+            except IndexError as e:
+                print({e.args}, end='\n')
+                pullout_index_pos = int(len(iso_descent)-1)
+                vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
             # ============================================================================== Creating the ascent and
             # descent portion of the graph for v_bias and v_log converted to normalized isolation
             negative_descent = negative_bias[0:min_negative_bias_index]
@@ -1379,10 +1385,14 @@ class Window(tk.Tk, Toplevel):
             iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
                                                                     0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
             iso_min_descent_minus = np.min(iso_descent_minus)
-
+            print(
+                f'first_index_neg={first_index_neg[0]}\nmin_negative_bias_index={min_negative_bias_index}\nlast_index_neg={last_index_neg[0]}')
             iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
-                0]] / 0.040 - normalized_iso_minus
-            iso_min_ascent = np.min(iso_ascent_minus)
+                -1]] / 0.040 - normalized_iso_minus
+            try:
+                iso_min_ascent = np.min(iso_ascent_minus)
+            except ValueError as e:
+                print('Value ERROR')
 
             # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
             # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
@@ -1400,20 +1410,20 @@ class Window(tk.Tk, Toplevel):
             # tenpercent_iso_ascent))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_minus = {} dB \n'.format(tenpercent_iso_ascent))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullout_minus = {} V | \t'.format(vpullout_minus))
+                                   chars='Isolation_at_pullout_minus = {} dB \n'.format(round(tenpercent_iso_ascent, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_minus = {} dB \n'.format(ninetypercent_iso_descent))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullin_minus = {} V | \t'.format(vpullin_minus))
+                                   chars='Isolation_at_pullin_minus = {} dB \n'.format(round(ninetypercent_iso_descent, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_plus = {} dB  \n'.format(tenpercent_iso))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullout_plus = {} V | \t'.format(vpullout))
+                                   chars='Isolation_at_pullout_plus = {} dB  \n'.format(round(tenpercent_iso, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_plus = {} dB \n'.format(ninetypercent_iso))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullin_plus = {} V | \t'.format(vpullin))
+                                   chars='Isolation_at_pullin_plus = {} dB \n'.format(round(ninetypercent_iso, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
 
             pull_dict = {'Vpullin_plus': vpullin, 'Vpullout_plus': vpullout,
                          'Isolation_at_pullin_plus': ninetypercent_iso, 'Isolation_at_pullout_plus': tenpercent_iso,

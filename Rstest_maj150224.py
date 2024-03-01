@@ -334,7 +334,7 @@ def saves3p(filename):
         print(e.args[0])
         print('Status Error \n')
     finally:
-        zva.visa_timeout = 5000
+        zva.visa_timeout = 1000
 
 
 def saves2p(filename):
@@ -358,7 +358,7 @@ def saves2p(filename):
         print(e.args[0])
         print('Status Error \n')
     finally:
-        zva.visa_timeout = 5000
+        zva.visa_timeout = 1000
 
 
 def saves1p(filename):
@@ -382,7 +382,7 @@ def saves1p(filename):
         print(e.args[0])
         print('Status Error \n')
     finally:
-        zva.visa_timeout = 5000
+        zva.visa_timeout = 1000
 
 
 def file_get(filename, zva_file_dir=ZVA_File_Dir, pc_file_dir=PC_File_Dir, extension='s2p'):
@@ -403,7 +403,7 @@ def file_get(filename, zva_file_dir=ZVA_File_Dir, pc_file_dir=PC_File_Dir, exten
             print(e.args[0])
             print('RsInstrException Error \n')
         finally:
-            zva.visa_timeout = 5000
+            zva.visa_timeout = 1000
     if extension == 's2p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s2p".format(zva_file_dir, filename),
@@ -419,7 +419,7 @@ def file_get(filename, zva_file_dir=ZVA_File_Dir, pc_file_dir=PC_File_Dir, exten
             print(e.args[0])
             print('RsInstrException Error \n')
         finally:
-            zva.visa_timeout = 5000
+            zva.visa_timeout = 1000
     if extension == 's1p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s1p".format(zva_file_dir, filename),
@@ -435,7 +435,7 @@ def file_get(filename, zva_file_dir=ZVA_File_Dir, pc_file_dir=PC_File_Dir, exten
             print(e.args[0])
             print('RsInstrException Error \n')
         finally:
-            zva.visa_timeout = 5000
+            zva.visa_timeout = 1000
 
 
 def setup_zva_with_rst(ip):
