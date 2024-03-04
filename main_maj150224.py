@@ -919,8 +919,8 @@ class Window(tk.Tk, Toplevel):
         self.zva_inst = tk.StringVar(value=r'TCPIP0::ZNA67-101810::inst0::INSTR')
         self.sig_gen_inst = tk.StringVar(value=r'TCPIP0::A-33521B-00526::inst0::INSTR')
         self.osc_inst = tk.StringVar(value=r'TCPIP0::DPO5054-C011738::inst0::INSTR')
-        self.powermeter_inst = tk.StringVar(value=u'TCPIP0::192.168.0.6::inst0::INSTR')
-        self.rf_gen_inst = tk.StringVar(value=u'TCPIP0::192.168.0.5::inst0::INSTR')
+        self.powermeter_inst = tk.StringVar(value=u'TCPIP0::A-N1912A-00589::inst0::INSTR')
+        self.rf_gen_inst = tk.StringVar(value=u'TCPIP0::rssmb100a179766::inst0::INSTR')
 
         add_Label(frame7, label_name='ZVA', col=1, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame7, label_name='Signal Generator', col=1, row=2).grid(sticky='e', ipadx=tab_padx,
@@ -1237,6 +1237,7 @@ class Window(tk.Tk, Toplevel):
         self.ax.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
         self.ax.grid(visible=True)
         self.ax.legend(fancybox=True, shadow=True)
+        self.canvas.draw()
         if not (self.ax.get_lines()[0:] == []):
             cursor = AnnotatedCursor(
                 line=self.ax.get_lines()[-1],
@@ -1265,6 +1266,7 @@ class Window(tk.Tk, Toplevel):
         self.ax2.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
         self.ax2.grid(visible=True)
         self.ax2.legend(fancybox=True, shadow=True)
+        self.canvas2.draw()
         if not (self.ax2.get_lines()[0:] == []):
             cursor2 = AnnotatedCursor(
                 line=self.ax2.get_lines()[-1],
@@ -1396,7 +1398,12 @@ class Window(tk.Tk, Toplevel):
 
             # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
             # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
-            pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
+            try:
+                pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
+                vpullin_minus = negative_bias[pullin_index_minus]
+            except IndexError as e:
+                print({e.args}, end='\n')
+            pullin_index_minus = int(len(iso_descent_minus) - 1)
             vpullin_minus = negative_bias[pullin_index_minus]
 
             tenpercent_iso_ascent = 0.1 * iso_min_ascent
@@ -1433,24 +1440,29 @@ class Window(tk.Tk, Toplevel):
             return pull_dict
 
     def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax)
-        list_graph_ax = self.ax.lines[-1]
-        list_graph_ax.remove()
-        self.ax.legend(fancybox=True)
-        self.canvas.draw()
-
+        try:
+           list_graph_ax = self.ax.lines[-1]
+           list_graph_ax.remove()
+           self.ax.legend(fancybox=True).remove()
+           self.canvas.draw()
+        except IndexError as ind:
+            print("No more graphs to delete")
     def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2)
-        list_graph_ax2 = self.ax2.lines[-1]
-        list_graph_ax2.remove()
-        self.ax2.legend(fancybox=True)
-        self.canvas2.draw()
+        try:
+            list_graph_ax2 = self.ax2.lines[-1]
+            list_graph_ax2.remove()
+            self.ax2.legend(fancybox=True).remove()
+            self.canvas2.draw()
+        except IndexError as ind:
+            print("No more graphs to delete")
 
     def delete_axs_vpullin(self):  # Delete last drawn line in pull in graph display tab (in ax3)
         try:
             list_graph_ax3 = self.ax3.lines[-1]
             list_graph_ax3.remove()
-            self.ax3.legend(fancybox=True)
+            self.ax3.legend(fancybox=True).remove()
             self.canvas3.draw()
-        except:
+        except IndexError as ind:
             print("No more graphs to delete")
 
     def update_ylim(self):

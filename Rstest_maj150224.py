@@ -522,7 +522,7 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
     try:
         sweep_time = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
         print("Sweep time is set to {} \n".format(sweep_time), end='\n')
-        sig_gen.write("SOURce1:FUNCtion:PULSe:WIDTh {}".format(sweep_time))
+        sig_gen.write("SOURce1:FUNCtion:PULSe:WIDTh {}".format(float(sweep_time)*2))
         trigger_measurement_zva()
         time.sleep(1)
         if file_format == 's3p':
@@ -727,14 +727,14 @@ def connect():
     sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
     osc = rm.open_resource('TCPIP0::DPO5054-C011738::inst0::INSTR')
     rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR')
-    # powermeter = rm.open_resource('TCPIP0::192.168.0.30::inst0::INSTR')
-    return zva, sig_gen, osc
+    powermeter = rm.open_resource('TCPIP0::A-N1912A-00589::inst0::INSTR')
+    return zva, sig_gen, osc, rf_gen, powermeter
 
 
 def send_trig():
     sig_gen.write('TRIG')
     sig_gen.query('*OPC?')
-    pass
+    return print('trigger sent')
 
 
 def get_curve_cycling(
