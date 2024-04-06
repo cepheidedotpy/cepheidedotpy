@@ -33,264 +33,9 @@ from os.path import isfile, join
 # %matplotlib inline
 
 """ This GUI is used to display S Parameters inside a Folder chosen by the user."""
-_version = '9.1'
-
+_version = '9.2'
 
 # This code is dated to 15/02/24
-class AnnotatedCursor(Cursor):
-    """
-    A crosshair cursor like `~matplotlib.widgets.Cursor` with a text showing \
-    the current coordinates.
-    For the cursor to remain responsive you must keep a reference to it.
-    The data of the axis specified as *dataaxis* must be in ascending
-    order. Otherwise, the `numpy.searchsorted` call might fail and the text
-    disappears. You can satisfy the requirement by sorting the data you plot.
-    Usually the data is already sorted (if it was created e.g. using
-    `numpy.linspace`), but e.g. scatter plots might cause this problem.
-    The cursor sticks to the plotted line.
-    Parameters
-    ----------
-    line : `matplotlib.lines.Line2D`
-        The plot line from which the data coordinates are displayed.
-    numberformat : `python format string <https://docs.python.org/3/\
-    library/string.html#formatstrings>`_, optional, default: "{0:.4g};{1:.4g}"
-        The displayed text is created by calling *format()* on this string
-        with the two coordinates.
-
-    offset : (float, float) default: (5, 5)
-        The offset in display (pixel) coordinates of the text position
-        relative to the cross hair.
-
-    dataaxis : {"x", "y"}, optional, default: "x"
-        If "x" is specified, the vertical cursor line sticks to the mouse
-        pointer. The horizontal cursor line sticks to *line*
-        at that x value. The text shows the data coordinates of *line*
-        at the pointed x value. If you specify "y", it works in the opposite
-        manner. But: For the "y" value, where the mouse points to, there might
-        be multiple matching x values, if the plotted function is not biunique.
-        Cursor and text coordinate will always refer to only one x value.
-        So if you use the parameter value "y", ensure that your function is
-        biunique.
-
-    Other Parameters
-    ----------------
-    textprops : `matplotlib.text` properties as dictionary
-        Specifies the appearance of the rendered text object.
-
-    **cursorargs : `matplotlib.widgets.Cursor` properties
-        Arguments passed to the internal `~matplotlib.widgets.Cursor` instance.
-        The `matplotlib.axes.Axes` argument is mandatory! The parameter
-        *useblit* can be set to *True* in order to achieve faster rendering.
-
-    """
-
-    def __init__(self, line, numberformat="{0:.4g};{1:.4g}", offset=(5, 5),
-                 dataaxis='x', textprops=None, **cursorargs):
-        if textprops is None:
-            textprops = {}
-        # The line object, for which the coordinates are displayed
-        self.line = line
-        # The format string, on which .format() is called for creating the text
-        self.numberformat = numberformat
-        # Text position offset
-        self.offset = np.array(offset)
-        # The axis in which the cursor position is looked up
-        self.dataaxis = dataaxis
-
-        # First call baseclass constructor.
-        # Draws cursor and remembers background for blitting.
-        # Saves ax as class attribute.
-        super().__init__(**cursorargs)
-
-        # Default value for position of text.
-        self.set_position(self.line.get_xdata()[0], self.line.get_ydata()[0])
-        # Create invisible animated text
-        self.text = self.ax.text(
-            self.ax.get_xbound()[0],
-            self.ax.get_ybound()[0],
-            "0, 0",
-            animated=bool(self.useblit),
-            visible=False, **textprops)
-        # The position at which the cursor was last drawn
-        self.lastdrawnplotpoint = None
-
-    def onmove(self, event):
-        """
-        Overridden draw callback for cursor. Called when moving the mouse.
-        """
-
-        # Leave method under the same conditions as in overridden method
-        if self.ignore(event):
-            self.lastdrawnplotpoint = None
-            return
-        if not self.canvas.widgetlock.available(self):
-            self.lastdrawnplotpoint = None
-            return
-
-        # If the mouse left drawable area, we now make the text invisible.
-        # Baseclass will redraw complete canvas after, which makes both text
-        # and cursor disappear.
-        if event.inaxes != self.ax:
-            self.lastdrawnplotpoint = None
-            self.text.set_visible(False)
-            super().onmove(event)
-            return
-
-        # Get the coordinates, which should be displayed as text,
-        # if the event coordinates are valid.
-        plotpoint = None
-        if event.xdata is not None and event.ydata is not None:
-            # Get plot point related to current x position.
-            # These coordinates are displayed in text.
-            plotpoint = self.set_position(event.xdata, event.ydata)
-            # Modify event, such that the cursor is displayed on the
-            # plotted line, not at the mouse pointer,
-            # if the returned plot point is valid
-            if plotpoint is not None:
-                event.xdata = plotpoint[0]
-                event.ydata = plotpoint[1]
-
-        # If the plotpoint is given, compare to last drawn plotpoint and
-        # return if they are the same.
-        # Skip even the call of the base class, because this would restore the
-        # background, draw the cursor lines and would leave us the job to
-        # re-draw the text.
-        if plotpoint is not None and plotpoint == self.lastdrawnplotpoint:
-            return
-
-        # Baseclass redraws canvas and cursor. Due to blitting,
-        # the added text is removed in this call, because the
-        # background is redrawn.
-        super().onmove(event)
-
-        # Check if the display of text is still necessary.
-        # If not, just return.
-        # This behaviour is also cloned from the base class.
-        if not self.get_active() or not self.visible:
-            return
-
-        # Draw the widget, if event coordinates are valid.
-        if plotpoint is not None:
-            # Update position and displayed text.
-            # Position: Where the event occurred.
-            # Text: Determined by set_position() method earlier
-            # Position is transformed to pixel coordinates,
-            # an offset is added there and this is transformed back.
-            temp = [event.xdata, event.ydata]
-            temp = self.ax.transData.transform(temp)
-            temp = temp + self.offset
-            temp = self.ax.transData.inverted().transform(temp)
-            self.text.set_position(temp)
-            self.text.set_text(self.numberformat.format(*plotpoint))
-            self.text.set_visible(self.visible)
-
-            # Tell base class, that we have drawn something.
-            # Baseclass needs to know, that it needs to restore a clean
-            # background, if the cursor leaves our figure context.
-            self.needclear = True
-
-            # Remember the recently drawn cursor position, so events for the
-            # same position (mouse moves slightly between two plot points)
-            # can be skipped
-            self.lastdrawnplotpoint = plotpoint
-        # otherwise, make text invisible
-        else:
-            self.text.set_visible(False)
-
-        # Draw changes. Cannot use _update method of baseclass,
-        # because it would first restore the background, which
-        # is done already and is not necessary.
-        if self.useblit:
-            self.ax.draw_artist(self.text)
-            self.canvas.blit(self.ax.bbox)
-        else:
-            # If blitting is deactivated, the overridden _update call made
-            # by the base class immediately returned.
-            # We still have to draw the changes.
-            self.canvas.draw_idle()
-
-    def set_position(self, xpos, ypos):
-        """
-        Finds the coordinates, which have to be shown in text.
-
-        The behaviour depends on the *dataaxis* attribute. Function looks
-        up the matching plot coordinate for the given mouse position.
-
-        Parameters
-        ----------
-        xpos : float
-            The current x position of the cursor in data coordinates.
-            Important if *dataaxis* is set to 'x'.
-        ypos : float
-            The current y position of the cursor in data coordinates.
-            Important if *dataaxis* is set to 'y'.
-
-        Returns
-        -------
-        ret : {2D array-like, None}
-            The coordinates which should be displayed.
-            *None* is the fallback value.
-        """
-
-        # Get plot line data
-        xdata = self.line.get_xdata()
-        ydata = self.line.get_ydata()
-
-        # The dataaxis attribute decides, in which axis we look up which cursor
-        # coordinate.
-        if self.dataaxis == 'x':
-            pos = xpos
-            data = xdata
-            lim = self.ax.get_xlim()
-        elif self.dataaxis == 'y':
-            pos = ypos
-            data = ydata
-            lim = self.ax.get_ylim()
-        else:
-            raise ValueError(f"The data axis specifier {self.dataaxis} should "
-                             f"be 'x' or 'y'")
-
-        # If position is valid and in valid plot data range.
-        if pos is not None and lim[0] <= pos <= lim[-1]:
-            # Find closest x value in sorted x vector.
-            # This requires the plotted data to be sorted.
-            index = np.searchsorted(data, pos)
-            # Return none, if this index is out of range.
-            if index < 0 or index >= len(data):
-                return None
-            # Return plot point as tuple.
-            return xdata[index], ydata[index]
-
-        # Return none if there is no good related point for this x position.
-        return None
-
-    def clear(self, event):
-        """
-        Overridden clear callback for cursor, called before drawing the figure.
-        """
-
-        # The base class saves the clean background for blitting.
-        # Text and cursor are invisible,
-        # until the first mouse move event occurs.
-        super().clear(event)
-        if self.ignore(event):
-            return
-        self.text.set_visible(False)
-
-    def _update(self):
-        """
-        Overridden method for either blitting or drawing the widget canvas.
-
-        Passes call to base class if blitting is activated, only.
-        In other cases, one draw_idle call is enough, which is placed
-        explicitly in this class (see *onmove()*).
-        In that case, `~matplotlib.widgets.Cursor` is not supposed to draw
-        something using this method.
-        """
-
-        if self.useblit:
-            super()._update()
-
 
 # ==============================================================================
 # Globals
@@ -438,25 +183,27 @@ class Window(tk.Tk, Toplevel):
         self.resizable(width=True, height=True)
         self.tabControl = ttk.Notebook(self)  # Create Tab Control
 
-        # self.fig = plt.figure(num=1, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # figure that contains S3P parameters for data display
         self.fig = plt.figure(num=1, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
         self.ax = self.fig.add_subplot(1, 1, 1)
         self.ax.grid()
 
-        # self.fig2 = plt.figure(num=2, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # figure that contains S2P parameters for data display
         self.fig2 = plt.figure(num=2, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
         self.ax2 = self.fig2.add_subplot(1, 1, 1)
         self.ax2.grid()
 
-        # self.fig3 = plt.figure(num=3, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # figure that contains pull-in plots for data display
         self.fig3 = plt.figure(num=3, dpi=100, tight_layout=True, figsize=(13, 3.5), frameon=True)
         self.ax3 = self.fig3.add_subplot(1, 1, 1)
         self.ax3.grid()
 
+        # figure that contains pull-in plots for measurement display
         self.fig4 = plt.figure(num=4, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
         self.ax4 = self.fig4.add_subplot(1, 1, 1)
         self.ax4.grid()
 
+        # figure that contains S parameters for measurement display
         self.fig5 = plt.figure(num=5, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
         self.ax5 = self.fig5.add_subplot(1, 1, 1)
         self.ax5.grid()
@@ -852,6 +599,8 @@ class Window(tk.Tk, Toplevel):
                                                                                                     ipady=tab_padx)
         add_Button(tab=frame12, button_name='Exit', command=lambda: [self._quit(), close_ressources()], col=1,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
+        add_Button(tab=frame12, button_name='Reset Signal Gen', command=self.set_pulse_gen_pulsemode, col=1,
+                   row=2).grid(ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='S1P config', command=call_s1p_config, col=0, row=4).grid(
             ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='S2P config', command=call_s2p_config, col=1, row=4).grid(
@@ -1089,29 +838,34 @@ class Window(tk.Tk, Toplevel):
     def data_acquire(
             self):  # Calls Rstest module function triggered_data_acquisition() to acquire data and create a S3P file
         Rstest.sig_gen.write("TRIG")
+        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                           zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
                                           pc_file_dir=self.tests3p_dir.get(),
                                           file_format='s3p')
+        self.plot_snp_test(filetype='.s3p')
         Rstest.print_error_log()
         self.set_txt()
 
     def data_acquire_s2p(self):
         Rstest.sig_gen.write("TRIG")
+        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                           zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
                                           pc_file_dir=self.tests3p_dir.get(),
                                           file_format='s2p')
+        self.plot_snp_test(filetype='.s2p')
         Rstest.print_error_log()
         self.set_txt()
 
     def data_acquire_s1p(self):
         Rstest.sig_gen.write("TRIG")
+        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                           zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
                                           pc_file_dir=self.tests3p_dir.get(),
                                           file_format='s1p')
-        self.plot_s1p_snp_test()
+        self.plot_snp_test(filetype='.s1p')
         Rstest.print_error_log()
         self.set_txt()
 
@@ -1122,12 +876,13 @@ class Window(tk.Tk, Toplevel):
 
     def acquire_pulldown_data(
             self):  # Calls Rstest module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
-        try:
-            Rstest.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
-            Rstest.print_error_log()
-            self.set_txt()
-        except:
-            print("Error")
+        # try:
+        os.chdir(self.testpullin_dir.get())
+        Rstest.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
+        # Rstest.print_error_log()
+        self.set_txt()
+        # except:
+        #     print("Error")
 
     def set_pulse_gen(self):  # Configure sig_gen bias voltage, pulse width and prf (used in TAB5)
         self.set_Bias_Voltage()
@@ -1184,40 +939,40 @@ class Window(tk.Tk, Toplevel):
     def trace_pulldown(
             self):  # Measurement function that calls Rstest Module to trigger sig_gen to plot pull in trace and
         # display the measurement values in the text boxes(used in TAB6)
-        try:
-            Rstest.sig_gen.write('TRIG')
-            curve_det = Rstest.get_curve(channel=4)
-            curve_bias = Rstest.get_curve(channel=2)
-            t = curve_det[:, 1]
-            rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
-            v_bias = curve_bias[:, 0]
-            measurement_values = self.calculate_pullin_out_voltage_measurement(v_bias, curve_det[:, 0])
-            plt.figure(num=4)
-            number_of_graphs = len(self.ax4.get_lines()[0:])
-            self.ax4.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
-            self.ax4.set(xlabel='V_bias (V)')
-            self.ax4.set(ylabel='Isolation (dB)')
-            self.ax4.grid(visible=True)
-            self.ax4.legend(fancybox=True, shadow=True)
-            self.canvas4.draw()
-            self.text5.delete("1.0", "end")
-            self.text6.delete("1.0", "end")
-            self.text7.delete("1.0", "end")
-            self.text8.delete("1.0", "end")
-            self.text9.delete("1.0", "end")
-            self.text10.delete("1.0", "end")
-            self.text11.delete("1.0", "end")
-            self.text12.delete("1.0", "end")
-            self.text5.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_plus'])
-            self.text6.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_minus'])
-            self.text7.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_plus'])
-            self.text8.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_minus'])
-            self.text9.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullin_plus'])
-            self.text10.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullout_plus'])
-            self.text11.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullin_minus'])
-            self.text12.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullout_minus'])
-        except:
-            print("Error in trace pull down function [Line 905]")
+        # try:
+        Rstest.sig_gen.write('TRIG')
+        curve_det = Rstest.get_curve(channel=4)
+        curve_bias = Rstest.get_curve(channel=2)
+        t = curve_det[:, 1]
+        rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
+        v_bias = curve_bias[:, 0]
+        measurement_values = self.calculate_pullin_out_voltage_measurement(v_bias, curve_det[:, 0])
+        plt.figure(num=4)
+        number_of_graphs = len(self.ax4.get_lines()[0:])
+        self.ax4.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
+        self.ax4.set(xlabel='V_bias (V)')
+        self.ax4.set(ylabel='Isolation (dB)')
+        self.ax4.grid(visible=True)
+        self.ax4.legend(fancybox=True, shadow=True)
+        self.canvas4.draw()
+        self.text5.delete("1.0", "end")
+        self.text6.delete("1.0", "end")
+        self.text7.delete("1.0", "end")
+        self.text8.delete("1.0", "end")
+        self.text9.delete("1.0", "end")
+        self.text10.delete("1.0", "end")
+        self.text11.delete("1.0", "end")
+        self.text12.delete("1.0", "end")
+        self.text5.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_plus'])
+        self.text6.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_minus'])
+        self.text7.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_plus'])
+        self.text8.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_minus'])
+        self.text9.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullin_plus'])
+        self.text10.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullout_plus'])
+        self.text11.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullin_minus'])
+        self.text12.insert(index="%d.%d" % (0, 0), chars=measurement_values['Isolation_at_pullout_minus'])
+        # except:
+        #     print("Error in trace pull down function [Line 905]")
 
     def plot_s3p(self):  # Display function that calls skrf Module to plot s3p files (used in display TAB)
         entered_filename = self.s3p_file_name_combobox.get()
@@ -1238,17 +993,6 @@ class Window(tk.Tk, Toplevel):
         self.ax.grid(visible=True)
         self.ax.legend(fancybox=True, shadow=True)
         self.canvas.draw()
-        if not (self.ax.get_lines()[0:] == []):
-            cursor = AnnotatedCursor(
-                line=self.ax.get_lines()[-1],
-                numberformat="{0:.2e} Hz\n{1:.2f} dB",
-                dataaxis='x', offset=[10, -40],
-                textprops={'color': 'black', 'fontweight': 'book'},
-                ax=self.ax,
-                useblit=True,
-                color='gray',
-                linewidth=1, )
-            cursor.visible
 
     def plot_s2p(self):  # Display function that calls skrf Module to plot s2p files (used in display TAB)
         entered_filename = self.s2p_file_name_combobox.get()
@@ -1267,32 +1011,22 @@ class Window(tk.Tk, Toplevel):
         self.ax2.grid(visible=True)
         self.ax2.legend(fancybox=True, shadow=True)
         self.canvas2.draw()
-        if not (self.ax2.get_lines()[0:] == []):
-            cursor2 = AnnotatedCursor(
-                line=self.ax2.get_lines()[-1],
-                numberformat="{0:.2e} Hz\n{1:.2f} dB",
-                dataaxis='x', offset=[10, -40],
-                textprops={'color': 'black', 'fontweight': 'book'},
-                ax=self.ax2,
-                useblit=True,
-                color='gray',
-                linewidth=1, )
-            cursor2.visible
 
-    def plot_s1p_snp_test(self):  # Display function that calls skrf Module to plot s1p files (used in SNP test TAB)
-        entered_filename = self.text.get()
+    def plot_snp_test(self, filetype='.s3p'):
+        self.fig5.clear()
+        self.ax5 = self.fig5.add_subplot(1, 1, 1)
+        # Display function that calls skrf Module to plot s1p files (used in SNP test TAB)
+        entered_filename = self.text.get(index1="1.0", index2="end-1c") + filetype
         print(entered_filename + '\n')
         os.chdir('{}'.format(self.tests3p_dir.get()))
         s_par_network = rf.Network('{}'.format(entered_filename))
-        s_par_network.frequency.unit = 'Ghz'
+        s_par_network.frequency.unit = 'GHz'
         plt.figure(num=5, tight_layout=True)
-        m, n = 0, 0
-        s_par_network.plot_s_db(m=0, n=0)
-        self.ax5.set_ylim(ymax=0)
-        self.ax5.set_xlim(xmin=self.fstart.get(), xmax=self.fstop.get())
-        self.ax5.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
+        s_par_network.plot_s_db()
         self.ax5.grid(visible=True)
         self.ax5.legend(fancybox=True, shadow=True)
+        self.canvas5.draw()
+
 
     def plot_vpullin(self):  # Display function to plot Isolation vs pull in voltage files (used in display TAB)
         f = self.txt_file_name_combobox.get()
@@ -1373,7 +1107,7 @@ class Window(tk.Tk, Toplevel):
                 vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
             except IndexError as e:
                 print({e.args}, end='\n')
-                pullout_index_pos = int(len(iso_descent)-1)
+                pullout_index_pos = int(len(iso_descent) - 1)
                 vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
             # ============================================================================== Creating the ascent and
             # descent portion of the graph for v_bias and v_log converted to normalized isolation
@@ -1417,20 +1151,28 @@ class Window(tk.Tk, Toplevel):
             # tenpercent_iso_ascent))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_minus = {} dB \n'.format(round(tenpercent_iso_ascent, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
+                                   chars='Isolation_at_pullout_minus = {} dB \n'.format(
+                                       round(tenpercent_iso_ascent, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0),
+                                   chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_minus = {} dB \n'.format(round(ninetypercent_iso_descent, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
+                                   chars='Isolation_at_pullin_minus = {} dB \n'.format(
+                                       round(ninetypercent_iso_descent, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0),
+                                   chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_plus = {} dB  \n'.format(round(tenpercent_iso, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
+                                   chars='Isolation_at_pullout_plus = {} dB  \n'.format(
+                                       round(tenpercent_iso, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0),
+                                   chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
 
             self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_plus = {} dB \n'.format(round(ninetypercent_iso, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0), chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
+                                   chars='Isolation_at_pullin_plus = {} dB \n'.format(
+                                       round(ninetypercent_iso, ndigits=2)))
+            self.textscroll.insert(index="%d.%d" % (1, 0),
+                                   chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
 
             pull_dict = {'Vpullin_plus': vpullin, 'Vpullout_plus': vpullout,
                          'Isolation_at_pullin_plus': ninetypercent_iso, 'Isolation_at_pullout_plus': tenpercent_iso,
@@ -1441,12 +1183,13 @@ class Window(tk.Tk, Toplevel):
 
     def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax)
         try:
-           list_graph_ax = self.ax.lines[-1]
-           list_graph_ax.remove()
-           self.ax.legend(fancybox=True).remove()
-           self.canvas.draw()
+            list_graph_ax = self.ax.lines[-1]
+            list_graph_ax.remove()
+            self.ax.legend(fancybox=True).remove()
+            self.canvas.draw()
         except IndexError as ind:
             print("No more graphs to delete")
+
     def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2)
         try:
             list_graph_ax2 = self.ax2.lines[-1]

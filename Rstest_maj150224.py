@@ -90,19 +90,19 @@ except pyvisa.VisaTypeError as e:
 except pyvisa.VisaIOWarning as e:
     print(f'Error {e} occurred')
 
-try:
-    rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
-except TimeoutException as e:
-    print(e.args[0])
-    print('Timeout Error \n')
-
-except StatusException as e:
-    print(e.args[0])
-    print('Status Error \n')
-
-except RsInstrException as e:
-    print(e.args[0])
-    print('Status Error \n')
+# try:
+#     rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
+# except TimeoutException as e:
+#     print(e.args[0])
+#     print('Timeout Error \n')
+#
+# except StatusException as e:
+#     print(e.args[0])
+#     print('Status Error \n')
+#
+# except RsInstrException as e:
+#     print(e.args[0])
+#     print('Status Error \n')
 # finally:
 #     rf_gen.visa_timeout = 5000
 
@@ -259,10 +259,11 @@ def zva_set_output_log():  # Get error log of the ZVA
 
 
 def trigger_measurement_zva():  # Trigger the ZVA using the signal generator
-    zva.write_str_with_opc('*TRG')
+    # zva.write_str_with_opc('*TRG')
     zva.write_str_with_opc('TRIGger:SOURce EXTernal')
     sig_gen.write('TRIG')
     sig_gen.query('*OPC?')
+    time.sleep(2)
     print("Signal generator sent Trigger pulse \n")
 
 
@@ -481,6 +482,33 @@ def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
         print('Signal Generator Configuration error')
 
 
+def configuration_sig_gen_snp(frequence_gen=150, amplitude=1, pulse_width=0.001333):
+    try:
+        sig_gen.write('*RST')
+        # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
+        # LOADING MEM state 4
+        sig_gen.write('MMEM:LOAD:STAT "STATE_pulse.sta"')  # Load STATE_4
+        sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
+        sig_gen.write('SOURce1:FUNCtion PULSe')  # selecting pulse function
+        sig_gen.write("SOURce:VOLTage:OFFSET 0")
+        sig_gen.write("SOURce:VOLTage:LOW 0")
+        sig_gen.write("SOURce:VOLTage:HIGH 2.5")
+        sig_gen.write('SOURce:BURSt:NCYCles MINimum')  # set burst cycles to 0
+        sig_gen.write('OUTPut 1')  # turn on output
+        sig_gen.write('OUTPut:SYNC:MODE NORMal')
+        sig_gen.write('SOURce1:FUNCtion:PULSe:WIDTh {}'.format(pulse_width))
+        error_log = sig_gen.query('SYSTem:ERRor?')
+        error = error_log.split(sep=',')[0]
+        print(error, error_log, sep='\n', end='\n')
+        if int(error) != 0:
+            frequence_gen = 1 / (10 * pulse_width)
+            print(error, error_log, sep='\n', end='\n')
+            sig_gen.write('FREQuency {}'.format(frequence_gen))
+        time.sleep(1)
+    except:
+        print('Signal Generator Configuration error')
+
+
 def configuration_sig_gen_pullin(ramp_length=50, amplitude=1):  # 50µs ramp_length
     ramp_frequency = 1 / (4 * ramp_length * 10 ** (-6))
     ramp_period = (4 * ramp_length * 10 ** (-6))
@@ -520,9 +548,10 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
                                pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S2P",
                                file_format='s2p'):
     try:
-        sweep_time = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
-        print("Sweep time is set to {} \n".format(sweep_time), end='\n')
-        sig_gen.write("SOURce1:FUNCtion:PULSe:WIDTh {}".format(float(sweep_time)*2))
+        sweep_time: str = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
+        print("Sweep time is set to {} s\n".format(sweep_time), end='\n')
+        # sig_gen.write("FUNC:PULSe:PER {}").format(float(10 * sweep_time))
+        # sig_gen.write("SOURce1:FUNCtion:PULSe:WIDTh {}".format(float(sweep_time * 2)))
         trigger_measurement_zva()
         time.sleep(1)
         if file_format == 's3p':
@@ -537,7 +566,7 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
         print_error_log()
     except:
         sweep_time = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
-        sig_gen.write('FREQuency {}'.format(1 / (2 * float(sweep_time))))
+        sig_gen.write('SOURce1:FREQuency {}'.format(1 / (10 * float(sweep_time))))
         print('An error occured in triggered_data_acquisition PROCESS \n')
         print('prf may be incompatible \n')
         print_error_log()
@@ -618,7 +647,7 @@ def get_curve(channel=4):
         ramp_length = 1 / (4 * ramp_frequency)
         ramp_period = 1 / (ramp_frequency)
         print("ramp periode is = {}".format(ramp_period), end='\n')
-        rf_gen.write("SOURce:PULM:WIDTh {}".format(ramp_period * 2))
+        # rf_gen.write("SOURce:PULM:WIDTh {}".format(ramp_period * 2))
         sample_rate = float(osc.query('HORizontal:MODE:SAMPLERate?'))
         number_of_samples = sample_rate * ramp_period  # Number of samples in the triangles
         print("number of samples in the triangle is {}".format(number_of_samples))
@@ -650,19 +679,19 @@ def get_curve(channel=4):
 
 
 def measure_pull_down_voltage(filename=r'default'):
-    try:
-        sig_gen.write('TRIG')
-        curve_det = get_curve(channel=4)
-        curve_bias = get_curve(channel=2)
-        t = curve_det[:, 1]
-        rf_detector = curve_det[:, 0]
-        v_bias = curve_bias[:, 0]
-        file_array = np.vstack((v_bias, rf_detector, t))
-        print(file_array[:, 0], end='\n')
-        np.savetxt('{}.txt'.format(filename), file_array, delimiter=',', newline='\n',
-                   header='#V_bias(V),rf_detector (V), time (s)')
-    except:
-        print("Unable to acquire Data")
+    # try:
+    sig_gen.write('TRIG')
+    curve_det = get_curve(channel=4)
+    curve_bias = get_curve(channel=2)
+    t = curve_det[:, 1]
+    rf_detector = curve_det[:, 0]
+    v_bias = curve_bias[:, 0]
+    file_array = np.vstack((v_bias, rf_detector, t))
+    print(file_array[:, 0], end='\n')
+    np.savetxt('{}.txt'.format(filename), file_array, delimiter=',', newline='\n',
+               header='#V_bias(V),rf_detector (V), time (s)')
+    # except:
+    #     print("Unable to acquire Data")
 
 
 def power_test_sequence(start=-30, stop=-20, step=1, sleep_duration=1):
