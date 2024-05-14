@@ -173,6 +173,13 @@ def call_s1p_config():
 
 
 class Window(tk.Tk, Toplevel):
+    """
+    Main application class for handling SNP file display and acquisition The app controls VNAs ZVA50 & ZVA67
+    the powermeter A-33521B, the RF generator RS SMB100a and oscilloscope DPO DPO5054
+
+    This class inherits from tk.Tk to provide a main application window.
+    It initializes the GUI components and binds the necessary event handlers.
+    """
     def __init__(self, master=None, *args, **kwargs):
         tk.Tk.__init__(self, master)
         s = ttk.Style()
@@ -225,8 +232,11 @@ class Window(tk.Tk, Toplevel):
         tab3 = add_Tab(tab_name=' Pull-in Files ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab display
         tab4 = add_Tab(tab_name=' Pull-in Test ', notebook=self.tabControl, col=0, row=1)  # Pull-in Test Tab
         tab5 = add_Tab(tab_name=' SNP Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
-        tab6 = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
-        tab7 = add_Tab(tab_name=' Ressource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+        tab6 = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
+        tab7 = add_Tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
+        tab8 = add_Tab(tab_name=' Ressource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+
+
         # ==============================================================================
         # TAB1 S3P parameter display
         # ==============================================================================
@@ -609,7 +619,7 @@ class Window(tk.Tk, Toplevel):
             ipadx=tab_padx, ipady=tab_padx)
 
         # ==============================================================================
-        # TAB7 Power measurement TAB
+        # TAB6 Power measurement TAB
         # ==============================================================================
         frame17 = add_Label_frame(tab6, frame_name='Component information', col=0, row=0)  # power sweep frame
 
@@ -661,9 +671,9 @@ class Window(tk.Tk, Toplevel):
         add_Button(tab=frame18, button_name='Launch Test', command=None, col=1, row=5).grid(ipadx=tab_padx,
                                                                                             ipady=tab_padx)
         # ==============================================================================
-        # TAB7 Ressource SCPI configuration
+        # TAB8 Ressource SCPI configuration
         # ==============================================================================
-        frame7 = add_Label_frame(tab7, frame_name='Ressouce Configuration', col=0, row=0)  # Ressource frame
+        frame7 = add_Label_frame(tab8, frame_name='Ressouce Configuration', col=0, row=0)  # Ressource frame
 
         self.zva_inst = tk.StringVar(value=r'TCPIP0::ZNA67-101810::inst0::INSTR')
         self.sig_gen_inst = tk.StringVar(value=r'TCPIP0::A-33521B-00526::inst0::INSTR')
