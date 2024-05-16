@@ -4,7 +4,7 @@ import time
 # import matplotlib
 import matplotlib.artist
 import matplotlib.ticker as ticker
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 # from matplotlib import style
 # import matplotlib.axes._axes as axis
 import csv
@@ -57,64 +57,63 @@ try:
     zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
 except TimeoutException as e:
     print(e.args[0])
-    print('Timeout Error \n')
-
+    print('Timeout Error in ZVA\n')
 except StatusException as e:
     print(e.args[0])
-    print('Status Error \n')
-
+    print('Status Error in ZVA\n')
+except ResourceError as e:
+    print(e.args[0])
+    print('Status Error in ZVA\n')
 except RsInstrException as e:
     print(e.args[0])
-    print('Status Error \n')
-# finally:
-# zva.visa_timeout = 5000
+    print('Status Error in ZVA\n')
 
 try:
     sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
 except pyvisa.VisaIOError as e:
-    print(f'Error {e} occurred')
-
+    print(e.args[0])
+    print(f'Error {e} occurred in signal generator\n')
 except pyvisa.VisaTypeError as e:
-    print(f'Error {e} occurred')
-
+    print(e.args[0])
+    print(f'Error {e} occurred occurred in signal generator\n')
+except ResourceError as e:
+    print(e.args[0])
+    print('Resource Error in signal generator\n')
 except pyvisa.VisaIOWarning as e:
-    print(f'Error {e} occurred')
+    print(f'Error {e} occurred occurred in signal generator\n')
+
 try:
     osc = rm.open_resource('TCPIP0::DPO5054-C011738::inst0::INSTR')
 except pyvisa.VisaIOError as e:
-    print(f'Error {e} occurred')
-
+    print(f'Error {e} occurred in oscilloscope')
 except pyvisa.VisaTypeError as e:
-    print(f'Error {e} occurred')
-
+    print(f'Error {e} occurred in oscilloscope')
 except pyvisa.VisaIOWarning as e:
-    print(f'Error {e} occurred')
+    print(f'Error {e} occurred in oscilloscope')
 
 try:
     rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
 except TimeoutException as e:
     print(e.args[0])
-    print('Timeout Error \n')
-
+    print('Timeout Error in RF generator \n')
 except StatusException as e:
     print(e.args[0])
-    print('Status Error \n')
-
+    print('Status Error in RF generator\n')
 except ResourceError as e:
     print(e.args[0])
-
+    print('Resource Error in RF generator\n')
 except RsInstrException as e:
     print(e.args[0])
-    print('Status Error \n')
+    print('Exception Error  in RF generator\n')
 
 try:
     powermeter = rm.open_resource('TCPIP0::192.168.0.83::inst0::INSTR')
 except pyvisa.VisaIOError as e:
     print(f'Error {e} occurred')
-
 except pyvisa.VisaTypeError as e:
     print(f'Error {e} occurred')
-
+except ResourceError as e:
+    print(e.args[0])
 except pyvisa.VisaIOWarning as e:
     print(f'Error {e} occurred')
 
@@ -777,8 +776,15 @@ def send_trig():
     return print('trigger sent')
 
 
-def get_curve_cycling(
-        channel=4):  # Acquire waveform data of set channel, functions returns an array  with the time base and values at the specified channel
+def get_curve_cycling(channel=4):
+    """
+    Acquire waveform data of set channel,
+    functions returns an array  with the time base and values at the specified channel
+    :param channel: Oscilloscope channel
+    :return: Data array shape (N, 2) with N the number of samples in the channel
+
+    """
+    data = np.zeros(1)
     try:
         osc.write('Data:Source CH{}'.format(channel))
         acquisition_length = int(osc.query("HORizontal:ACQLENGTH?"))  # get number of samples
@@ -801,7 +807,8 @@ def get_curve_cycling(
         print("get_curve function ended")
     except:
         print("Unable to acquire Data")
-    return (data)
+
+    return data
 
 
 def switching_time():
@@ -809,66 +816,129 @@ def switching_time():
     return sw_time
 
 
-def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.0253, ramp_stop=0.0261):
+def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_stop=0.20437, ramp_start_minus=0.2046,
+                 ramp_stop_minus=0.20519, delay=0.2, conversion_coeff=0.047):
+    """
+    Returns the MEMS Characteristics including Positive & Negative Pull-in voltages,
+    Positive & Negative Pull-out voltages, Switching time, isolation and insertion loss variation during
+    cycling sequence
+    :param rf_detector_channel: Detector channel array
+    :param v_bias_channel: Bias channel array
+    :param ramp_start: Starting time of the positive ramp
+    :param ramp_stop: End time of the positive ramp
+    :param ramp_start_minus: Starting time of the negative ramp
+    :param ramp_stop_minus: End time of the negative ramp
+    :param delay: Input delay of the oscilloscope to position at the end of the cycling wavefrm
+    :param conversion_coeff: Conversion coefficient from power to voltage of the detector
+    :return: dictionnary containing all the Mems characteristics
+    """
+
+    delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
+
     # Insert the get curve data with ramp position to calculate pull_in, pull_out and insertion loss + isolation
     # Assign the different curves to variables
-    t = rf_detector_channel[:, 1]
+    t = rf_detector_channel[:, 1] + delay
     rf_detector_curve = rf_detector_channel[:, 0]
     v_bias_curve = v_bias_channel[:, 0]
 
-    # Define a ramp voltage curve to calculate pull in and pull out curve. This is done by time gating using ramp_start and ramp_stop
-    t0_ramp = list(np.where(t > ramp_start))[0][0]
-    t0_plus_rampwidth = list(np.where(t < ramp_stop))[0][-1]
+    trigger_offset = int(t.size / (float(osc.query('HORIZONTAL:POSITION?'))))
+    # Define a ramp voltage curve to calculate pull in and pull out curve.
+    # This is done by time gating using ramp_start and ramp_stop
+
+    t0_ramp = np.where(t > ramp_start)[0][0] + trigger_offset
+    t0_plus_rampwidth = list(np.where(t < ramp_stop))[0][-1] + trigger_offset
+
+    # Define a ramp voltage curve to calculate pull in and pull out curve of negative ramp.
+    # This is done by time gating using ramp_start_minus and ramp_stop_minus
+    t0_ramp_minus = list(np.where(t > ramp_start_minus))[0][0] + trigger_offset
+    t0_plus_rampwidth_minus = list(np.where(t < ramp_stop_minus))[0][-1] + trigger_offset
+
+    # We then calculate the index corresponding to the Max voltage of our ramp
+    max_positive_bias_index = np.argmax(v_bias_curve)
+    min_negative_bias_index = np.argmin(v_bias_curve)
 
     # From the time gating we extract the ramp voltage curve ascent and descent
     ramp_voltage_curve = v_bias_curve[t0_ramp:t0_plus_rampwidth]
-
-    # We then calculate the index corresponding to the Max voltage of our ramp
-    max_positive_bias_index = np.argmax(ramp_voltage_curve)
+    negative_ramp_voltage_curve = v_bias_curve[t0_ramp_minus:t0_plus_rampwidth_minus]
 
     # Then comes the definition of an ascent and descent portion of the curves
-    ramp_voltage_ascent = ramp_voltage_curve[:max_positive_bias_index]
-    ramp_voltage_descent = ramp_voltage_curve[max_positive_bias_index:]
+    ramp_voltage_ascent = v_bias_curve[t0_ramp:max_positive_bias_index]
+    ramp_voltage_descent = v_bias_curve[max_positive_bias_index:t0_plus_rampwidth]
+
+    # Same is done for the negative portion of the curve
+    ramp_voltage_descent_minus = v_bias_curve[t0_ramp_minus:min_negative_bias_index]
+    ramp_voltage_ascent_minus = v_bias_curve[min_negative_bias_index:t0_plus_rampwidth_minus]
+
+    # plt.plot(ramp_voltage_curve, label='ramp_voltage_curve')
+    # plt.plot(negative_ramp_voltage_curve, label='negative_ramp_voltage_curve')
+    # plt.plot(ramp_voltage_ascent, label='ramp_voltage_ascent')
+    # plt.plot(ramp_voltage_descent, label='ramp_voltage_descent')
+    # plt.plot(ramp_voltage_descent_minus, label='ramp_voltage_descent_minus')
+    # plt.plot(ramp_voltage_ascent_minus, label='ramp_voltage_ascent_minus')
+    # plt.legend()
+    # plt.show()
 
     # Calculating the normalization value for the isolation
-    normalized_isolation = np.max(3 * rf_detector_curve[t0_ramp: t0_plus_rampwidth] / 0.040)
+    normalized_isolation_plus = np.max(3 * rf_detector_curve[t0_ramp: t0_plus_rampwidth] / conversion_coeff)
+    normalized_isolation_minus = np.max(
+        3 * rf_detector_curve[t0_ramp_minus: t0_plus_rampwidth_minus] / conversion_coeff)
 
+    # iso_ascent is the ascent portion of the rf_detector waveform for positive ramp
     iso_ascent = 3 * rf_detector_curve[
-                     t0_ramp: np.argmax(v_bias_curve)] / 0.040 - normalized_isolation
+                     t0_ramp: max_positive_bias_index] / conversion_coeff - normalized_isolation_plus
     iso_max_ascent = np.min(iso_ascent)
-    # print('isolation on ascent = {} dB'.format(iso_max_ascent))
-    iso_descent = 3 * rf_detector_curve[np.argmax(v_bias_curve):t0_plus_rampwidth] / 0.040 - normalized_isolation
+
+    # iso_descent is the descent portion of the rf_detector waveform for positive ramp
+    iso_descent = 3 * rf_detector_curve[
+                      max_positive_bias_index:t0_plus_rampwidth] / conversion_coeff - normalized_isolation_plus
     iso_min_descent = np.min(iso_descent)
-    # print('isolation on descent = {} dB'.format(iso_min_descent))
+
+    # iso_descent_minus is the descent portion of the rf_detector waveform for negative ramp
+    iso_descent_minus = 3 * rf_detector_curve[
+                            t0_ramp_minus: min_negative_bias_index] / conversion_coeff - normalized_isolation_minus
+    iso_max_descent_minus = np.min(iso_descent_minus)
+
+    # iso_ascent_minus is the ascent portion of the rf_detector waveform for negative ramp
+    iso_ascent_minus = (3 * rf_detector_curve[
+                           min_negative_bias_index: t0_plus_rampwidth_minus] / conversion_coeff
+                        - normalized_isolation_minus)
+    iso_min_descent_minus = np.min(iso_ascent_minus)
 
     # ==============================================================================
     # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
     # Calculation Vpull out as isolation passing above 90% max isolation in dB mark
+    # Positive Pull-in
     pullin_index_pos = int(np.where(iso_ascent <= 0.9 * iso_max_ascent)[0][0])
-    Vpullin = round(ramp_voltage_ascent[pullin_index_pos], ndigits=2)
+    Vpullin_plus = round(ramp_voltage_ascent[pullin_index_pos], ndigits=2)
+    # Negative Pull-in
+    pullin_index_neg = int(np.where(iso_descent_minus <= 0.9 * iso_max_descent_minus)[0][0])
+    Vpullin_minus = round(ramp_voltage_descent_minus[pullin_index_neg], ndigits=2)
 
-    tenpercent_iso = round(0.1 * iso_min_descent, ndigits=2)
-    ninetypercent_iso = round(0.9 * iso_max_ascent, ndigits=2)
-    _100percent_iso = iso_min_descent
+    tenpercent_iso_plus = round(0.1 * iso_min_descent, ndigits=2)
+    ninetypercent_iso_plus = round(0.9 * iso_max_ascent, ndigits=2)
+    _100percent_iso_plus = round(iso_min_descent, ndigits=2)
+
     pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-    # print(pullout_index_pos)
-    Vpullout = round(ramp_voltage_descent[pullout_index_pos], ndigits=2)
+    Vpullout_plus = round(ramp_voltage_descent[pullout_index_pos], ndigits=2)
 
-    # return (iso_max_ascent, iso_min_descent, t0_ramp, t0_plus_rampwidth, ramp_voltage_ascent, ramp_voltage_descent, iso_ascent, iso_descent, Vpullin, Vpullout)
-    mems_characteristics = dict(
-        [('iso_ascent', iso_ascent), ('iso_descent', iso_descent), ('Vpullin', Vpullin), ('Vpullout', Vpullout),
-         ('ninetypercent_iso', ninetypercent_iso), ('tenpercent_iso', tenpercent_iso),
-         ('_100percent_iso', _100percent_iso)])
+    pullout_index_neg = int(np.where(iso_ascent_minus >= 0.1 *iso_ascent_minus)[0][0])
+    Vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg], digits=2)
+
+
     return mems_characteristics
-    # pass
 
 
-def cycling_sequence(number_of_cycles=200, number_of_pulses_in_wf=20, filename='test', wf_duration=0.02):
+def cycling_sequence(number_of_cycles=200, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02):
     number_of_triggered_acquisitions = int(number_of_cycles / number_of_pulses_in_wf)
     cycles = list(np.arange(start=0, stop=number_of_cycles, step=20))
     test_duration = wf_duration * number_of_cycles / 60 / 60
-    print("Number of triggers to be used = {}".format(number_of_triggered_acquisitions))
+    starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+
+    print("Starting number of triggers = {}\n".format(starting_number_of_acquisitions))
+    print("Number of remaining cycles = {}\n".format(number_of_cycles))
     print("Estimated time {} h".format(test_duration))
+
+    count = starting_number_of_acquisitions
     pullin_plus = np.zeros(1)
     pullin_minus = np.zeros(1)
     pullout_plus = np.zeros(1)
@@ -877,24 +947,27 @@ def cycling_sequence(number_of_cycles=200, number_of_pulses_in_wf=20, filename='
     isolation_minus = np.zeros(1)
     sw_time = np.zeros(1)
 
-    for n in range(number_of_triggered_acquisitions):
-        send_trig()
-        # time.sleep(1)
-        Ch_4_detector = get_curve_cycling(channel=4)
-        print(osc.query('*OPC?'))
+    while count < number_of_cycles + starting_number_of_acquisitions:
+        count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+        if count == starting_number_of_acquisitions:
+            time.sleep(1)
+        else:
 
-        Ch_2_bias = get_curve_cycling(channel=2)
-        print(osc.query('*OPC?'))
-        data = extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-        st = switching_time()
-        print("pull in voltage :")
-        print(pullin)
-        print("pull out voltage :")
-        print(pullout)
-        print("isolation @pullin Voltage :")
-        print(isolation)
-        print("switching time voltage :")
-        print(sw_time)
+            Ch_4_detector = get_curve_cycling(channel=4)
+            print(osc.query('*OPC?'))
+
+            Ch_2_bias = get_curve_cycling(channel=2)
+            print(osc.query('*OPC?'))
+            data = extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
+            st = switching_time()
+            print("pull in voltage :")
+            print(pullin_plus)
+            print("pull out voltage :")
+            print(pullout_plus)
+            print("isolation @pullin Voltage :")
+            print(isolation_plus)
+            print("switching time voltage :")
+            print(sw_time)
 
         pullin.append(data['Vpullin'])
         pullout.append(data['Vpullout'])
@@ -1220,4 +1293,14 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
     # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
 
+
 # connect()
+plt.figure(num=1)
+sig_gen.write('OUTPut 1')
+
+channel_4 = get_curve_cycling(4)
+channel_2 = get_curve_cycling(2)
+
+extract_data(rf_detector_channel=channel_4, v_bias_channel=channel_2)
+
+sig_gen.write('OUTPut 0')
