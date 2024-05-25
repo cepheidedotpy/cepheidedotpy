@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import time
 
 # import matplotlib
@@ -25,7 +26,7 @@ matplotlib.ticker.ScalarFormatter(useOffset=True, useMathText=True)
 # This code is dated to 15/02/24
 
 
-# os.system('cls')
+os.system('cls')
 
 path = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
 
@@ -42,14 +43,13 @@ zva_s1p_config = 's1p_setup.znxml'
 zva_s2p_config = 's2p_setup.znxml'
 zva_s3p_config = 's3p_setup.znxml'
 
-# PC File Path
+# PC File Path on our PC
 pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config)
 pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config)
 pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config)
 
 # This is the placeholder file used in the instrument to copy the configuration of the ZVA from the PC
 instrument_file = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'
-
 PC_File_Dir = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
 ZVA_File_Dir = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
 
@@ -135,8 +135,14 @@ def handle_event(ressource, event):
     pass
 
 
-def bias_voltage(
-        voltage):  # Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage =
+def bias_voltage(voltage):
+    """
+     Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage = user_input/20]
+     because of the voltage amplifier
+    :param voltage: voltage value
+    :return: Set voltage at the amplifier output
+    """
+    # Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage =
     # user_input/20] because of the amplifier
     voltage_at_sig_gen = float(voltage) / 20
     print(voltage_at_sig_gen)
@@ -644,6 +650,8 @@ def get_channel_info(channel=4):
 
 
 def get_curve(channel=4):
+    print(f"Acquiring curver {channel}")
+    curve_data = np.empty(shape=1)
     try:
         acquisition_length = int(osc.query("HORizontal:ACQLENGTH?"))  # get number of samples
         print("acquisition_length in get curve function = {} samples\n".format(acquisition_length))
@@ -666,7 +674,7 @@ def get_curve(channel=4):
         # the triangle
         data_truncated = np.zeros((acquisition_length, 2))[int(ref_index):int(ref_index) + int(
             number_of_samples) + 1500]  # 1500 samples added to make sure the triangle is complete
-        data = data_truncated
+        curve_data = data_truncated
         # data = np.zeros((acquisition_length,2))
         info = get_channel_info(channel=channel)
         osc.write("DATa:STOP {}".format(acquisition_length))
@@ -680,12 +688,12 @@ def get_curve(channel=4):
         time = np.arange(0, info['sweep_duration'], time_base)[
                int(ref_index):int(ref_index) + int(number_of_samples) + 1500]
         print("duration of sweep = {} s\n".format(info['sweep_duration']))
-        data[:, 0] = (curve - y_offset) * y_scale
-        data[:, 1] = time[:]
+        curve_data[:, 0] = (curve - y_offset) * y_scale
+        curve_data[:, 1] = time[:]
         print("get_curve function ended")
     except:
         print("Unable to acquire Data")
-    return data
+    return curve_data
 
 
 def measure_pull_down_voltage(filename=r'default'):
@@ -830,10 +838,14 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     :param ramp_stop_minus: End time of the negative ramp
     :param delay: Input delay of the oscilloscope to position at the end of the cycling wavefrm
     :param conversion_coeff: Conversion coefficient from power to voltage of the detector
-    :return: dictionnary containing all the Mems characteristics
+    :return: Dataframe containing all the Mems characteristics
     """
 
     delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
+
+    switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
+    amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
+    relative_amplitude = amplitude_t0 - float(osc.query('MEASUrement:MEAS4:VALue?'))
 
     # Insert the get curve data with ramp position to calculate pull_in, pull_out and insertion loss + isolation
     # Assign the different curves to variables
@@ -900,9 +912,9 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
 
     # iso_ascent_minus is the ascent portion of the rf_detector waveform for negative ramp
     iso_ascent_minus = (3 * rf_detector_curve[
-                           min_negative_bias_index: t0_plus_rampwidth_minus] / conversion_coeff
+                            min_negative_bias_index: t0_plus_rampwidth_minus] / conversion_coeff
                         - normalized_isolation_minus)
-    iso_min_descent_minus = np.min(iso_ascent_minus)
+    iso_min_ascent_minus = np.min(iso_ascent_minus)
 
     # ==============================================================================
     # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
@@ -921,14 +933,31 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
     Vpullout_plus = round(ramp_voltage_descent[pullout_index_pos], ndigits=2)
 
-    pullout_index_neg = int(np.where(iso_ascent_minus >= 0.1 *iso_ascent_minus)[0][0])
-    Vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg], digits=2)
+    pullout_index_neg = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent_minus)[0][0])
+    Vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg], ndigits=2)
 
+    tenpercent_iso_neg = round(0.1 * iso_min_descent, ndigits=2)
+    ninetypercent_iso_neg = round(0.9 * iso_max_descent_minus, ndigits=2)
+
+    # data_ = np.array([[Vpullin_plus], [Vpullin_minus], [Vpullout_plus], [Vpullout_minus], [ninetypercent_iso_plus],
+    #                  [ninetypercent_iso_neg], [switching_time], [relative_amplitude]])
+    dict_ = {'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'Vpullout_plus': [Vpullout_plus],
+             'Vpullout_minus': [Vpullout_minus], 'iso_ascent': [ninetypercent_iso_plus],
+             'iso_descent_minus': [ninetypercent_iso_neg], 'switching_time': [switching_time],
+             'amplitude_variation': [relative_amplitude]}
+    try:
+        # mems_characteristics = pd.DataFrame(data=dict_, columns=['Vpullin_plus', 'Vpullin_minus', 'Vpullout_plus',
+        #                                                          'Vpullout_minus', 'iso_ascent', 'iso_descent_minus',
+        #                                                          'switching_time', 'amplitude_variation'])
+        mems_characteristics = pd.DataFrame(data=dict_)
+    except:
+        print('Dataframe creation Error')
+    print(mems_characteristics)
 
     return mems_characteristics
 
 
-def cycling_sequence(number_of_cycles=200, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02):
+def cycling_sequence(number_of_cycles=10e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02):
     number_of_triggered_acquisitions = int(number_of_cycles / number_of_pulses_in_wf)
     cycles = list(np.arange(start=0, stop=number_of_cycles, step=20))
     test_duration = wf_duration * number_of_cycles / 60 / 60
@@ -937,64 +966,30 @@ def cycling_sequence(number_of_cycles=200, number_of_pulses_in_wf=1000, filename
     print("Starting number of triggers = {}\n".format(starting_number_of_acquisitions))
     print("Number of remaining cycles = {}\n".format(number_of_cycles))
     print("Estimated time {} h".format(test_duration))
+    try:
+        starting_df, new_df = pd.DataFrame(columns=["Vpullin_plus", "Vpullin_minus", "Vpullout_plus", "Vpullout_minus",
+                                            "iso_ascent", "iso_descent_minus", "switching_time", "amplitude_variation"],
+                                   data=np.array([(0, 0, 0, 0, 0, 0, 0, 0)]))
 
+    except:
+        print("df creation failed")
     count = starting_number_of_acquisitions
-    pullin_plus = np.zeros(1)
-    pullin_minus = np.zeros(1)
-    pullout_plus = np.zeros(1)
-    pullout_minus = np.zeros(1)
-    isolation_plus = np.zeros(1)
-    isolation_minus = np.zeros(1)
-    sw_time = np.zeros(1)
 
     while count < number_of_cycles + starting_number_of_acquisitions:
-        count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-        if count == starting_number_of_acquisitions:
+        new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+
+        if count == new_value:
             time.sleep(1)
         else:
-
+            count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
             Ch_4_detector = get_curve_cycling(channel=4)
             print(osc.query('*OPC?'))
-
             Ch_2_bias = get_curve_cycling(channel=2)
             print(osc.query('*OPC?'))
             data = extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-            st = switching_time()
-            print("pull in voltage :")
-            print(pullin_plus)
-            print("pull out voltage :")
-            print(pullout_plus)
-            print("isolation @pullin Voltage :")
-            print(isolation_plus)
-            print("switching time voltage :")
-            print(sw_time)
-
-        pullin.append(data['Vpullin'])
-        pullout.append(data['Vpullout'])
-        isolation.append(data['_100percent_iso'])
-        sw_time.append(st)
-
-    cycling_data = list((cycles, pullin, pullout, isolation, sw_time))
-    try:
-        with open("{}.csv".format(filename), mode='x') as csvfile:
-            # spamwriter = csv.writer(csvfile, delimiter = "\n", lineterminator = "\n")
-            fieldnames = ['cycles', 'Vpull_in(V)', 'Vpullout (V)', 'Isolation (dB)', 'sw_time (s)']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
-            writer.writeheader()
-            writer.writerow({'cycles': cycles, 'Vpull_in(V)': cycling_data[0], 'Vpullout (V)': cycling_data[1],
-                             'Isolation (dB)': cycling_data[2], 'sw_time (s)': cycling_data[3]})
-    except:
-        with open("{}.csv".format(time.asctime().replace(' ', '_').replace(':', '-')), mode='x') as csvfile:
-            # spamwriter = csv.writer(csvfile, delimiter = "\n", lineterminator = "\n")
-            fieldnames = ['cycles', 'Vpull_in(V)', 'Vpullout (V)', 'Isolation (dB)', 'sw_time (s)']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel')
-            writer.writeheader()
-            writer.writerow({'cycles': cycles, 'Vpull_in(V)': cycling_data[0], 'Vpullout (V)': cycling_data[1],
-                             'Isolation (dB)': cycling_data[2], 'sw_time (s)': cycling_data[3]})
-
-    return cycling_data
-    # np.savetxt(fname='test.txt',X=cycling_data, delimiter='\n', newline='\n', header='RF MEMS Reference = test\nCycling_data',footer='END')
-    # print('Cycle is Finished')
+            file_dataframe = pd.concat([starting_df, data], axis="rows")
+            print(file_dataframe)
+            new_df = file_dataframe
 
 
 def online_mode():
@@ -1294,13 +1289,11 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
 
 
-# connect()
-plt.figure(num=1)
 sig_gen.write('OUTPut 1')
-
-channel_4 = get_curve_cycling(4)
-channel_2 = get_curve_cycling(2)
-
-extract_data(rf_detector_channel=channel_4, v_bias_channel=channel_2)
-
-sig_gen.write('OUTPut 0')
+time.sleep(5)
+try:
+    cycling_sequence(number_of_cycles=10e9)
+except:
+    print("Cycling sequence error", end='\n')
+    osc.close()
+    sig_gen.write('OUTPut 0')
