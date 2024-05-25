@@ -9,15 +9,14 @@ _version :8
 # ==============================================================================
 # Imports#%matplotlib inline
 # ==============================================================================
-import Rstest_maj150224 as Rstest
-
+import scripts_and_functions as inst_command
+import dir_and_var_declaration
 import tkinter as tk
 from tkinter import ttk
 from tkinter import Menu
 from tkinter import Toplevel
 from tkinter import font
 from tkinter import scrolledtext
-
 # Implement the default Matplotlib key bindings.
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
@@ -77,7 +76,7 @@ def add_Label(tab, label_name, col,
     return label
 
 
-def add_scrolledtext(tab, text, scrol_w,
+def add_scrolledtext(tab, scrol_w,
                      scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text at row/col location
     # and with scrol_w/scrol_h dimensions
     scroll = scrolledtext.ScrolledText(tab, width=scrol_w, height=scrol_h, wrap=tk.WORD, border=2, relief=tk.SUNKEN,
@@ -94,7 +93,7 @@ def add_Label_frame(tab, frame_name, col, row,
     return frame
 
 
-def extension_detector(file, path):  # Seprate file name and extension
+def extension_detector(file):  # Seprate file name and extension
     file, extension = os.path.splitext(file)
     return extension, file
 
@@ -118,13 +117,13 @@ def filetypes_dir(
         s2p_file = []
         other_file = []
         for nb_files in range(len(file_list)):
-            if extension_detector(file_list[nb_files], path)[0] == '.txt':
+            if extension_detector(file_list[nb_files])[0] == '.txt':
                 nb_txt += 1
                 txt_file.append(file_list[nb_files])
-            elif extension_detector(file_list[nb_files], path)[0] == '.s3p':
+            elif extension_detector(file_list[nb_files])[0] == '.s3p':
                 nb_s3p += 1
                 s3p_file.append(file_list[nb_files])
-            elif extension_detector(file_list[nb_files], path)[0] == '.s2p':
+            elif extension_detector(file_list[nb_files])[0] == '.s2p':
                 nb_s2p += 1
                 s2p_file.append(file_list[nb_files])
             else:
@@ -154,21 +153,24 @@ def add_combobox(tab, text, col, row,
 
 
 def close_ressources():  # Calls close_all_ressources to close all ressources
-    Rstest.close_all_ressources()
+    inst_command.close_all_ressources()
 
 
 def call_s3p_config():
-    Rstest.load_config(pc_file=Rstest.pc_file_s3p, inst_file=Rstest.instrument_file)
+    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s3p,
+                             inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
 def call_s2p_config():
-    Rstest.load_config(pc_file=Rstest.pc_file_s2p, inst_file=Rstest.instrument_file)
+    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s2p,
+                             inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
 def call_s1p_config():
-    Rstest.load_config(pc_file=Rstest.pc_file_s1p, inst_file=Rstest.instrument_file)
+    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s1p,
+                             inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
@@ -180,7 +182,7 @@ class Window(tk.Tk, Toplevel):
     This class inherits from tk.Tk to provide a main application window.
     It initializes the GUI components and binds the necessary event handlers.
     """
-    def __init__(self, master=None, *args, **kwargs):
+    def __init__(self, master=None):
         tk.Tk.__init__(self, master)
         s = ttk.Style()
         # s.theme_use('default')
@@ -353,7 +355,7 @@ class Window(tk.Tk, Toplevel):
         add_Button(frame5, 'Delete Graphs', command=self.delete_axs_vpullin, col=3, row=2)
         add_Button(frame5, 'Calculate Pull-in and Pull-out voltages', command=self.calculate_pullin_out_voltage,
                    col=2, row=3).configure(width=40)
-        self.textscroll = add_scrolledtext(tab=self.frame6, text='', scrol_w=100, scrol_h=3)
+        self.textscroll = add_scrolledtext(tab=self.frame6, scrol_w=100, scrol_h=3)
 
         self.canvas3 = self.create_canvas_txt(frame=self.frame6)
 
@@ -603,7 +605,7 @@ class Window(tk.Tk, Toplevel):
                              font=('Bahnschrift Light', 10))
         self.text2.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame12, button_name='Comms prep', command=Rstest.comprep_zva, col=0, row=1).grid(
+        add_Button(tab=frame12, button_name='Comms prep', command=inst_command.comprep_zva, col=0, row=1).grid(
             ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(ipadx=tab_padx,
                                                                                                     ipady=tab_padx)
@@ -653,7 +655,7 @@ class Window(tk.Tk, Toplevel):
         add_entry(tab=frame17, textvar=self.bias_voltage_pow, width=20, col=1, row=6)
 
         add_Button(tab=frame17, button_name='Create-file', command=self.create_test_pow_file, col=2, row=0)
-        add_Button(tab=frame17, button_name='Send trigger', command=Rstest.send_trig, col=2, row=1)
+        add_Button(tab=frame17, button_name='Send trigger', command=inst_command.send_trig, col=2, row=1)
         # General controls---------------------------------------------------------------
         frame18 = add_Label_frame(tab=tab6, frame_name='General controls', col=2, row=0)
 
@@ -698,6 +700,9 @@ class Window(tk.Tk, Toplevel):
         self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
 
+    # ==============================================================================
+    # TAB7
+    # ==============================================================================
     # ==============================================================================
     # Methods
     # ==============================================================================
@@ -821,75 +826,75 @@ class Window(tk.Tk, Toplevel):
     # ZVA Functions ---------------------------------------------------------------
     def reset_zva(self):  # Reset zva using the IP address at Ressource Page (used in TAB5)
         ip = self.zva_inst.get()
-        Rstest.setup_zva_with_rst(ip)
+        inst_command.setup_zva_with_rst(ip)
 
     def set_fstart(self):  # Configure ZVA fstart (used in TAB5)
         fstart = self.fstart.get()
-        Rstest.set_fstart(fstart)
-        self.error_log(Rstest.zva)
+        inst_command.set_fstart(fstart)
+        self.error_log(inst_command.zva)
 
     def set_fstop(self):  # Configure ZVA fstop (used in TAB5)
         fstop = self.fstop.get()
-        Rstest.set_fstop(fstop)
-        self.error_log(Rstest.zva)
+        inst_command.set_fstop(fstop)
+        self.error_log(inst_command.zva)
 
     def set_nb_points(self):  # Configure ZVA number of points (used in TAB5)
         nb_points = self.nb_points.get()
-        Rstest.number_of_points(nb_points)
-        self.error_log(Rstest.zva)
+        inst_command.number_of_points(nb_points)
+        self.error_log(inst_command.zva)
 
     def set_zva(self):  # Configure ZVA fstart/fstop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
         self.text2.delete("1.0", "end")
-        self.text2.insert(index="%d.%d" % (0, 0), chars=Rstest.zva_set_output_log())
+        self.text2.insert(index="%d.%d" % (0, 0), chars=inst_command.zva_set_output_log())
 
     def data_acquire(
-            self):  # Calls Rstest module function triggered_data_acquisition() to acquire data and create a S3P file
-        Rstest.sig_gen.write("TRIG")
-        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                          pc_file_dir=self.tests3p_dir.get(),
-                                          file_format='s3p')
+            self):  # Calls inst_command module function triggered_data_acquisition() to acquire data and create a S3P file
+        inst_command.sig_gen.write("TRIG")
+        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                pc_file_dir=self.tests3p_dir.get(),
+                                                file_format='s3p')
         self.plot_snp_test(filetype='.s3p')
-        Rstest.print_error_log()
+        inst_command.print_error_log()
         self.set_txt()
 
     def data_acquire_s2p(self):
-        Rstest.sig_gen.write("TRIG")
-        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                          pc_file_dir=self.tests3p_dir.get(),
-                                          file_format='s2p')
+        inst_command.sig_gen.write("TRIG")
+        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                pc_file_dir=self.tests3p_dir.get(),
+                                                file_format='s2p')
         self.plot_snp_test(filetype='.s2p')
-        Rstest.print_error_log()
+        inst_command.print_error_log()
         self.set_txt()
 
     def data_acquire_s1p(self):
-        Rstest.sig_gen.write("TRIG")
-        Rstest.time.sleep(2+float(Rstest.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                          pc_file_dir=self.tests3p_dir.get(),
-                                          file_format='s1p')
+        inst_command.sig_gen.write("TRIG")
+        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                pc_file_dir=self.tests3p_dir.get(),
+                                                file_format='s1p')
         self.plot_snp_test(filetype='.s1p')
-        Rstest.print_error_log()
+        inst_command.print_error_log()
         self.set_txt()
 
     # sig_gen Functions -----------------------------------------------------------
     def reset_sig_gen(self):  # Reset sig_gen using the IP address at Ressource Page (used in TAB4)
         ip = self.sig_gen_inst.get()
-        Rstest.setup_sig_gen_ramp_with_rst(ip)
+        inst_command.setup_sig_gen_ramp_with_rst(ip)
 
     def acquire_pulldown_data(
-            self):  # Calls Rstest module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
+            self):  # Calls inst_command module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
         # try:
         os.chdir(self.testpullin_dir.get())
-        Rstest.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
-        # Rstest.print_error_log()
+        inst_command.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
+        # inst_command.print_error_log()
         self.set_txt()
         # except:
         #     print("Error")
@@ -899,7 +904,7 @@ class Window(tk.Tk, Toplevel):
         self.set_PRF()
         self.set_pulse_width()
         self.text2.delete("1.0", "end")
-        self.text2.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
+        self.text2.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
             self):  # Calls set_bias_pullin() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse
@@ -907,52 +912,52 @@ class Window(tk.Tk, Toplevel):
         self.set_bias_pullin()
         self.set_ramp_width()
         self.text4.delete("1.0", "end")
-        self.text4.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
+        self.text4.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_pulsemode(
-            self):  # Calls Rstest module's configuration_sig_gen() to reset the sig_gen and sends an error log (used
+            self):  # Calls inst_command module's configuration_sig_gen() to reset the sig_gen and sends an error log (used
         # in TAB7)
-        Rstest.configuration_sig_gen()
+        inst_command.configuration_sig_gen()
         self.text14.delete("1.0", "end")
-        self.text14.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_log())
+        self.text14.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_log())
 
     def set_Bias_Voltage(
-            self):  # Calls Rstest modules's bias_voltage() function using the voltage provided by entry pullin_v as
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as
         # an input (used in TAB5)
         bias = self.pullin_v.get()
-        Rstest.bias_voltage(bias)
-        self.error_log(Rstest.sig_gen)
+        inst_command.bias_voltage(bias)
+        self.error_log(inst_command.sig_gen)
 
     def set_bias_pullin(
-            self):  # Calls Rstest modules's bias_voltage() function using the voltage provided by entry pullin_v as
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
-        Rstest.bias_pullin(bias)
-        self.error_log(Rstest.sig_gen)
+        inst_command.bias_pullin(bias)
+        self.error_log(inst_command.sig_gen)
 
-    def set_ramp_width(self):  # Calls Rstest modules's ramp_width(width) to set ramp width
+    def set_ramp_width(self):  # Calls inst_command modules's ramp_width(width) to set ramp width
         width = self.ramp_width.get()
-        Rstest.ramp_width(width)
-        self.error_log(Rstest.sig_gen)
+        inst_command.ramp_width(width)
+        self.error_log(inst_command.sig_gen)
 
-    def set_PRF(self):  # Calls Rstest modules's set_PRF(prf) to set set pulse repetition frequency
+    def set_PRF(self):  # Calls inst_command modules's set_PRF(prf) to set set pulse repetition frequency
         prf = self.pulse_freq.get()
-        Rstest.set_PRF(prf)
-        self.error_log(Rstest.sig_gen)
+        inst_command.set_PRF(prf)
+        self.error_log(inst_command.sig_gen)
 
-    def set_pulse_width(self):  # Calls Rstest modules's set_pulse_width(width) to set pulse width
+    def set_pulse_width(self):  # Calls inst_command modules's set_pulse_width(width) to set pulse width
         width = self.pulse_width.get()
-        Rstest.set_pulse_width(width)
-        self.error_log(Rstest.sig_gen)
+        inst_command.set_pulse_width(width)
+        self.error_log(inst_command.sig_gen)
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls Rstest Module to trigger sig_gen to plot pull in trace and
+            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and
         # display the measurement values in the text boxes(used in TAB6)
         # try:
-        Rstest.sig_gen.write('TRIG')
-        curve_det = Rstest.get_curve(channel=4)
-        curve_bias = Rstest.get_curve(channel=2)
+        inst_command.sig_gen.write('TRIG')
+        curve_det = inst_command.get_curve(channel=4)
+        curve_bias = inst_command.get_curve(channel=2)
         t = curve_det[:, 1]
         rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
         v_bias = curve_bias[:, 0]
@@ -1242,7 +1247,7 @@ class Window(tk.Tk, Toplevel):
         # self.text2.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
         self.text2.delete("1.0", "end")
         self.text4.delete("1.0", "end")
-        error_logs = Rstest.print_error_log()
+        error_logs = inst_command.print_error_log()
         self.text2.insert(index="%d.%d" % (0, 0), chars=error_logs)
         self.text4.insert(index="%d.%d" % (0, 0), chars=error_logs)
 
@@ -1258,7 +1263,7 @@ class Window(tk.Tk, Toplevel):
         return error_output
 
     def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                                 v_logamp):  # same function as in display implemented in measurement
+                                                 v_log_amp):  # same function as in display implemented in measurement
         self.text4.delete('1.0', tk.END)
         list_graph_ax4 = self.ax4.lines[:]
         if not (list_graph_ax4 == []):
@@ -1289,13 +1294,13 @@ class Window(tk.Tk, Toplevel):
         positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
 
         # Calculating normalized isolation factor
-        normalize_iso = np.max(3 * v_logamp[first_index_pos[0]:max_positive_bias_index] / 0.040)
+        normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
 
-        iso_ascent = 3 * v_logamp[
+        iso_ascent = 3 * v_log_amp[
                          first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
         iso_max_ascent = np.min(iso_ascent)
 
-        iso_descent = 3 * v_logamp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
+        iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
             positive_bias)] / 0.040 - normalize_iso
         iso_min_descent = np.min(iso_descent)
         # ==============================================================================
@@ -1316,14 +1321,14 @@ class Window(tk.Tk, Toplevel):
         negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
 
         # Calculating normalized isolation factor
-        normalized_iso_minus = np.max(3 * v_logamp[first_index_neg[0]:first_index_neg[
+        normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
                                                                           0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
-        iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
+        iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
                                                                 0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
         iso_min_descent_minus = np.min(iso_descent_minus)
 
-        iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
+        iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
             0]] / 0.040 - normalized_iso_minus
         iso_min_ascent = np.min(iso_ascent_minus)
 
@@ -1369,10 +1374,10 @@ class Window(tk.Tk, Toplevel):
         sw_time = np.empty(1, dtype=float)
 
         for n in range(start=0, stop=number_of_triggered_acquisitions, step=1):
-            Ch_4_detector = Rstest.get_curve_cycling(channel=4)
-            Ch_2_bias = Rstest.get_curve_cycling(channel=2)
-            data = Rstest.extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-            switch_time = Rstest.switching_time()
+            Ch_4_detector = inst_command.get_curve_cycling(channel=4)
+            Ch_2_bias = inst_command.get_curve_cycling(channel=2)
+            data = inst_command.extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
+            switch_time = inst_command.switching_time()
 
             pullin.append(data['Vpullin'])
             pullout.append(data['Vpullout'])
@@ -1385,8 +1390,8 @@ class Window(tk.Tk, Toplevel):
         print('Cycle is Finished')
 
     def send_trig(self):
-        Rstest.trigger_measurement_zva()
-        self.error_log(Rstest.sig_gen)
+        inst_command.trigger_measurement_zva()
+        self.error_log(inst_command.sig_gen)
 
 
 # Main ------------------------------------------------------------------------

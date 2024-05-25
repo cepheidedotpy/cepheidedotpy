@@ -1012,7 +1012,7 @@ class Window(tk.Tk, Toplevel):
         self.text2.insert(index="%d.%d" % (0, 0), chars=Rstest.zva_set_output_log())
 
     def data_acquire(
-            self):  # Calls Rstest module function triggered_data_acquisition() to acquire data and create a S3P file
+            self):  # Calls inst_command module function triggered_data_acquisition() to acquire data and create a S3P file
         Rstest.sig_gen.write("TRIG")
         Rstest.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                           zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
@@ -1045,7 +1045,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.setup_sig_gen_ramp_with_rst(ip)
 
     def acquire_pulldown_data(
-            self):  # Calls Rstest module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
+            self):  # Calls inst_command module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
         try:
             Rstest.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
             Rstest.print_error_log()
@@ -1068,34 +1068,34 @@ class Window(tk.Tk, Toplevel):
         self.text4.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_pulsemode(
-            self):  # Calls Rstest module's configuration_sig_gen() to reset the sig_gen and sends an error log (used in TAB7)
+            self):  # Calls inst_command module's configuration_sig_gen() to reset the sig_gen and sends an error log (used in TAB7)
         Rstest.configuration_sig_gen()
         self.text14.delete("1.0", "end")
         self.text14.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_log())
 
     def set_Bias_Voltage(
-            self):  # Calls Rstest modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB5)
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB5)
         bias = self.pullin_v.get()
         Rstest.bias_voltage(bias)
         self.error_log(Rstest.sig_gen)
 
     def set_bias_pullin(
-            self):  # Calls Rstest modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
         Rstest.bias_pullin(bias)
         self.error_log(Rstest.sig_gen)
 
-    def set_ramp_width(self):  # Calls Rstest modules's ramp_width(width) to set ramp width
+    def set_ramp_width(self):  # Calls inst_command modules's ramp_width(width) to set ramp width
         width = self.ramp_width.get()
         Rstest.ramp_width(width)
         self.error_log(Rstest.sig_gen)
 
-    def set_PRF(self):  # Calls Rstest modules's set_PRF(prf) to set set pulse repetition frequency
+    def set_PRF(self):  # Calls inst_command modules's set_PRF(prf) to set set pulse repetition frequency
         PRF = self.pulse_freq.get()
         Rstest.set_PRF(PRF)
         self.error_log(Rstest.sig_gen)
 
-    def set_pulse_width(self):  # Calls Rstest modules's set_pulse_width(width) to set pulse width
+    def set_pulse_width(self):  # Calls inst_command modules's set_pulse_width(width) to set pulse width
         width = self.pulse_width.get()
         Rstest.set_pulse_width(width)
         self.error_log(Rstest.sig_gen)
@@ -1106,7 +1106,7 @@ class Window(tk.Tk, Toplevel):
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls Rstest Module to trigger sig_gen to plot pull in trace and display the measurement values in the text boxes(used in TAB6)
+            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and display the measurement values in the text boxes(used in TAB6)
         try:
             Rstest.sig_gen.write('TRIG')
             curve_det = Rstest.get_curve(channel=4)
