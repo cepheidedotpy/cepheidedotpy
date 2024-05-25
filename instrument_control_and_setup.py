@@ -54,6 +54,7 @@ def create_instrument(address, instrument_type="VISA", id=False, reset=False):
     return InstrumentProxy(instrument)
 
 
+@InstrumentProxy
 def bias_voltage(voltage="10"):
     """
     Sets the bias pull-in voltage for the signal generator, adjusting for the amplifier's effect.
