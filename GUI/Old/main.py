@@ -6,28 +6,27 @@ after selection
 @author: T0188303
 _version :8
 """
-# ==============================================================================
-# Imports#%matplotlib inline
-# ==============================================================================
-import Rstest
+import os
 import tkinter as tk
-from tkinter import ttk
+from os import listdir
+from os.path import isfile, join
 from tkinter import Menu
 from tkinter import Toplevel
 from tkinter import font
 from tkinter import scrolledtext
+from tkinter import ttk
 
 # Implement the default Matplotlib key bindings.
 import matplotlib.pyplot as plt
+import numpy as np
+import skrf as rf
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
 from matplotlib.widgets import Cursor
 
-import skrf as rf
-import numpy as np
-
-import os
-from os import listdir
-from os.path import isfile, join
+# ==============================================================================
+# Imports#%matplotlib inline
+# ==============================================================================
+import Rstest
 
 # %matplotlib inline
 

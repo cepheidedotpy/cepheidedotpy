@@ -1,5 +1,5 @@
-from RsInstrument import *
 import pyvisa
+from RsInstrument import *
 
 # These are the file names of the different configurations of the ZVA67
 zva_s1p_config = 's1p_setup.znxml'
@@ -26,6 +26,11 @@ oscilloscope_ip = r'TCPIP0::DPO5054-C011738::inst0::INSTR'
 
 
 def zva_init(tcpip_address=r'TCPIP0::ZNA67-101810::inst0::INSTR'):
+    """
+    ZVA initialisation using IP address
+    :param tcpip_address: ZVA IP
+    :return: Returns zva instrument object
+    """
     _id = r'Vector Network Analyser'
     error = False
     zva = None
@@ -54,6 +59,11 @@ def zva_init(tcpip_address=r'TCPIP0::ZNA67-101810::inst0::INSTR'):
 
 
 def sig_gen_init(tcpip_address=r'TCPIP0::A-33521B-00526::inst0::INSTR'):
+    """
+    Signal generator initialisation
+    :param tcpip_address: Signal generator IP address
+    :return: Signal generator instrument instance initialisation using RsInstrument class
+    """
     _id = "Signal Generator"
     error = False
     sig_gen = None
@@ -81,6 +91,11 @@ def sig_gen_init(tcpip_address=r'TCPIP0::A-33521B-00526::inst0::INSTR'):
 
 
 def osc_init(tcpip_address=r'TCPIP0::DPO5054-C011738::inst0::INSTR'):
+    """
+    Oscilloscope initialisation
+    :param tcpip_address: Oscilloscope IP address
+    :return: Returns oscilloscope instrument instance of Pyvisa.resource_manager
+    """
     _id = "Oscilloscope"
     error = False
     osc = None
@@ -102,6 +117,11 @@ def osc_init(tcpip_address=r'TCPIP0::DPO5054-C011738::inst0::INSTR'):
 
 
 def rf_gen_init(tcpip_address=r'TCPIP0::rssmb100a179766::inst0::INSTR'):
+    """
+    RF generator instrument instance initialisation using RsInstrument class
+    :param tcpip_address: RF generator IP address
+    :return: Returns RF generator instance
+    """
     _id = "RF Generator"
     error = False
     rf_gen = None
@@ -130,6 +150,11 @@ def rf_gen_init(tcpip_address=r'TCPIP0::rssmb100a179766::inst0::INSTR'):
 
 
 def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
+    """
+    Powermeter initialisation
+    :param tcpip_address: Powermeter IP address
+    :return:
+    """
     _id = "Powermeter"
     error = False
     powermeter = None
@@ -151,10 +176,3 @@ def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
         print(f"{_id} connection error", end='\n')
     else:
         return powermeter
-
-
-zva_init()
-sig_gen_init()
-osc_init()
-powermeter_init()
-rf_gen_init()

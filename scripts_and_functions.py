@@ -1,13 +1,16 @@
 import numpy as np
 import pandas as pd
 import time
+
+from RsInstrument import RsInstrument
+from pyvisa import Resource
 import dir_and_var_declaration
 import matplotlib.artist
 import matplotlib.ticker as ticker
 import os
 import pyvisa
 import RsInstrument
-from RsInstrument import *
+# from RsInstrument import *
 from dir_and_var_declaration import zva_init, sig_gen_init, osc_init, rf_gen_init, powermeter_init
 
 matplotlib.ticker.ScalarFormatter(useOffset=True, useMathText=True)
@@ -24,71 +27,11 @@ os.chdir('{}'.format(path))
 # Opening resource manager
 rm = pyvisa.ResourceManager()
 
-# try:
-#     zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
-# except TimeoutException as e:
-#     print(e.args[0])
-#     print('Timeout Error in ZVA\n')
-# except StatusException as e:
-#     print(e.args[0])
-#     print('Status Error in ZVA\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Ressource Error in ZVA\n')
-# except RsInstrException as e:
-#     print(e.args[0])
-#     print('Status Error in ZVA\n')
-
-# try:
-#     sig_gen = rm.open_resource(r'TCPIP0::A-33521B-00526::inst0::INSTR')
-# except pyvisa.VisaIOError as e:
-#     print(e.args[0])
-#     print(f'Error {e} occurred in signal generator\n')
-# except pyvisa.VisaTypeError as e:
-#     print(e.args[0])
-#     print(f'Error {e} occurred occurred in signal generator\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Resource Error in signal generator\n')
-# except pyvisa.VisaIOWarning as e:
-#     print(f'Error {e} occurred occurred in signal generator\n')
-
-# try:
-#     osc = rm.open_resource(r'TCPIP0::DPO5054-C011738::inst0::INSTR')
-# except pyvisa.VisaIOError as e:
-#     print(f'Error {e} occurred in oscilloscope')
-# except pyvisa.VisaTypeError as e:
-#     print(f'Error {e} occurred in oscilloscope')
-# except pyvisa.VisaIOWarning as e:
-#     print(f'Error {e} occurred in oscilloscope')
-
-# try:
-#     rf_gen = RsInstrument(r'TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
-# except TimeoutException as e:
-#     print(e.args[0])
-#     print('Timeout Error in RF generator \n')
-# except StatusException as e:
-#     print(e.args[0])
-#     print('Status Error in RF generator\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Resource Error in RF generator\n')
-# except RsInstrException as e:
-#     print(e.args[0])
-#     print('Exception Error  in RF generator\n')
-
-try:
-    powermeter = rm.open_resource(r'TCPIP0::192.168.0.83::inst0::INSTR')
-except pyvisa.VisaIOError as e:
-    print(f'Error {e} occurred')
-except pyvisa.VisaTypeError as e:
-    print(f'Error {e} occurred')
-except ResourceError as e:
-    print(e.args[0])
-except pyvisa.VisaIOWarning as e:
-    print(f'Error {e} occurred')
-
-zva = zva_init()
+zva: RsInstrument | None = zva_init()
+sig_gen: Resource | None = sig_gen_init()
+osc: Resource | None = osc_init()
+powermeter: Resource | None = powermeter_init()
+rf_gen: RsInstrument | None = rf_gen_init()
 
 
 def instrument_opc_control(inst):
@@ -162,7 +105,7 @@ def ramp_width(width):  # Set ramp length (µs) in pull down voltage test
         if int(error) != 0:
             sig_gen.write('FREQuency {}'.format(frequence_gen))
         time.sleep(1)
-    except:
+    except pyvisa.errors.StatusCode:
         print('Signal Generator Configuration error')
 
 
@@ -329,13 +272,13 @@ def saves3p(filename):
 
 def saves2p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    Directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
-        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(Directory))
+        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
         zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s2p' , LOGPhase, 1,2".format(filename))
-        print(r"sp file saved in ZVA at {}".format(Directory), end='\n')
+        print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
         print('Timeout Error \n')
@@ -353,13 +296,13 @@ def saves2p(filename):
 
 def saves1p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    Directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
-        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(Directory))
+        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
         zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
-        print(r"sp file saved in ZVA at {}".format(Directory), end='\n')
+        print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
         print('Timeout Error \n')
@@ -375,7 +318,8 @@ def saves1p(filename):
         zva.visa_timeout = 1000
 
 
-def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir, pc_file_dir=dir_and_var_declaration.PC_File_Dir,
+def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
+             pc_file_dir=dir_and_var_declaration.PC_File_Dir,
              extension='s2p'):
     print(r"ZVA File directory: {}\{}".format(zva_file_dir, filename), end='\n')
     print(r"PC File Directory: {}\{}".format(pc_file_dir, filename), end='\n')
@@ -967,36 +911,6 @@ def cycling_sequence(number_of_cycles=10e9, number_of_pulses_in_wf=1000, filenam
             new_df = file_dataframe
 
 
-def online_mode():
-    try:
-        # Main-------------------------------------------------------------------------------------------------------------------------
-        RsInstrument.assert_minimum_version('1.5.0')
-
-        os.chdir(r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data")
-
-        print("Connected instrument list: \n")
-        # for ressouce in list(ressources.values()):
-        #     print(ressouce, end='\n')
-
-        zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
-        sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
-        osc = rm.open_resource('TCPIP0::DPO5054-C011738::inst0::INSTR')
-        rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR')
-        powermeter = rm.open_resource('TCPIP0::192.168.0.83::inst0::INSTR')
-
-        idn = zva.query_str('*IDN?')
-        idn2 = sig_gen.query('*IDN?')
-        idn3 = osc.query('*IDN?')
-        idn4 = rf_gen.query('*IDN?')
-
-        print(idn, end='\n')
-        print(idn2, end='\n')
-        print(idn3, end='\n')
-        print(idn4, end='\n')
-    except:
-        print("Connection error")
-
-
 def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_setup.znxml',
                 inst_file=r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'):
     zva.reset()
@@ -1076,10 +990,10 @@ def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_s
 
         # Calculating normalized isolation factor
         normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                          0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
+                                                                           0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
         iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
+                                                                 0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
         iso_min_descent_minus = np.min(iso_descent_minus)
 
         iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
@@ -1151,14 +1065,14 @@ def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_s
         negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
 
         # Calculating normalized isolation factor
-        normalized_iso_minus = np.max(3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                          0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
+        normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                                           0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
-        iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
+        iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                                 0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
         iso_min_descent_minus = np.min(iso_descent_minus)
 
-        iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
+        iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
             0]] / 0.040 - normalized_iso_minus
         iso_min_ascent = np.min(iso_ascent_minus)
 
@@ -1176,7 +1090,7 @@ def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_s
 
 
 def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                             v_logamp):  # same function as in display implemented in measurement
+                                             v_log_amp):  # same function as in display implemented in measurement
 
     # Acquiring the indexes that correspond to both positive and negative bias triangles
     # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
@@ -1201,13 +1115,13 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
 
     # Calculating normalized isolation factor
-    normalize_iso = np.max(3 * v_logamp[first_index_pos[0]:max_positive_bias_index] / 0.040)
+    normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
 
-    iso_ascent = 3 * v_logamp[
+    iso_ascent = 3 * v_log_amp[
                      first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
     iso_max_ascent = np.min(iso_ascent)
 
-    iso_descent = 3 * v_log1amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
+    iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
         positive_bias)] / 0.040 - normalize_iso
     iso_min_descent = np.min(iso_descent)
     # ==============================================================================
@@ -1228,14 +1142,14 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
 
     # Calculating normalized isolation factor
-    normalized_iso_minus = np.max(3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                      0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
+    normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                                       0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
-    iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                            0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
+    iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                             0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
     iso_min_descent_minus = np.min(iso_descent_minus)
 
-    iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
+    iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
         0]] / 0.040 - normalized_iso_minus
     iso_min_ascent = np.min(iso_ascent_minus)
 
@@ -1250,7 +1164,6 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
     Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
     # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
-
 
 # sig_gen.write('OUTPut 1')
 # time.sleep(5)

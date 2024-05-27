@@ -1,16 +1,16 @@
-import numpy as np
-import time
-
-# import matplotlib
-import matplotlib.artist
-import matplotlib.ticker as ticker
 # import matplotlib.pyplot as plt
 # from matplotlib import style
 # import matplotlib.axes._axes as axis
 import csv
 import os
-import pyvisa
+import time
+
 import RsInstrument
+# import matplotlib
+import matplotlib.artist
+import matplotlib.ticker as ticker
+import numpy as np
+import pyvisa
 from RsInstrument import *
 
 # from pyvisa import constants
