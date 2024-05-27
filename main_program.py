@@ -65,7 +65,7 @@ def add_Button(tab, button_name, command, col,
 
 
 def clicked_Button(button):  # Changes text to 'updated' on button press
-    button.configure(text=' Updated ')
+    button.configure(text='updated')
     return button
 
 

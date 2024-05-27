@@ -24,71 +24,12 @@ os.chdir('{}'.format(path))
 # Opening resource manager
 rm = pyvisa.ResourceManager()
 
-# try:
-#     zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
-# except TimeoutException as e:
-#     print(e.args[0])
-#     print('Timeout Error in ZVA\n')
-# except StatusException as e:
-#     print(e.args[0])
-#     print('Status Error in ZVA\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Ressource Error in ZVA\n')
-# except RsInstrException as e:
-#     print(e.args[0])
-#     print('Status Error in ZVA\n')
-
-# try:
-#     sig_gen = rm.open_resource(r'TCPIP0::A-33521B-00526::inst0::INSTR')
-# except pyvisa.VisaIOError as e:
-#     print(e.args[0])
-#     print(f'Error {e} occurred in signal generator\n')
-# except pyvisa.VisaTypeError as e:
-#     print(e.args[0])
-#     print(f'Error {e} occurred occurred in signal generator\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Resource Error in signal generator\n')
-# except pyvisa.VisaIOWarning as e:
-#     print(f'Error {e} occurred occurred in signal generator\n')
-
-# try:
-#     osc = rm.open_resource(r'TCPIP0::DPO5054-C011738::inst0::INSTR')
-# except pyvisa.VisaIOError as e:
-#     print(f'Error {e} occurred in oscilloscope')
-# except pyvisa.VisaTypeError as e:
-#     print(f'Error {e} occurred in oscilloscope')
-# except pyvisa.VisaIOWarning as e:
-#     print(f'Error {e} occurred in oscilloscope')
-
-# try:
-#     rf_gen = RsInstrument(r'TCPIP0::rssmb100a179766::inst0::INSTR', id_query=False, reset=False)
-# except TimeoutException as e:
-#     print(e.args[0])
-#     print('Timeout Error in RF generator \n')
-# except StatusException as e:
-#     print(e.args[0])
-#     print('Status Error in RF generator\n')
-# except ResourceError as e:
-#     print(e.args[0])
-#     print('Resource Error in RF generator\n')
-# except RsInstrException as e:
-#     print(e.args[0])
-#     print('Exception Error  in RF generator\n')
-
-try:
-    powermeter = rm.open_resource(r'TCPIP0::192.168.0.83::inst0::INSTR')
-except pyvisa.VisaIOError as e:
-    print(f'Error {e} occurred')
-except pyvisa.VisaTypeError as e:
-    print(f'Error {e} occurred')
-except ResourceError as e:
-    print(e.args[0])
-except pyvisa.VisaIOWarning as e:
-    print(f'Error {e} occurred')
 
 zva = zva_init()
+sig_gen = sig_gen_init()
+osc = osc_init()
+powermeter = powermeter_init()
+rf_gen = rf_gen_init()
 
 
 def instrument_opc_control(inst):

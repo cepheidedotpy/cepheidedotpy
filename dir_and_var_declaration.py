@@ -153,8 +153,8 @@ def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
         return powermeter
 
 
-zva_init()
-sig_gen_init()
-osc_init()
-powermeter_init()
-rf_gen_init()
+# zva_init()
+# sig_gen_init()
+# osc_init()
+# powermeter_init()
+# rf_gen_init()
