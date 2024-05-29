@@ -6,28 +6,28 @@ after selection
 @author: T0188303
 _version :8
 """
-# ==============================================================================
-# Imports#%matplotlib inline
-# ==============================================================================
-import scripts_and_functions as inst_command
-import dir_and_var_declaration
+import os
 import tkinter as tk
-from tkinter import ttk
+from os import listdir
+from os.path import isfile, join
 from tkinter import Menu
 from tkinter import Toplevel
 from tkinter import font
 from tkinter import scrolledtext
+from tkinter import ttk
+
 # Implement the default Matplotlib key bindings.
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
-from matplotlib.widgets import Cursor
-
-import skrf as rf
 import numpy as np
 
-import os
-from os import listdir
-from os.path import isfile, join
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
+
+import dir_and_var_declaration
+import skrf as rf
+# ==============================================================================
+# Imports#%matplotlib inline
+# ==============================================================================
+import scripts_and_functions as scripts_and_functions
 
 # %matplotlib inline
 
@@ -153,24 +153,24 @@ def add_combobox(tab, text, col, row,
 
 
 def close_ressources():  # Calls close_all_ressources to close all ressources
-    inst_command.close_all_ressources()
+    scripts_and_functions.close_all_ressources()
 
 
 def call_s3p_config():
-    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s3p,
-                             inst_file=dir_and_var_declaration.instrument_file)
+    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s3p,
+                                      inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
 def call_s2p_config():
-    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s2p,
-                             inst_file=dir_and_var_declaration.instrument_file)
+    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s2p,
+                                      inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
 def call_s1p_config():
-    inst_command.load_config(pc_file=dir_and_var_declaration.pc_file_s1p,
-                             inst_file=dir_and_var_declaration.instrument_file)
+    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s1p,
+                                      inst_file=dir_and_var_declaration.instrument_file)
     pass
 
 
@@ -605,7 +605,7 @@ class Window(tk.Tk, Toplevel):
                              font=('Bahnschrift Light', 10))
         self.text2.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame12, button_name='Comms prep', command=inst_command.comprep_zva, col=0, row=1).grid(
+        add_Button(tab=frame12, button_name='Comms prep', command=scripts_and_functions.comprep_zva, col=0, row=1).grid(
             ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(ipadx=tab_padx,
                                                                                                     ipady=tab_padx)
@@ -655,7 +655,7 @@ class Window(tk.Tk, Toplevel):
         add_entry(tab=frame17, textvar=self.bias_voltage_pow, width=20, col=1, row=6)
 
         add_Button(tab=frame17, button_name='Create-file', command=self.create_test_pow_file, col=2, row=0)
-        add_Button(tab=frame17, button_name='Send trigger', command=inst_command.send_trig, col=2, row=1)
+        add_Button(tab=frame17, button_name='Send trigger', command=scripts_and_functions.send_trig, col=2, row=1)
         # General controls---------------------------------------------------------------
         frame18 = add_Label_frame(tab=tab6, frame_name='General controls', col=2, row=0)
 
@@ -826,75 +826,75 @@ class Window(tk.Tk, Toplevel):
     # ZVA Functions ---------------------------------------------------------------
     def reset_zva(self):  # Reset zva using the IP address at Ressource Page (used in TAB5)
         ip = self.zva_inst.get()
-        inst_command.setup_zva_with_rst(ip)
+        scripts_and_functions.setup_zva_with_rst(ip)
 
     def set_fstart(self):  # Configure ZVA fstart (used in TAB5)
         fstart = self.fstart.get()
-        inst_command.set_fstart(fstart)
-        self.error_log(inst_command.zva)
+        scripts_and_functions.set_fstart(fstart)
+        self.error_log(scripts_and_functions.zva)
 
     def set_fstop(self):  # Configure ZVA fstop (used in TAB5)
         fstop = self.fstop.get()
-        inst_command.set_fstop(fstop)
-        self.error_log(inst_command.zva)
+        scripts_and_functions.set_fstop(fstop)
+        self.error_log(scripts_and_functions.zva)
 
     def set_nb_points(self):  # Configure ZVA number of points (used in TAB5)
         nb_points = self.nb_points.get()
-        inst_command.number_of_points(nb_points)
-        self.error_log(inst_command.zva)
+        scripts_and_functions.number_of_points(nb_points)
+        self.error_log(scripts_and_functions.zva)
 
     def set_zva(self):  # Configure ZVA fstart/fstop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
         self.text2.delete("1.0", "end")
-        self.text2.insert(index="%d.%d" % (0, 0), chars=inst_command.zva_set_output_log())
+        self.text2.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.zva_set_output_log())
 
     def data_acquire(
-            self):  # Calls inst_command module function triggered_data_acquisition() to acquire data and create a S3P file
-        inst_command.sig_gen.write("TRIG")
-        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                pc_file_dir=self.tests3p_dir.get(),
-                                                file_format='s3p')
+            self):  # Calls scripts_and_functions module function triggered_data_acquisition() to acquire data and create a S3P file
+        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                         zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         file_format='s3p')
         self.plot_snp_test(filetype='.s3p')
-        inst_command.print_error_log()
+        scripts_and_functions.print_error_log()
         self.set_txt()
 
     def data_acquire_s2p(self):
-        inst_command.sig_gen.write("TRIG")
-        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                pc_file_dir=self.tests3p_dir.get(),
-                                                file_format='s2p')
+        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                         zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         file_format='s2p')
         self.plot_snp_test(filetype='.s2p')
-        inst_command.print_error_log()
+        scripts_and_functions.print_error_log()
         self.set_txt()
 
     def data_acquire_s1p(self):
-        inst_command.sig_gen.write("TRIG")
-        inst_command.time.sleep(2 + float(inst_command.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
-        inst_command.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
-                                                zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                pc_file_dir=self.tests3p_dir.get(),
-                                                file_format='s1p')
+        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
+        scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
+                                                         zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         file_format='s1p')
         self.plot_snp_test(filetype='.s1p')
-        inst_command.print_error_log()
+        scripts_and_functions.print_error_log()
         self.set_txt()
 
     # sig_gen Functions -----------------------------------------------------------
     def reset_sig_gen(self):  # Reset sig_gen using the IP address at Ressource Page (used in TAB4)
         ip = self.sig_gen_inst.get()
-        inst_command.setup_sig_gen_ramp_with_rst(ip)
+        scripts_and_functions.setup_sig_gen_ramp_with_rst(ip)
 
     def acquire_pulldown_data(
-            self):  # Calls inst_command module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
+            self):  # Calls scripts_and_functions module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
         # try:
         os.chdir(self.testpullin_dir.get())
-        inst_command.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
-        # inst_command.print_error_log()
+        scripts_and_functions.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
+        # scripts_and_functions.print_error_log()
         self.set_txt()
         # except:
         #     print("Error")
@@ -904,7 +904,7 @@ class Window(tk.Tk, Toplevel):
         self.set_PRF()
         self.set_pulse_width()
         self.text2.delete("1.0", "end")
-        self.text2.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_ramp_log())
+        self.text2.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
             self):  # Calls set_bias_pullin() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse
@@ -912,52 +912,52 @@ class Window(tk.Tk, Toplevel):
         self.set_bias_pullin()
         self.set_ramp_width()
         self.text4.delete("1.0", "end")
-        self.text4.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_ramp_log())
+        self.text4.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_pulsemode(
-            self):  # Calls inst_command module's configuration_sig_gen() to reset the sig_gen and sends an error log (used
+            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an error log (used
         # in TAB7)
-        inst_command.configuration_sig_gen()
+        scripts_and_functions.configuration_sig_gen()
         self.text14.delete("1.0", "end")
-        self.text14.insert(index="%d.%d" % (0, 0), chars=inst_command.sig_gen_set_output_log())
+        self.text14.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_log())
 
     def set_Bias_Voltage(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as
+            self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by entry pullin_v as
         # an input (used in TAB5)
         bias = self.pullin_v.get()
-        inst_command.bias_voltage(bias)
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.bias_voltage(bias)
+        self.error_log(scripts_and_functions.sig_gen)
 
     def set_bias_pullin(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as
+            self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by entry pullin_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
-        inst_command.bias_pullin(bias)
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.bias_pullin(bias)
+        self.error_log(scripts_and_functions.sig_gen)
 
-    def set_ramp_width(self):  # Calls inst_command modules's ramp_width(width) to set ramp width
+    def set_ramp_width(self):  # Calls scripts_and_functions modules's ramp_width(width) to set ramp width
         width = self.ramp_width.get()
-        inst_command.ramp_width(width)
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.ramp_width(width)
+        self.error_log(scripts_and_functions.sig_gen)
 
-    def set_PRF(self):  # Calls inst_command modules's set_PRF(prf) to set set pulse repetition frequency
+    def set_PRF(self):  # Calls scripts_and_functions modules's set_PRF(prf) to set set pulse repetition frequency
         prf = self.pulse_freq.get()
-        inst_command.set_PRF(prf)
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.set_PRF(prf)
+        self.error_log(scripts_and_functions.sig_gen)
 
-    def set_pulse_width(self):  # Calls inst_command modules's set_pulse_width(width) to set pulse width
+    def set_pulse_width(self):  # Calls scripts_and_functions modules's set_pulse_width(width) to set pulse width
         width = self.pulse_width.get()
-        inst_command.set_pulse_width(width)
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.set_pulse_width(width)
+        self.error_log(scripts_and_functions.sig_gen)
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and
+            self):  # Measurement function that calls scripts_and_functions Module to trigger sig_gen to plot pull in trace and
         # display the measurement values in the text boxes(used in TAB6)
         # try:
-        inst_command.sig_gen.write('TRIG')
-        curve_det = inst_command.get_curve(channel=4)
-        curve_bias = inst_command.get_curve(channel=2)
+        scripts_and_functions.sig_gen.write('TRIG')
+        curve_det = scripts_and_functions.get_curve(channel=4)
+        curve_bias = scripts_and_functions.get_curve(channel=2)
         t = curve_det[:, 1]
         rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
         v_bias = curve_bias[:, 0]
@@ -1246,7 +1246,7 @@ class Window(tk.Tk, Toplevel):
         # self.text2.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
         self.text2.delete("1.0", "end")
         self.text4.delete("1.0", "end")
-        error_logs = inst_command.print_error_log()
+        error_logs = scripts_and_functions.print_error_log()
         self.text2.insert(index="%d.%d" % (0, 0), chars=error_logs)
         self.text4.insert(index="%d.%d" % (0, 0), chars=error_logs)
 
@@ -1373,10 +1373,10 @@ class Window(tk.Tk, Toplevel):
         sw_time = np.empty(1, dtype=float)
 
         for n in range(start=0, stop=number_of_triggered_acquisitions, step=1):
-            Ch_4_detector = inst_command.get_curve_cycling(channel=4)
-            Ch_2_bias = inst_command.get_curve_cycling(channel=2)
-            data = inst_command.extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-            switch_time = inst_command.switching_time()
+            Ch_4_detector = scripts_and_functions.get_curve_cycling(channel=4)
+            Ch_2_bias = scripts_and_functions.get_curve_cycling(channel=2)
+            data = scripts_and_functions.extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
+            switch_time = scripts_and_functions.switching_time()
 
             pullin.append(data['Vpullin'])
             pullout.append(data['Vpullout'])
@@ -1389,8 +1389,8 @@ class Window(tk.Tk, Toplevel):
         print('Cycle is Finished')
 
     def send_trig(self):
-        inst_command.trigger_measurement_zva()
-        self.error_log(inst_command.sig_gen)
+        scripts_and_functions.trigger_measurement_zva()
+        self.error_log(scripts_and_functions.sig_gen)
 
 
 # Main ------------------------------------------------------------------------
