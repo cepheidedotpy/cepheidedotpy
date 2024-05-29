@@ -50,6 +50,7 @@ def zva_init(tcpip_address=r'TCPIP0::ZNA67-101810::inst0::INSTR'):
     if error:
         print(f"{_id} connection error", end='\n')
     else:
+        print("VNA Connected")
         return zva
 
 
@@ -77,6 +78,7 @@ def sig_gen_init(tcpip_address=r'TCPIP0::A-33521B-00526::inst0::INSTR'):
     if error:
         print(f"{_id} connection error", end='\n')
     else:
+        print("Signal generator Connected")
         return sig_gen
 
 
@@ -95,10 +97,11 @@ def osc_init(tcpip_address=r'TCPIP0::DPO5054-C011738::inst0::INSTR'):
     except pyvisa.VisaIOWarning as e:
         error = True
         print(f'Error {e} occurred in oscilloscope')
-        if error:
-            print(f"{_id} connection error", end='\n')
-        else:
-            return osc
+    if error:
+        print(f"{_id} connection error", end='\n')
+    else:
+        print("Oscilloscope Connected")
+        return osc
 
 
 def rf_gen_init(tcpip_address=r'TCPIP0::rssmb100a179766::inst0::INSTR'):
@@ -126,6 +129,7 @@ def rf_gen_init(tcpip_address=r'TCPIP0::rssmb100a179766::inst0::INSTR'):
     if error:
         print(f"{_id} connection error", end='\n')
     else:
+        print("RF generator Connected")
         return rf_gen
 
 
@@ -150,6 +154,7 @@ def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
     if error:
         print(f"{_id} connection error", end='\n')
     else:
+        print("Powermeter Connected")
         return powermeter
 
 

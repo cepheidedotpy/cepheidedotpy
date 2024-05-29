@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import time
 import dir_and_var_declaration
+import matplotlib.pyplot as plt
 import matplotlib.artist
 import matplotlib.ticker as ticker
 import os
@@ -704,7 +705,6 @@ def get_curve_cycling(channel=4):
             'HORizontal:MAIn:DELay:POSition?')) / 100  # get trigger position in percentage of samples (default is 10%)
         sample_rate = float(osc.query('HORizontal:MODE:SAMPLERate?'))
         info = get_channel_info(channel=channel)
-
         osc.write("DATa:STOP {}".format(acquisition_length))
         curve = np.array(osc.query('CURVE?').split(','), dtype=float)
         y_offset = info['y_offset'][0]
@@ -718,7 +718,6 @@ def get_curve_cycling(channel=4):
         print("get_curve function ended")
     except:
         print("Unable to acquire Data")
-
     return data
 
 
@@ -745,8 +744,8 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     """
 
     delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
-
     switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
+    release_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
     amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
     relative_amplitude = amplitude_t0 - float(osc.query('MEASUrement:MEAS4:VALue?'))
 
@@ -834,24 +833,19 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     _100percent_iso_plus = round(iso_min_descent, ndigits=2)
 
     pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-    Vpullout_plus = round(ramp_voltage_descent[pullout_index_pos], ndigits=2)
+    vpullout_plus = round(ramp_voltage_descent[pullout_index_pos], ndigits=2)
 
     pullout_index_neg = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent_minus)[0][0])
-    Vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg], ndigits=2)
+    vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg], ndigits=2)
 
     tenpercent_iso_neg = round(0.1 * iso_min_descent, ndigits=2)
     ninetypercent_iso_neg = round(0.9 * iso_max_descent_minus, ndigits=2)
 
-    # data_ = np.array([[Vpullin_plus], [Vpullin_minus], [Vpullout_plus], [Vpullout_minus], [ninetypercent_iso_plus],
-    #                  [ninetypercent_iso_neg], [switching_time], [relative_amplitude]])
-    dict_ = {'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'Vpullout_plus': [Vpullout_plus],
-             'Vpullout_minus': [Vpullout_minus], 'iso_ascent': [ninetypercent_iso_plus],
+    dict_ = {'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'vpullout_plus': [vpullout_plus],
+             'vpullout_minus': [vpullout_minus], 'iso_ascent': [ninetypercent_iso_plus],
              'iso_descent_minus': [ninetypercent_iso_neg], 'switching_time': [switching_time],
-             'amplitude_variation': [relative_amplitude]}
+             'amplitude_variation': [relative_amplitude], 'release_time': [release_time]}
     try:
-        # mems_characteristics = pd.DataFrame(data=dict_, columns=['Vpullin_plus', 'Vpullin_minus', 'Vpullout_plus',
-        #                                                          'Vpullout_minus', 'iso_ascent', 'iso_descent_minus',
-        #                                                          'switching_time', 'amplitude_variation'])
         mems_characteristics = pd.DataFrame(data=dict_)
     except:
         print('Dataframe creation Error')
@@ -860,22 +854,51 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     return mems_characteristics
 
 
-def cycling_sequence(number_of_cycles=10e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02):
-    number_of_triggered_acquisitions = int(number_of_cycles / number_of_pulses_in_wf)
-    cycles = list(np.arange(start=0, stop=number_of_cycles, step=20))
-    test_duration = wf_duration * number_of_cycles / 60 / 60
+def format_duration(seconds):
+    # Ensure the input is a float or integer
+    if not isinstance(seconds, (float, int)):
+        raise ValueError("Input should be a float or an integer representing seconds.")
+
+    # Calculate the days, hours, minutes, and seconds
+    minutes, sec = divmod(seconds, 60)
+    hours, min = divmod(minutes, 60)
+    days, hrs = divmod(hours, 24)
+
+    # Format the result as d:hh:mm:ss
+    formatted_time = f"{int(days):02}d {int(hrs):02}h {int(min):02}m {sec:05.2f}s"
+
+    return formatted_time
+
+
+def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02, events=100):
+    """
+    Cycling test sequence outputs MEMS characteristics during the tested duration, results are
+    :param number_of_cycles: Total number of cycles in sequence duration
+    :param number_of_pulses_in_wf: Number of pulses in waveform
+    :param filename: Test sequence output filename
+    :param wf_duration: Total duration of the waveform in the sequence
+    :param events: Number of trigger events before oscilloscope performs an acquisition
+    :return: File containing a dataframe
+    """
+    number_of_triggers_before_acq = events  # number of  B trigger events in A -> B sequence
+    number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
+    cycles = pd.Series(
+        np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
+        name="cycles")
+
+    test_duration = wf_duration * number_of_cycles
     starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
 
     print("Starting number of triggers = {}\n".format(starting_number_of_acquisitions))
     print("Number of remaining cycles = {}\n".format(number_of_cycles))
-    print("Estimated time {} h".format(test_duration))
+    print(f"Estimated time {format_duration(test_duration)}")
     try:
-        starting_df, new_df = pd.DataFrame(columns=["Vpullin_plus", "Vpullin_minus", "Vpullout_plus", "Vpullout_minus",
-                                                    "iso_ascent", "iso_descent_minus", "switching_time",
-                                                    "amplitude_variation"],
-                                           data=np.array([(0, 0, 0, 0, 0, 0, 0, 0)]))
+        file_df = pd.DataFrame(columns=["Vpullin_plus", "Vpullin_minus", "Vpullout_plus", "Vpullout_minus",
+                                        "iso_ascent", "iso_descent_minus", "switching_time",
+                                        "amplitude_variation"])
     except:
         print("df creation failed")
+
     count = starting_number_of_acquisitions
 
     while count < number_of_cycles + starting_number_of_acquisitions:
@@ -883,6 +906,7 @@ def cycling_sequence(number_of_cycles=10e9, number_of_pulses_in_wf=1000, filenam
 
         if count == new_value:
             time.sleep(1)
+            print("Waiting for trigger...", end='\n')
         else:
             count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
             Ch_4_detector = get_curve_cycling(channel=4)
@@ -935,7 +959,7 @@ def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_s
     print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
 
 
-def calculate_pullin_out_voltage_measurement(self, v_bias,
+def calculate_pullin_out_voltage_measurement(v_bias,
                                              v_log_amp):  # same function as in display implemented in measurement
 
     # Acquiring the indexes that correspond to both positive and negative bias triangles
@@ -1014,17 +1038,172 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     # Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent"""))
 
 
-# sig_gen.write('OUTPut 1')
-# time.sleep(5)
+def plot_function(list_x, list_y):
+    for x, y in zip(list_x, list_y):
+        plt.plot(x, y, label=f'{y}')
+        plt.legend()
+        plt.show()
+
+
+def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_stop=0.20437, ramp_start_minus=0.2046,
+                    ramp_stop_minus=0.20519, delay=0.2, conversion_coeff=0.047):
+    """
+    Returns the MEMS Characteristics including Positive & Negative Pull-in voltages,
+    Positive & Negative Pull-out voltages, Switching time, isolation and insertion loss variation during
+    cycling sequence.
+    :param rf_detector_channel: Detector channel array
+    :param v_bias_channel: Bias channel array
+    :param ramp_start: Starting time of the positive ramp
+    :param ramp_stop: End time of the positive ramp
+    :param ramp_start_minus: Starting time of the negative ramp
+    :param ramp_stop_minus: End time of the negative ramp
+    :param delay: Input delay of the oscilloscope to position at the end of the cycling waveform
+    :param conversion_coeff: Conversion coefficient from power to voltage of the detector
+    :return: DataFrame containing all the MEMS characteristics
+    """
+    # Initialize variables with zero values
+    Vpullin_plus, Vpullin_minus, vpullout_plus, vpullout_minus = 0, 0, 0, 0
+    iso_ascent_value, iso_descent_minus_value = 0, 0
+    switching_time, relative_amplitude, release_time = 0, 0, 0
+
+    try:
+        # Ensure the input arrays are numpy arrays
+        rf_detector_channel = np.array(rf_detector_channel)
+        v_bias_channel = np.array(v_bias_channel)
+
+        # Extracting values using oscilloscope commands
+        delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
+        switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
+        release_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
+        amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
+        relative_amplitude = amplitude_t0 - float(osc.query('MEASUrement:MEAS4:VALue?'))
+
+        # Insert the get curve data with ramp position to calculate pull_in, pull_out and insertion loss + isolation
+        t = rf_detector_channel[:, 1] + delay
+        rf_detector_curve = rf_detector_channel[:, 0]
+        v_bias_curve = v_bias_channel[:, 0]
+
+        trigger_offset = int(t.size / (float(osc.query('HORIZONTAL:POSITION?'))))
+
+        # Define a ramp voltage curve to calculate pull in and pull out curve.
+        if t.size == 0:
+            raise ValueError("Time array 't' is empty.")
+
+        t0_ramp_indices = np.where(t > ramp_start)[0]
+        if t0_ramp_indices.size == 0:
+            raise ValueError("No elements found in 't' greater than ramp_start.")
+        t0_ramp = t0_ramp_indices[0] + trigger_offset
+
+        t0_plus_rampwidth_indices = np.where(t < ramp_stop)[0]
+        if t0_plus_rampwidth_indices.size == 0:
+            raise ValueError("No elements found in 't' less than ramp_stop.")
+        t0_plus_rampwidth = t0_plus_rampwidth_indices[-1] + trigger_offset
+
+        # Define a ramp voltage curve to calculate pull in and pull out curve of negative ramp.
+        t0_ramp_minus_indices = np.where(t > ramp_start_minus)[0]
+        if t0_ramp_minus_indices.size == 0:
+            raise ValueError("No elements found in 't' greater than ramp_start_minus.")
+        t0_ramp_minus = t0_ramp_minus_indices[0] + trigger_offset
+
+        t0_plus_rampwidth_minus_indices = np.where(t < ramp_stop_minus)[0]
+        if t0_plus_rampwidth_minus_indices.size == 0:
+            raise ValueError("No elements found in 't' less than ramp_stop_minus.")
+        t0_plus_rampwidth_minus = t0_plus_rampwidth_minus_indices[-1] + trigger_offset
+
+        # Calculate the index corresponding to the Max voltage of our ramp
+        max_positive_bias_index = np.argmax(v_bias_curve)
+        min_negative_bias_index = np.argmin(v_bias_curve)
+
+        # Extract the ramp voltage curve ascent and descent
+        ramp_voltage_ascent = v_bias_curve[t0_ramp:max_positive_bias_index]
+        ramp_voltage_descent = v_bias_curve[max_positive_bias_index:t0_plus_rampwidth]
+        ramp_voltage_descent_minus = v_bias_curve[t0_ramp_minus:min_negative_bias_index]
+        ramp_voltage_ascent_minus = v_bias_curve[min_negative_bias_index:t0_plus_rampwidth_minus]
+
+        # Calculate the normalization value for the isolation
+        normalized_isolation_plus = np.max(3 * rf_detector_curve[t0_ramp:t0_plus_rampwidth] / conversion_coeff)
+        normalized_isolation_minus = np.max(
+            3 * rf_detector_curve[t0_ramp_minus:t0_plus_rampwidth_minus] / conversion_coeff)
+
+        # Calculate iso_ascent and iso_descent
+        iso_ascent = 3 * rf_detector_curve[
+                         t0_ramp:max_positive_bias_index] / conversion_coeff - normalized_isolation_plus
+        iso_descent = 3 * rf_detector_curve[
+                          max_positive_bias_index:t0_plus_rampwidth] / conversion_coeff - normalized_isolation_plus
+        iso_descent_minus = 3 * rf_detector_curve[
+                                t0_ramp_minus:min_negative_bias_index] / conversion_coeff - normalized_isolation_minus
+        iso_ascent_minus = 3 * rf_detector_curve[
+                               min_negative_bias_index:t0_plus_rampwidth_minus] / conversion_coeff - normalized_isolation_minus
+
+        # Calculation Vpull in and Vpull out
+        pullin_index_pos = np.where(iso_ascent <= 0.9 * np.min(iso_ascent))[0]
+        if pullin_index_pos.size == 0:
+            raise ValueError("No elements found in iso_ascent satisfying the condition.")
+        Vpullin_plus = round(ramp_voltage_ascent[pullin_index_pos[0]], 2)
+
+        pullin_index_neg = np.where(iso_descent_minus <= 0.9 * np.min(iso_descent_minus))[0]
+        if pullin_index_neg.size == 0:
+            raise ValueError("No elements found in iso_descent_minus satisfying the condition.")
+        Vpullin_minus = round(ramp_voltage_descent_minus[pullin_index_neg[0]], 2)
+
+        pullout_index_pos = np.where(iso_descent >= 0.1 * np.min(iso_descent))[0]
+        if pullout_index_pos.size == 0:
+            raise ValueError("No elements found in iso_descent satisfying the condition.")
+        vpullout_plus = round(ramp_voltage_descent[pullout_index_pos[0]], 2)
+
+        pullout_index_neg = np.where(iso_ascent_minus >= 0.1 * np.min(iso_ascent_minus))[0]
+        if pullout_index_neg.size == 0:
+            raise ValueError("No elements found in iso_ascent_minus satisfying the condition.")
+        vpullout_minus = round(ramp_voltage_ascent_minus[pullout_index_neg[0]], 2)
+
+        iso_ascent_value = 0.9 * np.min(iso_ascent)
+        iso_descent_minus_value = 0.9 * np.min(iso_descent_minus)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    # Creating the dictionary for DataFrame
+    data = {
+        'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'Vpullout_plus': [vpullout_plus],
+        'Vpullout_minus': [vpullout_minus], 'iso_ascent': [iso_ascent_value],
+        'iso_descent_minus': [iso_descent_minus_value], 'switching_time': [switching_time],
+        'amplitude_variation': [relative_amplitude], 'release_time': [release_time]
+    }
+
+    # Creating the DataFrame
+    mems_characteristics = pd.DataFrame(data)
+
+    return mems_characteristics
+
+
+sig_gen = sig_gen_init()
+osc = osc_init()
+
+sig_gen.write('OUTPut 1')
+
+starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+counter = starting_number_of_acquisitions
+while counter == starting_number_of_acquisitions:
+    counter = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+    time.sleep(1)
+
+ch_2 = get_curve_cycling(2)
+ch_4 = get_curve_cycling(4)
+
+df = extract_data_v2(rf_detector_channel=ch_4, v_bias_channel=ch_2)
+
+sig_gen.write('OUTPut 0')
+
+
+
 # try:
 #     cycling_sequence(number_of_cycles=10e9)
 # except:
 #     print("Cycling sequence error", end='\n')
 #     osc.close()
 #     sig_gen.write('OUTPut 0')
+
 # zva = zva_init()
-sig_gen = sig_gen_init()
-osc = osc_init()
 
 # powermeter = powermeter_init()
 # rf_gen = rf_gen_init()

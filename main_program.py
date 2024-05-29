@@ -1367,10 +1367,6 @@ class Window(tk.Tk, Toplevel):
     def cycling_sequence(self, number_of_cycles, number_of_pulses_in_wf=1000):
 
         number_of_triggered_acquisitions = int(number_of_cycles / number_of_pulses_in_wf)
-        pullin = np.empty(1, dtype=float)
-        pullout = np.empty(1, dtype=float)
-        isolation = np.empty(1, dtype=float)
-        sw_time = np.empty(1, dtype=float)
 
         for n in range(start=0, stop=number_of_triggered_acquisitions, step=1):
             Ch_4_detector = scripts_and_functions.get_curve_cycling(channel=4)
