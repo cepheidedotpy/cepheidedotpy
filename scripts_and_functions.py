@@ -25,31 +25,24 @@ os.chdir('{}'.format(path))
 rm = pyvisa.ResourceManager()
 
 
-zva = zva_init()
-sig_gen = sig_gen_init()
-osc = osc_init()
-powermeter = powermeter_init()
-rf_gen = rf_gen_init()
+def sig_gen_opc_control(function):
+    def wrapper(*args, **kwargs):
+        result = function(*args, **kwargs)
+        opc_test = '0'
+        while opc_test == '0':
+            time.sleep(0.1)
+            opc_test = sig_gen.query("*OPC?").removesuffix('\n')
+            if opc_test == 0:
+                print(f'Operation still in progress OPC_value={opc_test}')
+            else:
+                print(f'{function.__name__} execution done!')
+        return result
+
+    return wrapper
 
 
-def instrument_opc_control(inst):
-    opc_test = '0'
-    while opc_test == '0':
-        time.sleep(0.1)
-        opc_test = inst.query("*OPC?").removesuffix('\n')
-        if opc_test == 0:
-            print(f'Operation still in progress OPC_value={opc_test}')
-        else:
-            print(f'Operation done! {opc_test}')
-
-
-def handle_event(ressource, event):
-    ressource.called = True
-    print(f"Handled event {event.event_type} on {ressource} \n")
-    pass
-
-
-def bias_voltage(voltage):
+@sig_gen_opc_control
+def bias_voltage(voltage='10'):
     """
      Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage = user_input/20]
      because of the voltage amplifier
@@ -70,6 +63,7 @@ def bias_voltage(voltage):
     return set_voltage
 
 
+@sig_gen_opc_control
 def bias_pullin(voltage):
     # Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage = user_input/20]
     # because of the amplifier
@@ -85,26 +79,22 @@ def bias_pullin(voltage):
     return set_voltage
 
 
-def ramp_width(width):  # Set ramp length (µs) in pull down voltage test
-    frequence_gen = 1 / (4 * float(width * 10 ** (-6)))
-    print(frequence_gen)
+@sig_gen_opc_control
+def ramp_width(width=100):  # Set ramp length (µs) in pull down voltage test
+    frequency_gen = 1 / (4 * float(width * 10 ** (-6)))
+    print(f"Ramp frequency = {frequency_gen / 1e3} kHz")
     try:
         sig_gen.write('SOURce1:FUNCtion:RAMP:SYMMetry 50')  # selecting pulse function
-        sig_gen.write('FREQuency {}'.format(frequence_gen))
-        # sig_gen.write("SOURce:VOLTage:OFFSET 0")
-        # sig_gen.write("SOURce:VOLTage:LOW -1")
-        # sig_gen.write("SOURce:VOLTage:HIGH 1")
-        # sig_gen.write('SOURce:BURSt:NCYCles MINimum') # set burst cycles to 0
-        sig_gen.write('OUTPut 1')  # turn on output
-        # sig_gen.write('OUTPut:SYNC:MODE NORMal')
+        sig_gen.write('FREQuency {}'.format(frequency_gen))
+        sig_gen.write('OUTPut 1')  # Turn on output
         error_log = sig_gen.query('SYSTem:ERRor?')
         error = error_log.split(sep=',')[0]
         print(error, error_log, sep='\n', end='\n')
         if int(error) != 0:
-            sig_gen.write('FREQuency {}'.format(frequence_gen))
+            sig_gen.write('FREQuency {}'.format(frequency_gen))
         time.sleep(1)
     except:
-        print('Signal Generator Configuration error')
+        print('Signal Generator VisaIOError')
 
 
 def set_fstart(fstart=1):  # Set start frequency function
@@ -126,7 +116,7 @@ def number_of_points(points=501):  # Set Number of points function
     print("Number of points set to {} points \n".format(points))
 
 
-def set_pulse_width(width):  # Set the pulse width as a function of the VNA sweep time in S parameter measurement
+def set_pulse_width(width=10):  # Set the pulse width as a function of the VNA sweep time in S parameter measurement
     try:
         width_converted = width  # float
         print("Pulse width: {} s".format(width_converted, type='E', precision=2), end='\n')
@@ -316,7 +306,8 @@ def saves1p(filename):
         zva.visa_timeout = 1000
 
 
-def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir, pc_file_dir=dir_and_var_declaration.PC_File_Dir,
+def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
+             pc_file_dir=dir_and_var_declaration.PC_File_Dir,
              extension='s2p'):
     print(r"ZVA File directory: {}\{}".format(zva_file_dir, filename), end='\n')
     print(r"PC File Directory: {}\{}".format(pc_file_dir, filename), end='\n')
@@ -330,7 +321,6 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir, pc_fil
         except StatusException as e:
             print(e.args[0])
             print('StatusException Error \n')
-
         except RsInstrException as e:
             print(e.args[0])
             print('RsInstrException Error \n')
@@ -346,7 +336,6 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir, pc_fil
         except StatusException as e:
             print(e.args[0])
             print('StatusException Error \n')
-
         except RsInstrException as e:
             print(e.args[0])
             print('RsInstrException Error \n')
@@ -362,7 +351,6 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir, pc_fil
         except StatusException as e:
             print(e.args[0])
             print('StatusException Error \n')
-
         except RsInstrException as e:
             print(e.args[0])
             print('RsInstrException Error \n')
@@ -886,7 +874,6 @@ def cycling_sequence(number_of_cycles=10e9, number_of_pulses_in_wf=1000, filenam
                                                     "iso_ascent", "iso_descent_minus", "switching_time",
                                                     "amplitude_variation"],
                                            data=np.array([(0, 0, 0, 0, 0, 0, 0, 0)]))
-
     except:
         print("df creation failed")
     count = starting_number_of_acquisitions
@@ -947,177 +934,9 @@ def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_s
     zva.write_str_with_opc(f'MMEM:LOAD:STAT 1,"{inst_file}"')
     print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
 
-    # def display_figure():
-    #     fig, ax = plt.subplots(nrows=1, ncols=1)
-    #     # Display -----------------------------------------------------------------------------------------------------------------------
-    #     ax.plot(t, rf_detector, label='rf_detector')
-    #     ax.plot(t, v_bias, label='v_bias')
-    #     ax.plot(v_bias, rf_detector, label='rf_detector vs v_bias')
-    #
-    #     formatter = ticker.ScalarFormatter(useMathText=True)
-    #     formatter.set_scientific(True)
-    #     formatter.set_powerlimits((0, 4))
-    #     ax.xaxis.set_major_formatter(formatter)
-    #     ax.grid(True)
-    #     ax.set_title('Oscilloscope measurement')
-    #     plt.legend()
-    #     plt.show()
-
-    def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                                 v_log_amp):  # same function as in display implemented in measurements
-
-        # Acquiring the indexes that correspond to both positive and negative bias triangles
-        # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
-        positive_bias = np.extract((v_bias > 2), v_bias)
-        negative_bias = np.extract((v_bias < -2), v_bias)
-
-        # Position of the first positive bias index along v_bias array
-        first_index_pos = np.where(v_bias == positive_bias[0])[0]
-
-        # Position of the first negative bias index along v_bias array
-        first_index_neg = np.where(v_bias == negative_bias[0])[0]
-        # Position of the last negative bias index along v_bias array
-        last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-        # Calculating the max and min indexes in both casses
-        max_positive_bias_index = np.argmax(positive_bias)
-        min_positive_bias_index = 0
-        max_negative_bias_index = 0
-        min_negative_bias_index = np.argmin(negative_bias)
-
-        # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-        positive_ascent = positive_bias[0:max_positive_bias_index]
-        positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
-
-        # Calculating normalized isolation factor
-        normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
-
-        iso_ascent = 3 * v_log_amp[
-                         first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
-        iso_max_ascent = np.min(iso_ascent)
-
-        iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
-            positive_bias)] / 0.040 - normalize_iso
-        iso_min_descent = np.min(iso_descent)
-        # ==============================================================================
-        # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
-        # Calculation Vpull out as isolation passing above 90% max isolation in dB mark
-        pullin_index_pos = int(np.where(iso_ascent <= 0.9 * iso_max_ascent)[0][0])
-        Vpullin = round(positive_bias[pullin_index_pos], ndigits=2)
-
-        tenpercent_iso = round(0.1 * iso_min_descent, ndigits=2)
-        ninetypercent_iso = round(0.9 * iso_max_ascent, ndigits=2)
-
-        pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-        Vpullout = round(positive_bias[max_positive_bias_index + pullout_index_pos], ndigits=2)
-
-        # ==============================================================================
-        # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-        negative_descent = negative_bias[0:min_negative_bias_index]
-        negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
-
-        # Calculating normalized isolation factor
-        normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                          0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
-
-        iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
-        iso_min_descent_minus = np.min(iso_descent_minus)
-
-        iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
-            0]] / 0.040 - normalized_iso_minus
-        iso_min_ascent = np.min(iso_ascent_minus)
-
-        # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
-        # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
-        pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
-        Vpullin_minus = round(negative_bias[pullin_index_minus], ndigits=2)
-
-        tenpercent_iso_ascent = round(0.1 * iso_min_ascent, ndigits=2)
-        ninetypercent_iso_descent = round(0.9 * iso_min_descent, ndigits=2)
-
-        pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
-        Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
-        # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
-
-    def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                                 v_log_amp):  # same function as in display implemented in measurement
-
-        # Acquiring the indexes that correspond to both positive and negative bias triangles
-        # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
-        positive_bias = np.extract((v_bias > 2), v_bias)
-        negative_bias = np.extract((v_bias < -2), v_bias)
-
-        # Position of the first positive bias index along v_bias array
-        first_index_pos = np.where(v_bias == positive_bias[0])[0]
-
-        # Position of the first negative bias index along v_bias array
-        first_index_neg = np.where(v_bias == negative_bias[0])[0]
-        # Position of the last negative bias index along v_bias array
-        last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-        # Calculating the max and min indexes in both casses
-        max_positive_bias_index = np.argmax(positive_bias)
-        min_positive_bias_index = 0
-        max_negative_bias_index = 0
-        min_negative_bias_index = np.argmin(negative_bias)
-
-        # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-        positive_ascent = positive_bias[0:max_positive_bias_index]
-        positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
-
-        # Calculating normalized isolation factor
-        normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
-
-        iso_ascent = 3 * v_log_amp[
-                         first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
-        iso_max_ascent = np.min(iso_ascent)
-
-        iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
-            positive_bias)] / 0.040 - normalize_iso
-        iso_min_descent = np.min(iso_descent)
-        # ==============================================================================
-        # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
-        # Calculation Vpull out as isolation passing above 90% max isolation in dB mark
-        pullin_index_pos = int(np.where(iso_ascent <= 0.9 * iso_max_ascent)[0][0])
-        Vpullin = round(positive_bias[pullin_index_pos], ndigits=2)
-
-        tenpercent_iso = round(0.1 * iso_min_descent, ndigits=2)
-        ninetypercent_iso = round(0.9 * iso_max_ascent, ndigits=2)
-
-        pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-        Vpullout = round(positive_bias[max_positive_bias_index + pullout_index_pos], ndigits=2)
-
-        # ==============================================================================
-        # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-        negative_descent = negative_bias[0:min_negative_bias_index]
-        negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
-
-        # Calculating normalized isolation factor
-        normalized_iso_minus = np.max(3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                          0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
-
-        iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
-        iso_min_descent_minus = np.min(iso_descent_minus)
-
-        iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
-            0]] / 0.040 - normalized_iso_minus
-        iso_min_ascent = np.min(iso_ascent_minus)
-
-        # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
-        # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
-        pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
-        Vpullin_minus = round(negative_bias[pullin_index_minus], ndigits=2)
-
-        tenpercent_iso_ascent = round(0.1 * iso_min_ascent, ndigits=2)
-        ninetypercent_iso_descent = round(0.9 * iso_min_descent, ndigits=2)
-
-        pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
-        Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
-        # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
-
 
 def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                             v_logamp):  # same function as in display implemented in measurement
+                                             v_log_amp):  # same function as in display implemented in measurement
 
     # Acquiring the indexes that correspond to both positive and negative bias triangles
     # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
@@ -1142,13 +961,13 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
 
     # Calculating normalized isolation factor
-    normalize_iso = np.max(3 * v_logamp[first_index_pos[0]:max_positive_bias_index] / 0.040)
+    normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
 
-    iso_ascent = 3 * v_logamp[
+    iso_ascent = 3 * v_log_amp[
                      first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
     iso_max_ascent = np.min(iso_ascent)
 
-    iso_descent = 3 * v_log1amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
+    iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
         positive_bias)] / 0.040 - normalize_iso
     iso_min_descent = np.min(iso_descent)
     # ==============================================================================
@@ -1169,14 +988,14 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
     negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
 
     # Calculating normalized isolation factor
-    normalized_iso_minus = np.max(3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                                      0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
+    normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                                       0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
-    iso_descent_minus = 3 * v_logamp[first_index_neg[0]:first_index_neg[
-                                                            0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
+    iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
+                                                             0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
     iso_min_descent_minus = np.min(iso_descent_minus)
 
-    iso_ascent_minus = 3 * v_logamp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
+    iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
         0]] / 0.040 - normalized_iso_minus
     iso_min_ascent = np.min(iso_ascent_minus)
 
@@ -1190,7 +1009,9 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
 
     pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
     Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
-    # print('Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent))
+    # print(f"""Vpullin = {Vpullin} | Isolation measured = {}\nVpullout = {Vpullout} | Isolation measured = {} \nVpullin_minus = {} |
+    # Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso,
+    # Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent"""))
 
 
 # sig_gen.write('OUTPut 1')
@@ -1201,3 +1022,10 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
 #     print("Cycling sequence error", end='\n')
 #     osc.close()
 #     sig_gen.write('OUTPut 0')
+# zva = zva_init()
+sig_gen = sig_gen_init()
+osc = osc_init()
+
+set_pulse_width(width=)
+# powermeter = powermeter_init()
+# rf_gen = rf_gen_init()

@@ -182,6 +182,7 @@ class Window(tk.Tk, Toplevel):
     This class inherits from tk.Tk to provide a main application window.
     It initializes the GUI components and binds the necessary event handlers.
     """
+
     def __init__(self, master=None):
         tk.Tk.__init__(self, master)
         s = ttk.Style()
@@ -237,7 +238,6 @@ class Window(tk.Tk, Toplevel):
         tab6 = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
         tab7 = add_Tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
         tab8 = add_Tab(tab_name=' Ressource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
-
 
         # ==============================================================================
         # TAB1 S3P parameter display
@@ -1042,7 +1042,6 @@ class Window(tk.Tk, Toplevel):
         self.ax5.legend(fancybox=True, shadow=True)
         self.canvas5.draw()
 
-
     def plot_vpullin(self):  # Display function to plot Isolation vs pull in voltage files (used in display TAB)
         f = self.txt_file_name_combobox.get()
         os.chdir('{}'.format(self.pullin_dir_name.get()))
@@ -1322,10 +1321,10 @@ class Window(tk.Tk, Toplevel):
 
         # Calculating normalized isolation factor
         normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                          0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
+                                                                           0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
 
         iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
+                                                                 0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
         iso_min_descent_minus = np.min(iso_descent_minus)
 
         iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
