@@ -1026,6 +1026,5 @@ def calculate_pullin_out_voltage_measurement(self, v_bias,
 sig_gen = sig_gen_init()
 osc = osc_init()
 
-set_pulse_width(width=)
 # powermeter = powermeter_init()
 # rf_gen = rf_gen_init()
