@@ -841,7 +841,7 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     tenpercent_iso_neg = round(0.1 * iso_min_descent, ndigits=2)
     ninetypercent_iso_neg = round(0.9 * iso_max_descent_minus, ndigits=2)
 
-    dict_ = {'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'vpullout_plus': [vpullout_plus],
+    dict_ = {'vpullin_plus': [Vpullin_plus], 'vpullin_minus': [Vpullin_minus], 'vpullout_plus': [vpullout_plus],
              'vpullout_minus': [vpullout_minus], 'iso_ascent': [ninetypercent_iso_plus],
              'iso_descent_minus': [ninetypercent_iso_neg], 'switching_time': [switching_time],
              'amplitude_variation': [relative_amplitude], 'release_time': [release_time]}
@@ -870,9 +870,11 @@ def format_duration(seconds):
     return formatted_time
 
 
-def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.02, events=100):
+def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.205, events=100,
+                     df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling"):
     """
     Cycling test sequence outputs MEMS characteristics during the tested duration, results are
+    :param df_path: File path
     :param number_of_cycles: Total number of cycles in sequence duration
     :param number_of_pulses_in_wf: Number of pulses in waveform
     :param filename: Test sequence output filename
@@ -886,38 +888,37 @@ def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename
         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
         name="cycles")
 
-    test_duration = wf_duration * number_of_cycles
-    starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-
-    print("Starting number of triggers = {}\n".format(starting_number_of_acquisitions))
+    test_duration = wf_duration * number_of_cycles/number_of_pulses_in_wf
+    starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+    print(f"Number of triggers required :{number_of_triggered_acquisitions}")
+    print("Starting number of triggers = {}\n".format(starting_number_of_acq))
     print("Number of remaining cycles = {}\n".format(number_of_cycles))
-    print(f"Estimated time {format_duration(test_duration)}")
-    try:
-        file_df = pd.DataFrame(columns=["Vpullin_plus", "Vpullin_minus", "Vpullout_plus", "Vpullout_minus",
-                                        "iso_ascent", "iso_descent_minus", "switching_time",
-                                        "amplitude_variation"])
-    except:
-        print("df creation failed")
+    print(f"Estimated test duration: {format_duration(test_duration)}")
 
-    count = starting_number_of_acquisitions
+    file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "Vpullout_plus", "Vpullout_minus",
+                                    "iso_ascent", "iso_descent_minus", "switching_time",
+                                    "amplitude_variation", "release_time"])
+    for column in file_df.columns:
+        file_df[column] = 0
 
-    while count < number_of_cycles + starting_number_of_acquisitions:
+    count = starting_number_of_acq
+
+    while count < number_of_triggered_acquisitions + starting_number_of_acq:
         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-
+        remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
+        print(f"Remaining cycle count = {remaining_count}")
         if count == new_value:
             time.sleep(1)
             print("Waiting for trigger...", end='\n')
         else:
             count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
             Ch_4_detector = get_curve_cycling(channel=4)
-            print(osc.query('*OPC?'))
             Ch_2_bias = get_curve_cycling(channel=2)
-            print(osc.query('*OPC?'))
             data = extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-            file_dataframe = pd.concat([starting_df, data], axis="rows")
-            print(file_dataframe)
-            new_df = file_dataframe
-
+            file_df = pd.concat([file_df, data], join="outer")
+            print(file_df)
+    file_df.to_csv(path_or_buf=f"{df_path}\{filename}.csv")
+    print("Test complete!")
 
 def online_mode():
     try:
@@ -1062,7 +1063,7 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
     :return: DataFrame containing all the MEMS characteristics
     """
     # Initialize variables with zero values
-    Vpullin_plus, Vpullin_minus, vpullout_plus, vpullout_minus = 0, 0, 0, 0
+    vpullin_plus, vpullin_minus, vpullout_plus, vpullout_minus = 0, 0, 0, 0
     iso_ascent_value, iso_descent_minus_value = 0, 0
     switching_time, relative_amplitude, release_time = 0, 0, 0
 
@@ -1139,12 +1140,12 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
         pullin_index_pos = np.where(iso_ascent <= 0.9 * np.min(iso_ascent))[0]
         if pullin_index_pos.size == 0:
             raise ValueError("No elements found in iso_ascent satisfying the condition.")
-        Vpullin_plus = round(ramp_voltage_ascent[pullin_index_pos[0]], 2)
+        vpullin_plus = round(ramp_voltage_ascent[pullin_index_pos[0]], 2)
 
         pullin_index_neg = np.where(iso_descent_minus <= 0.9 * np.min(iso_descent_minus))[0]
         if pullin_index_neg.size == 0:
             raise ValueError("No elements found in iso_descent_minus satisfying the condition.")
-        Vpullin_minus = round(ramp_voltage_descent_minus[pullin_index_neg[0]], 2)
+        vpullin_minus = round(ramp_voltage_descent_minus[pullin_index_neg[0]], 2)
 
         pullout_index_pos = np.where(iso_descent >= 0.1 * np.min(iso_descent))[0]
         if pullout_index_pos.size == 0:
@@ -1164,8 +1165,8 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
 
     # Creating the dictionary for DataFrame
     data = {
-        'Vpullin_plus': [Vpullin_plus], 'Vpullin_minus': [Vpullin_minus], 'Vpullout_plus': [vpullout_plus],
-        'Vpullout_minus': [vpullout_minus], 'iso_ascent': [iso_ascent_value],
+        'vpullin_plus': [vpullin_plus], 'vpullin_minus': [vpullin_minus], 'vpullout_plus': [vpullout_plus],
+        'vpullout_minus': [vpullout_minus], 'iso_ascent': [iso_ascent_value],
         'iso_descent_minus': [iso_descent_minus_value], 'switching_time': [switching_time],
         'amplitude_variation': [relative_amplitude], 'release_time': [release_time]
     }
@@ -1181,29 +1182,30 @@ osc = osc_init()
 
 sig_gen.write('OUTPut 1')
 
-starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-counter = starting_number_of_acquisitions
-while counter == starting_number_of_acquisitions:
-    counter = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-    time.sleep(1)
+# starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+# counter = starting_number_of_acquisitions
+# while counter == starting_number_of_acquisitions:
+#     counter = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#     time.sleep(1)
+#
+# ch_2 = get_curve_cycling(2)
+# ch_4 = get_curve_cycling(4)
+#
+# df = extract_data_v2(rf_detector_channel=ch_4, v_bias_channel=ch_2)
+#
+# sig_gen.write('OUTPut 0')
+#
+# for column, value in zip(df.columns, df.values[0]):
+#     print(f"{column} = {value}")
 
-ch_2 = get_curve_cycling(2)
-ch_4 = get_curve_cycling(4)
-
-df = extract_data_v2(rf_detector_channel=ch_4, v_bias_channel=ch_2)
-
+try:
+    cycling_sequence(number_of_cycles=1e6)
+except:
+    print("Cycling sequence error", end='\n')
+    osc.close()
+    sig_gen.write('OUTPut 0')
 sig_gen.write('OUTPut 0')
-
-
-
-# try:
-#     cycling_sequence(number_of_cycles=10e9)
-# except:
-#     print("Cycling sequence error", end='\n')
-#     osc.close()
-#     sig_gen.write('OUTPut 0')
-
 # zva = zva_init()
-
+# print(format_duration(3600*24))
 # powermeter = powermeter_init()
 # rf_gen = rf_gen_init()
