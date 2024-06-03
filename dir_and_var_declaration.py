@@ -1,5 +1,6 @@
 from RsInstrument import *
 import pyvisa
+from RsInstrument import RsInstrument
 
 # These are the file names of the different configurations of the ZVA67
 zva_s1p_config = 's1p_setup.znxml'
@@ -25,7 +26,7 @@ powermeter_ip = r'TCPIP0::192.168.0.83::inst0::INSTR'
 oscilloscope_ip = r'TCPIP0::DPO5054-C011738::inst0::INSTR'
 
 
-def zva_init(tcpip_address=r'TCPIP0::ZNA67-101810::inst0::INSTR'):
+def zva_init(tcpip_address: str = r'TCPIP0::ZNA67-101810::inst0::INSTR') -> RsInstrument | None:
     _id = r'Vector Network Analyser'
     error = False
     zva = None
@@ -54,7 +55,7 @@ def zva_init(tcpip_address=r'TCPIP0::ZNA67-101810::inst0::INSTR'):
         return zva
 
 
-def sig_gen_init(tcpip_address=r'TCPIP0::A-33521B-00526::inst0::INSTR'):
+def sig_gen_init(tcpip_address: str = r'TCPIP0::A-33521B-00526::inst0::INSTR') -> pyvisa.Resource | None:
     _id = "Signal Generator"
     error = False
     sig_gen = None
@@ -82,7 +83,7 @@ def sig_gen_init(tcpip_address=r'TCPIP0::A-33521B-00526::inst0::INSTR'):
         return sig_gen
 
 
-def osc_init(tcpip_address=r'TCPIP0::DPO5054-C011738::inst0::INSTR'):
+def osc_init(tcpip_address: str = r'TCPIP0::DPO5054-C011738::inst0::INSTR') -> pyvisa.Resource | None:
     _id = "Oscilloscope"
     error = False
     osc = None
@@ -104,7 +105,7 @@ def osc_init(tcpip_address=r'TCPIP0::DPO5054-C011738::inst0::INSTR'):
         return osc
 
 
-def rf_gen_init(tcpip_address=r'TCPIP0::rssmb100a179766::inst0::INSTR'):
+def rf_gen_init(tcpip_address: str = r'TCPIP0::rssmb100a179766::inst0::INSTR') -> RsInstrument | None:
     _id = "RF Generator"
     error = False
     rf_gen = None
@@ -156,7 +157,6 @@ def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
     else:
         print("Powermeter Connected")
         return powermeter
-
 
 # zva_init()
 # sig_gen_init()

@@ -781,7 +781,8 @@ class Window(tk.Tk, Toplevel):
                                                              row=4)
         self.entered_var_rf_gen_address = self.add_entry(frame7, textvar=self.rf_gen_inst, width=70, col=2, row=5)
 
-        self.protocol('WM_RESIZABLE', self.wm_resizable())
+        self.
+        self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
 
     # ==============================================================================
@@ -988,7 +989,7 @@ class Window(tk.Tk, Toplevel):
         ip = self.zva_inst.get()
         Rstest.setup_zva_with_rst(ip)
 
-    def set_fstart(self):  # Configure ZVA fstart (used in TAB5)
+    def set_fstart(self):  # Configure ZVA f_start (used in TAB5)
         fstart = self.fstart.get()
         Rstest.set_fstart(fstart)
         self.error_log(Rstest.zva)
@@ -1003,7 +1004,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.number_of_points(nb_points)
         self.error_log(Rstest.zva)
 
-    def set_zva(self):  # Configure ZVA fstart/fstop/nbpoints (used in TAB5)
+    def set_zva(self):  # Configure ZVA f_start/fstop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
@@ -1060,7 +1061,7 @@ class Window(tk.Tk, Toplevel):
         self.text2.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
-            self):  # Calls set_bias_pullin() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse width (used in TAB4)
+            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse width (used in TAB4)
         self.set_bias_pullin()
         self.set_ramp_width()
         self.text4.delete("1.0", "end")
@@ -1073,13 +1074,13 @@ class Window(tk.Tk, Toplevel):
         self.text14.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_log())
 
     def set_Bias_Voltage(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB5)
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pull_in_v as an input (used in TAB5)
         bias = self.pullin_v.get()
         Rstest.bias_voltage(bias)
         self.error_log(Rstest.sig_gen)
 
     def set_bias_pullin(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pullin_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
+            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pull_in_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
         Rstest.bias_pullin(bias)
         self.error_log(Rstest.sig_gen)
@@ -1089,7 +1090,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.ramp_width(width)
         self.error_log(Rstest.sig_gen)
 
-    def set_PRF(self):  # Calls inst_command modules's set_PRF(prf) to set set pulse repetition frequency
+    def set_PRF(self):  # Calls inst_command modules's set_prf(prf) to set set pulse repetition frequency
         PRF = self.pulse_freq.get()
         Rstest.set_PRF(PRF)
         self.error_log(Rstest.sig_gen)

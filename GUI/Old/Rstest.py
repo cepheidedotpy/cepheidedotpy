@@ -165,7 +165,7 @@ def ramp_width(width):  # Set ramp length (µs) in pull down voltage test
 
 
 def set_fstart(fstart=1):  # Set start frequency function
-    # fconverted = fstart+'E'+'9'
+    # fconverted = f_start+'E'+'9'
     fconverted = fstart * 10 ** 9  # float
     zva.write_str_with_opc("FREQ:STAR {}".format(fconverted, type='E'))
     print("Fstart is set to {} GHz \n".format(fstart))

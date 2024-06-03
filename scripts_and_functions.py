@@ -25,6 +25,14 @@ os.chdir('{}'.format(path))
 # Opening resource manager
 rm = pyvisa.ResourceManager()
 
+sig_gen = sig_gen_init()
+osc = osc_init()
+
+
+# zva = zva_init()
+# powermeter = powermeter_init()
+# rf_gen = rf_gen_init()
+
 
 def sig_gen_opc_control(function):
     def wrapper(*args, **kwargs):
@@ -94,21 +102,21 @@ def ramp_width(width=100):  # Set ramp length (µs) in pull down voltage test
         if int(error) != 0:
             sig_gen.write('FREQuency {}'.format(frequency_gen))
         time.sleep(1)
-    except:
+    except pyvisa.VisaIOError:
         print('Signal Generator VisaIOError')
 
 
-def set_fstart(fstart=1):  # Set start frequency function
-    # fconverted = fstart+'E'+'9'
-    fconverted = fstart * 10 ** 9  # float
-    zva.write_str_with_opc("FREQ:STAR {}".format(fconverted, type='E'))
-    print("Fstart is set to {} GHz \n".format(fstart))
+def set_f_start(f_start=1):  # Set start frequency function
+    # f_converted = f_start+'E'+'9'
+    f_converted = f_start * 10 ** 9  # float
+    zva.write_str_with_opc("FREQ:STAR {}".format(f_converted, type='E'))
+    print("F_start is set to {} GHz \n".format(f_start))
 
 
 def set_fstop(fstop=10):  # Set stop frequency function
-    # fconverted = fstop+'E'+'9' # string
-    fconverted = fstop * 10 ** 9  # float
-    zva.write_str_with_opc("FREQ:STOP {}".format(fconverted, type='E'))
+    # f_converted = fstop+'E'+'9' # string
+    f_converted = fstop * 10 ** 9  # float
+    zva.write_str_with_opc("FREQ:STOP {}".format(f_converted, type='E'))
     print("Fstop is set to {} GHz \n".format(fstop))
 
 
@@ -143,7 +151,7 @@ def sig_gen_set_output_log():  # Get error log of the signal generator
     return a + '\n' + b + '\n' + c
 
 
-def set_PRF(prf):  # Set pulse repetition frequency
+def set_prf(prf):  # Set pulse repetition frequency
     pri = 1 / prf
     width = sig_gen.query("SOURce1:FUNCtion:PULSe:WIDTh?").split('\n')[0]
     print(f"Pulse width = {width} s")
@@ -157,7 +165,7 @@ def set_PRF(prf):  # Set pulse repetition frequency
 
 
 def set_zva(start=1, stop=10, points=501):  # Configure the ZVA with all the input parameters entered in the GUI
-    set_fstart(start)
+    set_f_start(start)
     print("Fstart is set to {} GHz \n".format(float(zva.query("FREQ:STARt?")) / (10 ** 9)))
     set_fstop(stop)
     print("Fstop is set to {} GHz \n".format(float(zva.query("FREQ:STOP?")) / (10 ** 9)))
@@ -261,13 +269,13 @@ def saves3p(filename):
 
 def saves2p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    Directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
-        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(Directory))
+        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
         zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s2p' , LOGPhase, 1,2".format(filename))
-        print(r"sp file saved in ZVA at {}".format(Directory), end='\n')
+        print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
         print('Timeout Error \n')
@@ -285,13 +293,13 @@ def saves2p(filename):
 
 def saves1p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    Directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
-        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(Directory))
+        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
         zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
-        print(r"sp file saved in ZVA at {}".format(Directory), end='\n')
+        print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
         print('Timeout Error \n')
@@ -888,7 +896,7 @@ def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename
         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
         name="cycles")
 
-    test_duration = wf_duration * number_of_cycles/number_of_pulses_in_wf
+    test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
     print(f"Number of triggers required :{number_of_triggered_acquisitions}")
     print("Starting number of triggers = {}\n".format(starting_number_of_acq))
@@ -912,13 +920,15 @@ def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename
             print("Waiting for trigger...", end='\n')
         else:
             count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-            Ch_4_detector = get_curve_cycling(channel=4)
-            Ch_2_bias = get_curve_cycling(channel=2)
-            data = extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
+            ch_4_detector = get_curve_cycling(channel=4)
+            ch_2_bias = get_curve_cycling(channel=2)
+            data = extract_data(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
             file_df = pd.concat([file_df, data], join="outer")
             print(file_df)
-    file_df.to_csv(path_or_buf=f"{df_path}\{filename}.csv")
+            file_df["cycle count"] = cycles
+    file_df.to_csv(path_or_buf=f"{df_path}'\'{filename}.csv")
     print("Test complete!")
+
 
 def online_mode():
     try:
@@ -1177,10 +1187,22 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
     return mems_characteristics
 
 
-sig_gen = sig_gen_init()
-osc = osc_init()
+def sig_gen_cycling_config():
+    sig_gen.write("*RST")
+    time.sleep(1)
+    sig_gen.write('MMEM:LOAD:STAT "CYCLE_2kHz.sta"')
+    time.sleep(1)
+    sig_gen.write("*OPC?")
+    print("Signal Generator cycling config")
 
-sig_gen.write('OUTPut 1')
+def osc_cycling_config():
+    osc.write('RECALL:SETUP "C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set"')
+    print("Oscilloscope cycling config")
+    sig_gen.write("*OPC?")
+
+# sig_gen.write('OUTPut 1')
+
+# sig_gen_cycling_config()
 
 # starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
 # counter = starting_number_of_acquisitions
@@ -1198,13 +1220,13 @@ sig_gen.write('OUTPut 1')
 # for column, value in zip(df.columns, df.values[0]):
 #     print(f"{column} = {value}")
 
-try:
-    cycling_sequence(number_of_cycles=1e6)
-except:
-    print("Cycling sequence error", end='\n')
-    osc.close()
-    sig_gen.write('OUTPut 0')
-sig_gen.write('OUTPut 0')
+# try:
+#     cycling_sequence(number_of_cycles=1e6)
+# except:
+#     print("Cycling sequence error", end='\n')
+#     osc.close()
+#     sig_gen.write('OUTPut 0')
+# sig_gen.write('OUTPut 0')
 # zva = zva_init()
 # print(format_duration(3600*24))
 # powermeter = powermeter_init()

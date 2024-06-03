@@ -7,6 +7,7 @@ after selection
 _version :8
 """
 import os
+import time
 import tkinter as tk
 from os import listdir
 from os.path import isfile, join
@@ -19,6 +20,7 @@ from tkinter import ttk
 # Implement the default Matplotlib key bindings.
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
 
@@ -76,8 +78,8 @@ def add_Label(tab, label_name, col,
     return label
 
 
-def add_scrolledtext(tab, scrol_w,
-                     scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text at row/col location
+def add_scrolled_text(tab, scrol_w,
+                      scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text at row/col location
     # and with scrol_w/scrol_h dimensions
     scroll = scrolledtext.ScrolledText(tab, width=scrol_w, height=scrol_h, wrap=tk.WORD, border=2, relief=tk.SUNKEN,
                                        pady=0)
@@ -136,14 +138,14 @@ def filetypes_dir(
 
 
 def add_entry(tab, textvar, width, col,
-              row):  # Adds an entry in the tab with a specified textvariable at the designated column and row
+              row):  # Adds an entry in the tab with a specified text variable at the designated column and row
     entered = ttk.Entry(tab, width=width, textvariable=textvar, validate='focus', font=('Bahnschrift Light', 10))
     entered.grid(column=col, row=row, sticky="WE")
     return entered
 
 
 def add_combobox(tab, text, col, row,
-                 width):  # Adds a Combobox in the tab with a specified textvariable text at the designated
+                 width):  # Adds a Combobox in the tab with a specified text variable text at the designated
     # column and row
     combobox = ttk.Combobox(tab, textvariable=text, state='readonly',
                             values='', validate='focus', width=width, height=10,
@@ -152,7 +154,7 @@ def add_combobox(tab, text, col, row,
     return combobox
 
 
-def close_ressources():  # Calls close_all_ressources to close all ressources
+def close_resources():  # Calls close_all_ressources to close all ressources
     scripts_and_functions.close_all_ressources()
 
 
@@ -217,6 +219,17 @@ class Window(tk.Tk, Toplevel):
         self.fig5 = plt.figure(num=5, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
         self.ax5 = self.fig5.add_subplot(1, 1, 1)
         self.ax5.grid()
+
+        # figure that contains Cycling parameters during cycling tes
+        self.fig6 = plt.figure(num=6, dpi=100, tight_layout=True, figsize=(9, 6), frameon=True)
+        self.ax6 = self.fig6.add_subplot(3, 2, 1)
+        self.ax7 = self.fig6.add_subplot(3, 2, 2)
+        self.ax8 = self.fig6.add_subplot(3, 2, 3)
+        self.ax9 = self.fig6.add_subplot(3, 2, 4)
+        self.ax10 = self.fig6.add_subplot(3, 2, 5)
+        self.ax11 = self.fig6.add_subplot(3, 2, 6)
+        for ax in self.fig6.axes:
+            ax.grid()
 
         self.sparmeter_s3p = tk.StringVar(value='S11')
         self.sparmeter_s2p = tk.StringVar(value='S11')
@@ -355,7 +368,7 @@ class Window(tk.Tk, Toplevel):
         add_Button(frame5, 'Delete Graphs', command=self.delete_axs_vpullin, col=3, row=2)
         add_Button(frame5, 'Calculate Pull-in and Pull-out voltages', command=self.calculate_pullin_out_voltage,
                    col=2, row=3).configure(width=40)
-        self.textscroll = add_scrolledtext(tab=self.frame6, scrol_w=100, scrol_h=3)
+        self.textscroll = add_scrolled_text(tab=self.frame6, scrol_w=100, scrol_h=3)
 
         self.canvas3 = self.create_canvas_txt(frame=self.frame6)
 
@@ -414,7 +427,7 @@ class Window(tk.Tk, Toplevel):
         add_Label(frame15, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame15, label_name='(µs)', col=2, row=1).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
 
-        add_Button(tab=frame15, button_name='Set Bias Voltage', command=self.set_bias_pullin, col=3, row=0).grid(
+        add_Button(tab=frame15, button_name='Set Bias Voltage', command=self.set_bias_pull_in, col=3, row=0).grid(
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame15, button_name='Set Ramp Width', command=self.set_ramp_width, col=3, row=1).grid(
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
@@ -433,7 +446,7 @@ class Window(tk.Tk, Toplevel):
 
         add_Button(tab=frame16, button_name='Reset Signal Generator', command=self.reset_sig_gen, col=0,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame16, button_name='Exit', command=lambda: [self._quit(), close_ressources()], col=1,
+        add_Button(tab=frame16, button_name='Exit', command=lambda: [self._quit(), close_resources()], col=1,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame16, button_name='Plot IsovsV',
                    command=lambda: [self.trace_pulldown(), self.acquire_pulldown_data()], col=1, row=5).grid(
@@ -529,14 +542,14 @@ class Window(tk.Tk, Toplevel):
         #  ------------------------------------------------------------------------------
         frame9 = add_Label_frame(tab=tab5, frame_name='Signal Generator', col=0, row=1)
 
-        self.pullin_v = tk.DoubleVar(value=10)
+        self.pull_in_v = tk.DoubleVar(value=10)
         self.pulse_width = tk.DoubleVar(value=5)
         self.pulse_freq = tk.DoubleVar(value=0.1)
-        self.chosen_bias_voltage = add_entry(tab=frame8, textvar=self.pullin_v, width=20, col=1, row=6)
+        self.chosen_bias_voltage = add_entry(tab=frame8, textvar=self.pull_in_v, width=20, col=1, row=6)
 
         add_Label(frame9, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame9, label_name='Pulse Width', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
-        self.entered_pullin_volt = add_entry(frame9, textvar=self.pullin_v, width=10, col=1, row=0)
+        self.entered_pullin_volt = add_entry(frame9, textvar=self.pull_in_v, width=10, col=1, row=0)
         self.entered_pulse_width = add_entry(frame9, textvar=self.pulse_width, width=10, col=1, row=1)
         add_Label(frame9, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame9, label_name='(s)', col=2, row=1).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
@@ -546,11 +559,11 @@ class Window(tk.Tk, Toplevel):
         self.entered_pulse_freq = add_entry(frame9, textvar=self.pulse_freq, width=10, col=1, row=2)
         add_Label(frame9, label_name='(Hz)', col=2, row=2).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
 
-        add_Button(tab=frame9, button_name='Set Bias Voltage', command=self.set_Bias_Voltage, col=3, row=0).grid(
+        add_Button(tab=frame9, button_name='Set Bias Voltage', command=self.set_bias_voltage, col=3, row=0).grid(
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame9, button_name='Set Pulse Width', command=self.set_ramp_width, col=3, row=1).grid(
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame9, button_name='Set prf', command=self.set_PRF, col=3, row=2).grid(sticky='e',
+        add_Button(tab=frame9, button_name='Set prf', command=self.set_prf, col=3, row=2).grid(sticky='e',
                                                                                                ipadx=tab_padx,
                                                                                                ipady=tab_padx)
         add_Button(tab=frame9, button_name='Set Pulse Gen', command=self.set_pulse_gen, col=3, row=3).grid(
@@ -609,9 +622,9 @@ class Window(tk.Tk, Toplevel):
             ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(ipadx=tab_padx,
                                                                                                     ipady=tab_padx)
-        add_Button(tab=frame12, button_name='Exit', command=lambda: [self._quit(), close_ressources()], col=1,
+        add_Button(tab=frame12, button_name='Exit', command=lambda: [self._quit(), close_resources()], col=1,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame12, button_name='Reset Signal Gen', command=self.set_pulse_gen_pulsemode, col=1,
+        add_Button(tab=frame12, button_name='Reset Signal Gen', command=self.set_pulse_gen_pulse_mode, col=1,
                    row=2).grid(ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame12, button_name='S1P config', command=call_s1p_config, col=0, row=4).grid(
             ipadx=tab_padx, ipady=tab_padx)
@@ -666,9 +679,9 @@ class Window(tk.Tk, Toplevel):
                               font=('Bahnschrift Light', 10))  # Debug text display
         self.text14.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame18, button_name='Reset Signal Generator', command=self.set_pulse_gen_pulsemode, col=0,
+        add_Button(tab=frame18, button_name='Reset Signal Generator', command=self.set_pulse_gen_pulse_mode, col=0,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
-        add_Button(tab=frame18, button_name='Exit', command=lambda: [self._quit(), close_ressources()], col=1,
+        add_Button(tab=frame18, button_name='Exit', command=lambda: [self._quit(), close_resources()], col=1,
                    row=1).grid(ipadx=tab_padx, ipady=tab_padx)
         add_Button(tab=frame18, button_name='Launch Test', command=None, col=1, row=5).grid(ipadx=tab_padx,
                                                                                             ipady=tab_padx)
@@ -697,12 +710,73 @@ class Window(tk.Tk, Toplevel):
                                                         row=4)
         self.entered_var_rf_gen_address = add_entry(frame7, textvar=self.rf_gen_inst, width=70, col=2, row=5)
 
-        self.protocol(name='WM_RESIZABLE')
+        # ==============================================================================
+        # TAB9
+        # ==============================================================================
+        frame11 = add_Label_frame(tab=tab7, frame_name='Component information', col=0, row=0)  # Ressource frame
+
+        add_Label(frame11, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
+        add_Label(frame11, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
+        add_Label(frame11, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
+        add_Label(frame11, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
+        add_Label(frame11, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
+        add_Label(frame11, label_name='Bias Voltage', col=0, row=5).grid(sticky='e', ipadx=tab_padx,
+                                                                         ipady=tab_padx)
+
+        self.test_cycling_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement '
+                                                   r'Data\Mechanical cycling')
+        self.test_cycling_project = tk.StringVar(value=r'Project_Name')
+        self.test_cycling_cell = tk.StringVar(value='Cell_name')
+        self.test_cycling_ret = tk.StringVar(value='Reticule')
+        self.test_cycling_device = tk.StringVar(value='Device_Name')
+        self.test_cycling_var_bias = tk.StringVar(value='Bias_voltage')
+        self.test_cycling_var_nb_cycles = tk.StringVar(value='1000000')
+
+        self.entered_cycling_dir = add_entry(frame11, textvar=self.test_cycling_dir, width=20, col=1, row=0)
+        self.entered_var_cycling_project = add_entry(frame11, textvar=self.test_cycling_project, width=20, col=1, row=1)
+        self.entered_var_cycling_cell = add_entry(frame11, textvar=self.test_cycling_cell, width=20, col=1, row=2)
+        self.entered_cycling_ret = add_entry(frame11, textvar=self.test_cycling_ret, width=15, col=1, row=3)
+        self.entered_cycling_device = add_entry(frame11, textvar=self.test_cycling_device, width=20, col=1, row=4)
+        self.entered_cycling_var_bias = add_entry(frame11, textvar=self.test_cycling_var_nb_cycles, width=20, col=1,
+                                                  row=5)
+
+        frame20 = add_Label_frame(tab=tab7, frame_name='Signal Generator', col=0, row=1)
+
+        add_Label(frame20, label_name='Bias voltage', col=0, row=0).grid(sticky='e', ipadx=tab_padx,
+                                                                         ipady=tab_padx)
+        add_Label(frame20, label_name='V', col=2, row=0).grid(sticky='e', ipadx=tab_padx,
+                                                              ipady=tab_padx)
+        add_Label(frame20, label_name='Number of Cycles', col=0, row=1).grid(sticky='e', ipadx=tab_padx,
+                                                                             ipady=tab_padx)
+        add_Label(frame20, label_name='Cycles', col=2, row=1).grid(sticky='e', ipadx=tab_padx,
+                                                                   ipady=tab_padx)
+        self.test_cycling_var_bias = tk.StringVar(value='40')
+        self.test_cycling_var_nb_of_cycles = tk.DoubleVar(value=1_000_000)
+
+        self.entered_var_cycling_bias = add_entry(frame20, textvar=self.test_cycling_var_bias, width=15, col=1, row=0)
+        self.entered_var_cycling_bias = add_entry(frame20, textvar=self.test_cycling_var_nb_of_cycles,
+                                                  width=15, col=1, row=1)
+
+        add_Button(tab=frame20, button_name='Cycling config', command=self.sig_gen_cycling_config, col=0, row=2).grid(
+            ipadx=tab_padx, ipady=tab_padx)
+
+        add_Button(tab=frame20, button_name='Set Bias voltage',
+                   command=lambda: self.set_symmetrical_voltage_bias(voltage=self.test_cycling_var_bias.get()), col=3,
+                   row=0).grid(ipadx=tab_padx, ipady=tab_padx)
+
+        frame21 = add_Label_frame(tab=tab7, frame_name='Oscilloscpe', col=0, row=2)
+
+        add_Button(tab=frame21, button_name='Cycling config',
+                   command=scripts_and_functions.osc_cycling_config, col=0,
+                   row=0).grid(ipadx=tab_padx, ipady=tab_padx)
+
+        frame22 = add_Label_frame(tab=tab7, frame_name='Cycling monitor', col=1, row=0, rowspan=3)
+
+        self.create_canvas(frame=frame22, figure=self.fig6, padding=2)
+        self.wm_resizable(width=True, height=True)
+        # self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
 
-    # ==============================================================================
-    # TAB7
-    # ==============================================================================
     # ==============================================================================
     # Methods
     # ==============================================================================
@@ -782,6 +856,14 @@ class Window(tk.Tk, Toplevel):
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
 
+    def create_canvas(self, frame, figure, padding=2):
+        # Creates pull in and pull out display (in measurement frame) Canvas in the
+        # frame and at col and row location
+        canvas = FigureCanvasTkAgg(figure, master=frame)
+        canvas._tkcanvas.pack(ipady=padding, ipadx=padding)
+        toolbar = NavigationToolbar2Tk(canvas=canvas, window=frame, pack_toolbar=True)
+        return canvas
+
     def create_tests3p_file(
             self):  # Gets the different entered strings at the set entries to construct a filename for the .s3p 
         # measurement
@@ -828,9 +910,9 @@ class Window(tk.Tk, Toplevel):
         ip = self.zva_inst.get()
         scripts_and_functions.setup_zva_with_rst(ip)
 
-    def set_fstart(self):  # Configure ZVA fstart (used in TAB5)
+    def set_fstart(self):  # Configure ZVA f_start (used in TAB5)
         fstart = self.fstart.get()
-        scripts_and_functions.set_fstart(fstart)
+        scripts_and_functions.set_f_start(fstart)
         self.error_log(scripts_and_functions.zva)
 
     def set_fstop(self):  # Configure ZVA fstop (used in TAB5)
@@ -843,7 +925,7 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.number_of_points(nb_points)
         self.error_log(scripts_and_functions.zva)
 
-    def set_zva(self):  # Configure ZVA fstart/fstop/nbpoints (used in TAB5)
+    def set_zva(self):  # Configure ZVA f_start/fstop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
@@ -900,49 +982,56 @@ class Window(tk.Tk, Toplevel):
         #     print("Error")
 
     def set_pulse_gen(self):  # Configure sig_gen bias voltage, pulse width and prf (used in TAB5)
-        self.set_Bias_Voltage()
-        self.set_PRF()
+        self.set_bias_voltage()
+        self.set_prf()
         self.set_pulse_width()
         self.text2.delete("1.0", "end")
         self.text2.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
-            self):  # Calls set_bias_pullin() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse
+            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse
         # width (used in TAB4)
-        self.set_bias_pullin()
+        self.set_bias_pull_in()
         self.set_ramp_width()
         self.text4.delete("1.0", "end")
         self.text4.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
-    def set_pulse_gen_pulsemode(
-            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an error log (used
+    def set_pulse_gen_pulse_mode(
+            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an
+        # error log (used
         # in TAB7)
         scripts_and_functions.configuration_sig_gen()
         self.text14.delete("1.0", "end")
         self.text14.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_log())
 
-    def set_Bias_Voltage(
-            self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by entry pullin_v as
+    def set_bias_voltage(self):
+        # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by
+        # entry pull_in_v as
         # an input (used in TAB5)
-        bias = self.pullin_v.get()
+        bias = self.pull_in_v.get()
         scripts_and_functions.bias_voltage(bias)
         self.error_log(scripts_and_functions.sig_gen)
 
-    def set_bias_pullin(
-            self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by entry pullin_v as
+    def set_symmetrical_voltage_bias(self, voltage: str = '10'):
+        scripts_and_functions.bias_pullin(voltage)
+        self.error_log(scripts_and_functions.sig_gen)
+
+    def set_bias_pull_in(
+            self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by
+        # entry pull_in_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
         scripts_and_functions.bias_pullin(bias)
         self.error_log(scripts_and_functions.sig_gen)
 
-    def set_ramp_width(self):  # Calls scripts_and_functions modules's ramp_width(width) to set ramp width
+    def set_ramp_width(self):  # Calls scripts_and_functions module's ramp_width(width) to set ramp width
         width = self.ramp_width.get()
         scripts_and_functions.ramp_width(width)
         self.error_log(scripts_and_functions.sig_gen)
 
-    def set_PRF(self):  # Calls scripts_and_functions modules's set_PRF(prf) to set set pulse repetition frequency
+    def set_prf(self):  # Calls scripts_and_functions modules's set_prf(prf) to set set pulse repetition frequency
         prf = self.pulse_freq.get()
-        scripts_and_functions.set_PRF(prf)
+        scripts_and_functions.set_prf(prf)
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_pulse_width(self):  # Calls scripts_and_functions modules's set_pulse_width(width) to set pulse width
@@ -951,8 +1040,8 @@ class Window(tk.Tk, Toplevel):
         self.error_log(scripts_and_functions.sig_gen)
 
     # Plots functions -------------------------------------------------------------
-    def trace_pulldown(
-            self):  # Measurement function that calls scripts_and_functions Module to trigger sig_gen to plot pull in trace and
+    def trace_pulldown(self):
+        # Measurement function that calls scripts_and_functions Module to trigger sig_gen to plot pull in trace and
         # display the measurement values in the text boxes(used in TAB6)
         # try:
         scripts_and_functions.sig_gen.write('TRIG')
@@ -961,7 +1050,7 @@ class Window(tk.Tk, Toplevel):
         t = curve_det[:, 1]
         rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
         v_bias = curve_bias[:, 0]
-        measurement_values = self.calculate_pullin_out_voltage_measurement(v_bias, curve_det[:, 0])
+        measurement_values = self.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
         plt.figure(num=4)
         number_of_graphs = len(self.ax4.get_lines()[0:])
         self.ax4.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
@@ -1250,19 +1339,20 @@ class Window(tk.Tk, Toplevel):
         self.text2.insert(index="%d.%d" % (0, 0), chars=error_logs)
         self.text4.insert(index="%d.%d" % (0, 0), chars=error_logs)
 
-    def error_log(self, ressource):
-        error_log_ressource = ressource.query('SYSTem:ERRor?')
-        error_string_ressource = error_log_ressource.split(",")[1]
-        ressource_name = ressource.query('*IDN?').split(",")[:2]
-        error_output = '{} ERROR LOG: {}\n'.format(ressource_name, error_string_ressource)
+    def error_log(self, resource):
+        error_log_resource = resource.query('SYSTem:ERRor?')
+        time.sleep(1)
+        error_string_resource = error_log_resource.split(",")[1]
+        resource_name = resource.query('*IDN?').split(",")[:2]
+        error_output = '{} ERROR LOG: {}\n'.format(resource_name, error_string_resource)
         self.text2.delete("1.0", "end")
         self.text2.insert(index="%d.%d" % (0, 0), chars=error_output)
         self.text4.delete("1.0", "end")
         self.text4.insert(index="%d.%d" % (0, 0), chars=error_output)
         return error_output
 
-    def calculate_pullin_out_voltage_measurement(self, v_bias,
-                                                 v_log_amp):  # same function as in display implemented in measurement
+    def calculate_pull_in_out_voltage_measurement(self, v_bias,
+                                                  v_log_amp):  # same function as in display implemented in measurement
         self.text4.delete('1.0', tk.END)
         list_graph_ax4 = self.ax4.lines[:]
         if not (list_graph_ax4 == []):
@@ -1364,28 +1454,13 @@ class Window(tk.Tk, Toplevel):
                      'Isolation_at_pullout_minus': tenpercent_iso_ascent}
         return pull_dict
 
-    def cycling_sequence(self, number_of_cycles, number_of_pulses_in_wf=1000):
-
-        number_of_triggered_acquisitions = int(number_of_cycles / number_of_pulses_in_wf)
-
-        for n in range(start=0, stop=number_of_triggered_acquisitions, step=1):
-            Ch_4_detector = scripts_and_functions.get_curve_cycling(channel=4)
-            Ch_2_bias = scripts_and_functions.get_curve_cycling(channel=2)
-            data = scripts_and_functions.extract_data(rf_detector_channel=Ch_4_detector, v_bias_channel=Ch_2_bias)
-            switch_time = scripts_and_functions.switching_time()
-
-            pullin.append(data['Vpullin'])
-            pullout.append(data['Vpullout'])
-            isolation.append(data['_100percent_iso'])
-            sw_time.append(switch_time)
-            cycling_data = np.stack((pullin, pullout, isolation, switch_time), axis=1)
-
-        np.savetxt(fname='test.txt', X=cycling_data, delimiter='\n', newline='\n',
-                   header='RF MEMS Reference = test\nCycling_data', footer='END')
-        print('Cycle is Finished')
-
     def send_trig(self):
         scripts_and_functions.trigger_measurement_zva()
+        self.error_log(scripts_and_functions.sig_gen)
+
+    def sig_gen_cycling_config(self):
+        scripts_and_functions.sig_gen_cycling_config()
+        time.sleep(3)
         self.error_log(scripts_and_functions.sig_gen)
 
 
