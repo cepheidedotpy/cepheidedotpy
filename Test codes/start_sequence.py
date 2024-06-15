@@ -163,16 +163,16 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.0253, ramp_st
 # sw_time = switching_time()
 # print("Last pulse switching time = {} s".format(sw_time))
 #
-# fig, ax = plt.subplots(nrows=1, ncols=1)
+# fig_s3p, ax_s3p = plt.subplots(nrows=1, ncols=1)
 #
-# ax.plot(mems_characteristics['iso_ascent'], label = 'ascent')
-# ax.plot(mems_characteristics['iso_descent'], label = 'descent')
+# ax_s3p.plot(mems_characteristics['iso_ascent'], label = 'ascent')
+# ax_s3p.plot(mems_characteristics['iso_descent'], label = 'descent')
 #
 # formatter = ticker.ScalarFormatter(useMathText=True)
 # formatter.set_scientific(True)
 # formatter.set_powerlimits((0, 4))
-# ax.xaxis.set_major_formatter(formatter)
-# ax.grid(True)
-# ax.set_title('Oscilloscope measurement')
+# ax_s3p.xaxis.set_major_formatter(formatter)
+# ax_s3p.grid(True)
+# ax_s3p.set_title('Oscilloscope measurement')
 # plt.legend()
 # plt.show()

@@ -114,7 +114,7 @@ def set_f_start(f_start=1):  # Set start frequency function
 
 
 def set_fstop(fstop=10):  # Set stop frequency function
-    # f_converted = fstop+'E'+'9' # string
+    # f_converted = f_stop+'E'+'9' # string
     f_converted = fstop * 10 ** 9  # float
     zva.write_str_with_opc("FREQ:STOP {}".format(f_converted, type='E'))
     print("Fstop is set to {} GHz \n".format(fstop))

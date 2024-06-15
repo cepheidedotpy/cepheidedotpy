@@ -60,7 +60,7 @@ class AnnotatedCursor(Cursor):
 
         # First call baseclass constructor.
         # Draws cursor and remembers background for blitting.
-        # Saves ax as class attribute.
+        # Saves ax_s3p as class attribute.
         super().__init__(**cursorargs)
 
         # Default value for position of text.

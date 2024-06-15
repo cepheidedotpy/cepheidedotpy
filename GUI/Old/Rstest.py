@@ -172,7 +172,7 @@ def set_fstart(fstart=1):  # Set start frequency function
 
 
 def set_fstop(fstop=10):  # Set stop frequency function
-    # fconverted = fstop+'E'+'9' # string
+    # fconverted = f_stop+'E'+'9' # string
     fconverted = fstop * 10 ** 9  # float
     zva.write_str_with_opc("FREQ:STOP {}".format(fconverted, type='E'))
     print("Fstop is set to {} GHz \n".format(fstop))
@@ -898,18 +898,18 @@ def online_mode():
         print("Connection error")
 
 # def display_figure():
-#     fig, ax = plt.subplots(nrows=1, ncols=1)
+#     fig_s3p, ax_s3p = plt.subplots(nrows=1, ncols=1)
 #     # Display -----------------------------------------------------------------------------------------------------------------------
-#     ax.plot(t, rf_detector, label='rf_detector')
-#     ax.plot(t, v_bias, label='v_bias')
-#     ax.plot(v_bias, rf_detector, label='rf_detector vs v_bias')
+#     ax_s3p.plot(t, rf_detector, label='rf_detector')
+#     ax_s3p.plot(t, v_bias, label='v_bias')
+#     ax_s3p.plot(v_bias, rf_detector, label='rf_detector vs v_bias')
 #
 #     formatter = ticker.ScalarFormatter(useMathText=True)
 #     formatter.set_scientific(True)
 #     formatter.set_powerlimits((0, 4))
-#     ax.xaxis.set_major_formatter(formatter)
-#     ax.grid(True)
-#     ax.set_title('Oscilloscope measurement')
+#     ax_s3p.xaxis.set_major_formatter(formatter)
+#     ax_s3p.grid(True)
+#     ax_s3p.set_title('Oscilloscope measurement')
 #     plt.legend()
 #     plt.show()
 

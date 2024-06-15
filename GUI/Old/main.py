@@ -96,7 +96,7 @@ class AnnotatedCursor(Cursor):
 
         # First call baseclass constructor.
         # Draws cursor and remembers background for blitting.
-        # Saves ax as class attribute.
+        # Saves ax_s3p as class attribute.
         super().__init__(**cursorargs)
 
         # Default value for position of text.
@@ -312,17 +312,17 @@ class Window(tk.Tk, Toplevel):
         self.resizable(True, True)
         self.tabControl = ttk.Notebook(self)  # Create Tab Control
 
-        # self.fig = plt.figure(num=1, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # self.fig_s3p = plt.figure(num=1, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
         self.fig = plt.figure(num=1, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
         self.ax = self.fig.add_subplot(1, 1, 1)
         self.ax.grid()
 
-        # self.fig2 = plt.figure(num=2, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # self.fig_s2p = plt.figure(num=2, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
         self.fig2 = plt.figure(num=2, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
         self.ax2 = self.fig2.add_subplot(1, 1, 1)
         self.ax2.grid()
 
-        # self.fig3 = plt.figure(num=3, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
+        # self.fig_pull_in = plt.figure(num=3, visible=True, dpi=100, tight_layout=True, figsize=(14, 4.2), frameon=True)
         self.fig3 = plt.figure(num=3, dpi=100, tight_layout=True, figsize=(13, 3.5), frameon=True)
         self.ax3 = self.fig3.add_subplot(1, 1, 1)
         self.ax3.grid()
@@ -994,7 +994,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.set_fstart(fstart)
         self.error_log(Rstest.zva)
 
-    def set_fstop(self):  # Configure ZVA fstop (used in TAB5)
+    def set_fstop(self):  # Configure ZVA f_stop (used in TAB5)
         fstop = self.fstop.get()
         Rstest.set_fstop(fstop)
         self.error_log(Rstest.zva)
@@ -1004,7 +1004,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.number_of_points(nb_points)
         self.error_log(Rstest.zva)
 
-    def set_zva(self):  # Configure ZVA f_start/fstop/nbpoints (used in TAB5)
+    def set_zva(self):  # Configure ZVA f_start/f_stop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
@@ -1336,19 +1336,19 @@ class Window(tk.Tk, Toplevel):
                          'Isolation_at_pullout_minus': tenpercent_iso_ascent}
             return (pull_dict)
 
-    def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax)
+    def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax_s3p)
         list_graph_ax = self.ax.lines[-1]
         list_graph_ax.remove()
         self.ax.legend(fancybox=True)
         self.canvas.draw()
 
-    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2)
+    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2_s2p)
         list_graph_ax2 = self.ax2.lines[-1]
         list_graph_ax2.remove()
         self.ax2.legend(fancybox=True)
         self.canvas2.draw()
 
-    def delete_axs_vpullin(self):  # Delete last drawn line in pull in graph display tab (in ax3)
+    def delete_axs_vpullin(self):  # Delete last drawn line in pull in graph display tab (in ax_pull_in)
         try:
             list_graph_ax3 = self.ax3.lines[-1]
             list_graph_ax3.remove()

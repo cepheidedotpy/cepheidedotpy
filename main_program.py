@@ -23,6 +23,7 @@ import numpy as np
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
+from matplotlib.figure import Figure
 
 import dir_and_var_declaration
 import skrf as rf
@@ -184,6 +185,11 @@ class Window(tk.Tk, Toplevel):
     This class inherits from tk.Tk to provide a main application window.
     It initializes the GUI components and binds the necessary event handlers.
     """
+    fig_snp_meas: Figure
+    fig_s2p: Figure
+    fig_s3p: Figure
+
+    fig_pull_in: Figure
 
     def __init__(self, master=None):
         tk.Tk.__init__(self, master)
@@ -196,43 +202,43 @@ class Window(tk.Tk, Toplevel):
         self.tabControl = ttk.Notebook(self)  # Create Tab Control
 
         # figure that contains S3P parameters for data display
-        self.fig = plt.figure(num=1, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
-        self.ax = self.fig.add_subplot(1, 1, 1)
-        self.ax.grid()
+        self.fig_s3p = plt.figure(num=1, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
+        self.ax_s3p = self.fig_s3p.add_subplot(1, 1, 1)
+        self.ax_s3p.grid()
 
         # figure that contains S2P parameters for data display
-        self.fig2 = plt.figure(num=2, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
-        self.ax2 = self.fig2.add_subplot(1, 1, 1)
-        self.ax2.grid()
+        self.fig_s2p = plt.figure(num=2, dpi=100, tight_layout=True, figsize=(13, 4.1), frameon=True)
+        self.ax2_s2p = self.fig_s2p.add_subplot(1, 1, 1)
+        self.ax2_s2p.grid()
 
         # figure that contains pull-in plots for data display
-        self.fig3 = plt.figure(num=3, dpi=100, tight_layout=True, figsize=(13, 3.5), frameon=True)
-        self.ax3 = self.fig3.add_subplot(1, 1, 1)
-        self.ax3.grid()
+        self.fig_pull_in = plt.figure(num=3, dpi=100, tight_layout=True, figsize=(13, 3.5), frameon=True)
+        self.ax_pull_in = self.fig_pull_in.add_subplot(1, 1, 1)
+        self.ax_pull_in.grid()
 
         # figure that contains pull-in plots for measurement display
-        self.fig4 = plt.figure(num=4, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
-        self.ax4 = self.fig4.add_subplot(1, 1, 1)
-        self.ax4.grid()
+        self.fig_pull_in_meas = plt.figure(num=4, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
+        self.ax_pull_in_meas = self.fig_pull_in_meas.add_subplot(1, 1, 1)
+        self.ax_pull_in_meas.grid()
 
         # figure that contains S parameters for measurement display
-        self.fig5 = plt.figure(num=5, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
-        self.ax5 = self.fig5.add_subplot(1, 1, 1)
-        self.ax5.grid()
+        self.fig_snp_meas = plt.figure(num=5, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
+        self.ax_snp_meas = self.fig_snp_meas.add_subplot(1, 1, 1)
+        self.ax_snp_meas.grid()
 
-        # figure that contains Cycling parameters during cycling tes
-        self.fig6 = plt.figure(num=6, dpi=100, tight_layout=True, figsize=(9, 6), frameon=True)
-        self.ax6 = self.fig6.add_subplot(3, 2, 1)
-        self.ax7 = self.fig6.add_subplot(3, 2, 2)
-        self.ax8 = self.fig6.add_subplot(3, 2, 3)
-        self.ax9 = self.fig6.add_subplot(3, 2, 4)
-        self.ax10 = self.fig6.add_subplot(3, 2, 5)
-        self.ax11 = self.fig6.add_subplot(3, 2, 6)
-        for ax in self.fig6.axes:
+        # figure that contains Cycling parameters during cycling test
+        self.fig_cycling = plt.figure(num=6, dpi=100, tight_layout=True, figsize=(10, 6), frameon=True)
+        self.ax_cycling_pull_in = self.fig_cycling.add_subplot(3, 2, 1)
+        self.ax_cycling_pull_out = self.fig_cycling.add_subplot(3, 2, 2)
+        self.ax_cycling_isolation = self.fig_cycling.add_subplot(3, 2, 3)
+        self.ax_cycling_insertion_loss = self.fig_cycling.add_subplot(3, 2, 4)
+        self.ax_cycling_t_down = self.fig_cycling.add_subplot(3, 2, 5)
+        self.ax_cycling_t_up = self.fig_cycling.add_subplot(3, 2, 6)
+        for ax in self.fig_cycling.axes:
             ax.grid()
 
-        self.sparmeter_s3p = tk.StringVar(value='S11')
-        self.sparmeter_s2p = tk.StringVar(value='S11')
+        self.s_parameter_s3p = tk.StringVar(value='S11')
+        self.s_parameter_s2p = tk.StringVar(value='S11')
 
         self.scale_amplitude_value = tk.DoubleVar(value=-20)
         self.scale_voltage_value = tk.DoubleVar(value=40)
@@ -240,23 +246,23 @@ class Window(tk.Tk, Toplevel):
         self.scale_frequency_upper_value = tk.DoubleVar(value=2 * 10e9)
         self.scale_frequency_lower_value = tk.DoubleVar(value=0.1 * 10e9)
 
-        self.ax.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
-        self.ax.set_xlim(xmin=0, xmax=self.scale_frequency_upper_value.get())
+        self.ax_s3p.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
+        self.ax_s3p.set_xlim(xmin=0, xmax=self.scale_frequency_upper_value.get())
 
-        tab1 = add_Tab(tab_name=' S3P Files ', notebook=self.tabControl, col=0, row=1)  # s3p Tab display
-        tab2 = add_Tab(tab_name=' S2P Files ', notebook=self.tabControl, col=0, row=1)  # s2p Tab display
-        tab3 = add_Tab(tab_name=' Pull-in Files ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab display
-        tab4 = add_Tab(tab_name=' Pull-in Test ', notebook=self.tabControl, col=0, row=1)  # Pull-in Test Tab
-        tab5 = add_Tab(tab_name=' SNP Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
-        tab6 = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
-        tab7 = add_Tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
-        tab8 = add_Tab(tab_name=' Ressource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+        tab_s3p = add_Tab(tab_name=' S3P Files ', notebook=self.tabControl, col=0, row=1)  # s3p Tab display
+        tab_s2p = add_Tab(tab_name=' S2P Files ', notebook=self.tabControl, col=0, row=1)  # s2p Tab display
+        tab_pull_in = add_Tab(tab_name=' Pull-in Files ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab display
+        tab_pull_in_meas = add_Tab(tab_name=' Pull-in Test ', notebook=self.tabControl, col=0, row=1)  # Pull-in Test Tab
+        tab_snp_meas = add_Tab(tab_name=' SNP Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+        tab_power_meas = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
+        tab_cycling = add_Tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
+        tab_resources = add_Tab(tab_name=' Ressource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
 
         # ==============================================================================
         # TAB1 S3P parameter display
         # ==============================================================================
         # This TAB is for S3P parameter display
-        frame1 = add_Label_frame(tab1, 's3p Directory', 0, 0)  # s3p Frame
+        frame1 = add_Label_frame(tab_s3p, 's3p Directory', 0, 0)  # s3p Frame
         # s3p_dir_name is the directory variable used in the entry entereded_var_s3p
         self.s3p_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')  # Entry variable for s3p dir
@@ -267,7 +273,7 @@ class Window(tk.Tk, Toplevel):
                                                                 ipady=tab_padx)  # File frame label
         add_Label(frame1, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_padx,
                                                                        ipady=tab_padx)  # File frame label
-        self.frame3 = add_Label_frame(tab1, frame_name='s3p Display', col=0, row=1)
+        self.frame3 = add_Label_frame(tab_s3p, frame_name='s3p Display', col=0, row=1)
         #  Adding entry for file directory
         self.entered_var_s3p = add_entry(frame1, textvar=self.s3p_dir_name, width=70, col=2, row=1)
 
@@ -275,8 +281,8 @@ class Window(tk.Tk, Toplevel):
 
         self.s3p_file_name_combobox = add_combobox(frame1, text=file_s3p, col=2, row=2, width=100)
 
-        self.sparmeter_chosen_s3p = add_combobox(frame1, text=self.sparmeter_s3p, col=2, row=3, width=100)
-        self.sparmeter_chosen_s3p['values'] = ('S11', 'S12', 'S13', 'S21', 'S22', 'S23', 'S31', 'S32', 'S33')
+        self.s_parameter_chosen_s3p = add_combobox(frame1, text=self.s_parameter_s3p, col=2, row=3, width=100)
+        self.s_parameter_chosen_s3p['values'] = ('S11', 'S12', 'S13', 'S21', 'S22', 'S23', 'S31', 'S32', 'S33')
 
         self.button1 = add_Button(tab=frame1, button_name=' Update Files ',
                                   command=lambda: [self.update_entries_s3p_v2(),
@@ -305,21 +311,21 @@ class Window(tk.Tk, Toplevel):
         # TAB2 S2P parameter display
         # ==============================================================================
         # This TAB is for S2P parameter display
-        frame2 = add_Label_frame(tab2, 's2p Directory', 0, 0)  # s2p Frame
+        frame2 = add_Label_frame(tab_s2p, 's2p Directory', 0, 0)  # s2p Frame
 
         self.s2p_dir_name = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S2P')
         add_Label(frame2, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame2, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame2, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
 
-        self.frame4 = add_Label_frame(tab2, frame_name='s2p Display', col=0, row=1)
+        self.frame4 = add_Label_frame(tab_s2p, frame_name='s2p Display', col=0, row=1)
 
         self.entered_var_s2p = add_entry(frame2, textvar=self.s2p_dir_name, width=70, col=2, row=1)
 
         file_s2p = filetypes_dir(self.entered_var_s2p.get())[1]
         self.s2p_file_name_combobox = add_combobox(frame2, text=file_s2p, col=2, row=2, width=100)
-        self.sparmeter_chosen_s2p = add_combobox(frame2, text=self.sparmeter_s2p, col=2, row=3, width=100)
-        self.sparmeter_chosen_s2p['values'] = ('S11', 'S12', 'S21', 'S22')
+        self.s_parameter_chosen_s2p = add_combobox(frame2, text=self.s_parameter_s2p, col=2, row=3, width=100)
+        self.s_parameter_chosen_s2p['values'] = ('S11', 'S12', 'S21', 'S22')
 
         self.button2 = add_Button(tab=frame2, button_name=' Update Files ',
                                   command=lambda: [self.update_entries_s2p_v2(),
@@ -346,13 +352,13 @@ class Window(tk.Tk, Toplevel):
         # TAB3 Pull voltage vs isolation display
         # ==============================================================================
         # This TAB is for Pull voltage vs isolation display
-        frame5 = add_Label_frame(tab3, frame_name='Vpull-in Directory', col=0, row=0)  # s2p Frame
+        frame5 = add_Label_frame(tab_pull_in, frame_name='Vpull-in Directory', col=0, row=0)  # s2p Frame
         self.pullin_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Pullin voltage')
         add_Label(frame5, 'Directory', col=1, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame5, 'File', col=1, row=2).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
 
-        self.frame6 = add_Label_frame(tab3, frame_name='Pull-in Display', col=0, row=1)
+        self.frame6 = add_Label_frame(tab_pull_in, frame_name='Pull-in Display', col=0, row=1)
 
         self.entered_var_txt = add_entry(frame5, textvar=self.pullin_dir_name, width=70, col=2, row=1)
 
@@ -368,7 +374,7 @@ class Window(tk.Tk, Toplevel):
         add_Button(frame5, 'Delete Graphs', command=self.delete_axs_vpullin, col=3, row=2)
         add_Button(frame5, 'Calculate Pull-in and Pull-out voltages', command=self.calculate_pullin_out_voltage,
                    col=2, row=3).configure(width=40)
-        self.textscroll = add_scrolled_text(tab=self.frame6, scrol_w=100, scrol_h=3)
+        self.text_scroll = add_scrolled_text(tab=self.frame6, scrol_w=100, scrol_h=3)
 
         self.canvas3 = self.create_canvas_txt(frame=self.frame6)
 
@@ -383,7 +389,7 @@ class Window(tk.Tk, Toplevel):
         # TAB4 Pull down voltage vs isolation measurement
         # ==============================================================================
         # This TAB is for Pull down voltage vs isolation measurement
-        frame14 = add_Label_frame(tab4, frame_name='Component information', col=0, row=0)
+        frame14 = add_Label_frame(tab_pull_in_meas, frame_name='Component information', col=0, row=0)
 
         add_Label(frame14, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame14, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
@@ -393,36 +399,36 @@ class Window(tk.Tk, Toplevel):
         add_Label(frame14, label_name='Bias Voltage', col=0, row=5).grid(sticky='e', ipadx=tab_padx,
                                                                          ipady=tab_padx)
 
-        self.testpullin_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Pullin '
+        self.test_pull_in_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Pullin '
                                                  r'voltage')
-        self.testpullin_project = tk.StringVar(value=r'Project_Name')
-        self.testpullin_cell = tk.StringVar(value=r'Cell_Name')
-        self.testpullin_reticule = tk.StringVar(value=r'Reticule')
-        self.testpullin_device = tk.StringVar(value=r'Device_name')
-        self.testpullin_filecreated = tk.StringVar(value=r'EMPTY')
+        self.test_pull_in_project = tk.StringVar(value=r'Project_Name')
+        self.test_pull_in_cell = tk.StringVar(value=r'Cell_Name')
+        self.test_pull_in_reticule = tk.StringVar(value=r'Reticule')
+        self.test_pull_in_device = tk.StringVar(value=r'Device_name')
+        self.test_pull_in_file_created = tk.StringVar(value=r'EMPTY')
         self.bias_voltage = tk.StringVar(value=r'Bias_Voltage')
-        add_Button(tab=frame14, button_name='Create-file', command=self.create_testpullin_file, col=2, row=0)
+        add_Button(tab=frame14, button_name='Create-file', command=self.create_test_pull_in_file, col=2, row=0)
 
-        add_entry(tab=frame14, textvar=self.testpullin_dir, width=20, col=1, row=0)
-        add_entry(tab=frame14, textvar=self.testpullin_project, width=20, col=1, row=1)
-        add_entry(tab=frame14, textvar=self.testpullin_cell, width=20, col=1, row=2)
-        add_entry(tab=frame14, textvar=self.testpullin_reticule, width=20, col=1, row=3)
-        add_entry(tab=frame14, textvar=self.testpullin_device, width=20, col=1, row=4)
+        add_entry(tab=frame14, textvar=self.test_pull_in_dir, width=20, col=1, row=0)
+        add_entry(tab=frame14, textvar=self.test_pull_in_project, width=20, col=1, row=1)
+        add_entry(tab=frame14, textvar=self.test_pull_in_cell, width=20, col=1, row=2)
+        add_entry(tab=frame14, textvar=self.test_pull_in_reticule, width=20, col=1, row=3)
+        add_entry(tab=frame14, textvar=self.test_pull_in_device, width=20, col=1, row=4)
         add_entry(tab=frame14, textvar=self.bias_voltage, width=20, col=1, row=5)
 
         # Signal Generator-------------------------------------------------------------
-        frame15 = add_Label_frame(tab=tab4, frame_name='Signal Generator', col=0, row=1)
+        frame15 = add_Label_frame(tab=tab_pull_in_meas, frame_name='Signal Generator', col=0, row=1)
 
-        self.pullin_v_bias = tk.DoubleVar(value=10)  # Peak bias voltage for ramp funtion
+        self.pull_in_v_bias = tk.DoubleVar(value=10)  # Peak bias voltage for ramp funtion
         self.ramp_width = tk.DoubleVar(value=100)  # Ramp length for ramp funtion
 
-        self.chosen_bias_voltage_pullin = add_entry(tab=frame14, textvar=self.pullin_v_bias, width=20, col=1,
+        self.chosen_bias_voltage_pullin = add_entry(tab=frame14, textvar=self.pull_in_v_bias, width=20, col=1,
                                                     row=5)
 
         add_Label(frame15, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_padx,
                                                                          ipady=tab_padx)
         add_Label(frame15, label_name='Ramp length', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
-        self.entered_ramp_volt = add_entry(frame15, textvar=self.pullin_v_bias, width=10, col=1, row=0)
+        self.entered_ramp_volt = add_entry(frame15, textvar=self.pull_in_v_bias, width=10, col=1, row=0)
         self.entered_ramp_width = add_entry(frame15, textvar=self.ramp_width, width=10, col=1, row=1)
         add_Label(frame15, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame15, label_name='(µs)', col=2, row=1).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
@@ -435,7 +441,7 @@ class Window(tk.Tk, Toplevel):
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
 
         # General controls---------------------------------------------------------------
-        frame16 = add_Label_frame(tab=tab4, frame_name='General controls', col=2, row=0)
+        frame16 = add_Label_frame(tab=tab_pull_in_meas, frame_name='General controls', col=2, row=0)
 
         self.text3 = tk.Text(frame16, width=40, height=1, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
                              font=('Bahnschrift Light', 10))  # Filename
@@ -453,10 +459,10 @@ class Window(tk.Tk, Toplevel):
             ipadx=tab_padx, ipady=tab_padx)
         # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pulldown, col=1, row=5).grid(
         # ipadx=tab_padx,ipady=tab_padx) ------------------------------------------------------------------------------
-        frame13 = add_Label_frame(tab=tab4, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
+        frame13 = add_Label_frame(tab=tab_pull_in_meas, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
         self.canvas4 = self.create_canvas_pullin(frame=frame13)
 
-        frame15 = add_Label_frame(tab=tab4, frame_name='Measurement', col=2, row=1, rowspan=2)
+        frame15 = add_Label_frame(tab=tab_pull_in_meas, frame_name='Measurement', col=2, row=1, rowspan=2)
 
         add_Label(frame15, label_name='Positive-Pull-in', col=0, row=0).grid(sticky='e', ipadx=tab_padx,
                                                                              ipady=tab_padx)
@@ -508,7 +514,7 @@ class Window(tk.Tk, Toplevel):
         # ==============================================================================
         # TAB5 S-parameters test
         # ==============================================================================
-        frame8 = add_Label_frame(tab5, frame_name='Component information', col=0, row=0)  # s3p frame
+        frame8 = add_Label_frame(tab_snp_meas, frame_name='Component information', col=0, row=0)  # s3p frame
 
         add_Label(frame8, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame8, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
@@ -518,12 +524,12 @@ class Window(tk.Tk, Toplevel):
         add_Label(frame8, label_name='Status', col=0, row=5).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame8, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
 
-        self.tests3p_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')
-        self.tests3p_project = tk.StringVar(value=r'Project_Name')
-        self.tests3p_cell = tk.StringVar(value=r'Cell_Name')
-        self.tests3p_reticule = tk.StringVar(value=r'Reticule')
-        self.tests3p_device = tk.StringVar(value=r'Device_name')
-        self.tests3p_filecreated = tk.StringVar(value=r'EMPTY')
+        self.test_s3p_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')
+        self.test_s3p_project = tk.StringVar(value=r'Project_Name')
+        self.test_s3p_cell = tk.StringVar(value=r'Cell_Name')
+        self.test_s3p_reticule = tk.StringVar(value=r'Reticule')
+        self.test_s3p_device = tk.StringVar(value=r'Device_name')
+        self.test_s3p_file_created = tk.StringVar(value=r'EMPTY')
         self.component_state = add_combobox(frame8, text='Active', col=1, row=5, width=20)
         self.bias_voltage = tk.StringVar(value=r'Bias_Voltage')
 
@@ -531,16 +537,16 @@ class Window(tk.Tk, Toplevel):
         self.chosen_component_state['values'] = ('Active', 'Frozen')
         self.chosen_component_state.current(0)
 
-        add_entry(tab=frame8, textvar=self.tests3p_dir, width=20, col=1, row=0)
-        add_entry(tab=frame8, textvar=self.tests3p_project, width=20, col=1, row=1)
-        add_entry(tab=frame8, textvar=self.tests3p_cell, width=20, col=1, row=2)
-        add_entry(tab=frame8, textvar=self.tests3p_reticule, width=20, col=1, row=3)
-        add_entry(tab=frame8, textvar=self.tests3p_device, width=20, col=1, row=4)
+        add_entry(tab=frame8, textvar=self.test_s3p_dir, width=20, col=1, row=0)
+        add_entry(tab=frame8, textvar=self.test_s3p_project, width=20, col=1, row=1)
+        add_entry(tab=frame8, textvar=self.test_s3p_cell, width=20, col=1, row=2)
+        add_entry(tab=frame8, textvar=self.test_s3p_reticule, width=20, col=1, row=3)
+        add_entry(tab=frame8, textvar=self.test_s3p_device, width=20, col=1, row=4)
 
         add_Button(tab=frame8, button_name='Create-file', command=self.create_tests3p_file, col=2, row=0)
 
         #  ------------------------------------------------------------------------------
-        frame9 = add_Label_frame(tab=tab5, frame_name='Signal Generator', col=0, row=1)
+        frame9 = add_Label_frame(tab=tab_snp_meas, frame_name='Signal Generator', col=0, row=1)
 
         self.pull_in_v = tk.DoubleVar(value=10)
         self.pulse_width = tk.DoubleVar(value=5)
@@ -549,7 +555,7 @@ class Window(tk.Tk, Toplevel):
 
         add_Label(frame9, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame9, label_name='Pulse Width', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
-        self.entered_pullin_volt = add_entry(frame9, textvar=self.pull_in_v, width=10, col=1, row=0)
+        self.entered_pull_in_volt = add_entry(frame9, textvar=self.pull_in_v, width=10, col=1, row=0)
         self.entered_pulse_width = add_entry(frame9, textvar=self.pulse_width, width=10, col=1, row=1)
         add_Label(frame9, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame9, label_name='(s)', col=2, row=1).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
@@ -569,22 +575,22 @@ class Window(tk.Tk, Toplevel):
         add_Button(tab=frame9, button_name='Set Pulse Gen', command=self.set_pulse_gen, col=3, row=3).grid(
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
         # ------------------------------------------------------------------------------
-        frame19 = add_Label_frame(tab=tab5, frame_name='SNP measurement', col=1, row=0, rowspan=2)
+        frame19 = add_Label_frame(tab=tab_snp_meas, frame_name='SNP measurement', col=1, row=0, rowspan=2)
         self.canvas5 = self.create_canvas_snp(frame=frame19)
 
         # ------------------------------------------------------------------------------
 
-        frame10 = add_Label_frame(tab=tab5, frame_name='ZVA', col=3, row=1)
+        frame10 = add_Label_frame(tab=tab_snp_meas, frame_name='ZVA', col=3, row=1)
 
-        self.fstart = tk.DoubleVar(value=1)
-        self.fstop = tk.DoubleVar(value=10)
+        self.f_start = tk.DoubleVar(value=1)
+        self.f_stop = tk.DoubleVar(value=10)
         self.nb_points = tk.DoubleVar(value=100)
 
         add_Label(frame10, label_name='Fstart', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame10, label_name='Fstop', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame10, label_name='Nb Points', col=0, row=2).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
-        self.entered_fstart = add_entry(frame10, textvar=self.fstart, width=10, col=1, row=0)
-        self.entered_fstop = add_entry(frame10, textvar=self.fstop, width=10, col=1, row=1)
+        self.entered_f_start = add_entry(frame10, textvar=self.f_start, width=10, col=1, row=0)
+        self.entered_fstop = add_entry(frame10, textvar=self.f_stop, width=10, col=1, row=1)
         self.entered_nb_points = add_entry(frame10, textvar=self.nb_points, width=10, col=1, row=2)
         add_Label(frame10, label_name='(GHz)', col=2, row=0).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame10, label_name='(GHz)', col=2, row=1).grid(sticky='w', ipadx=tab_padx, ipady=tab_padx)
@@ -609,7 +615,7 @@ class Window(tk.Tk, Toplevel):
             sticky='e', ipadx=tab_padx, ipady=tab_padx)
 
         # ------------------------------------------------------------------------------
-        frame12 = add_Label_frame(tab=tab5, frame_name='General controls', col=3, row=0)
+        frame12 = add_Label_frame(tab=tab_snp_meas, frame_name='General controls', col=3, row=0)
 
         self.text = tk.Text(frame12, width=40, height=1, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
                             font=('Bahnschrift Light', 10))
@@ -636,7 +642,7 @@ class Window(tk.Tk, Toplevel):
         # ==============================================================================
         # TAB6 Power measurement TAB
         # ==============================================================================
-        frame17 = add_Label_frame(tab6, frame_name='Component information', col=0, row=0)  # power sweep frame
+        frame17 = add_Label_frame(tab_power_meas, frame_name='Component information', col=0, row=0)  # power sweep frame
 
         add_Label(frame17, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame17, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
@@ -652,7 +658,7 @@ class Window(tk.Tk, Toplevel):
         self.test_pow_cell = tk.StringVar(value=r'Cell_Name')
         self.test_pow_reticule = tk.StringVar(value=r'Reticule')
         self.test_pow_device = tk.StringVar(value=r'Device_name')
-        self.test_pow_filecreated = tk.StringVar(value=r'EMPTY')
+        self.test_pow_file_created = tk.StringVar(value=r'EMPTY')
         self.component_state_pow = add_combobox(frame17, text='Active', col=1, row=5, width=20)
         self.bias_voltage_pow = tk.StringVar(value=r'Bias_Voltage')
 
@@ -670,7 +676,7 @@ class Window(tk.Tk, Toplevel):
         add_Button(tab=frame17, button_name='Create-file', command=self.create_test_pow_file, col=2, row=0)
         add_Button(tab=frame17, button_name='Send trigger', command=scripts_and_functions.send_trig, col=2, row=1)
         # General controls---------------------------------------------------------------
-        frame18 = add_Label_frame(tab=tab6, frame_name='General controls', col=2, row=0)
+        frame18 = add_Label_frame(tab=tab_power_meas, frame_name='General controls', col=2, row=0)
 
         self.text13 = tk.Text(frame18, width=40, height=1, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
                               font=('Bahnschrift Light', 10))  # Filename
@@ -686,9 +692,9 @@ class Window(tk.Tk, Toplevel):
         add_Button(tab=frame18, button_name='Launch Test', command=None, col=1, row=5).grid(ipadx=tab_padx,
                                                                                             ipady=tab_padx)
         # ==============================================================================
-        # TAB8 Ressource SCPI configuration
+        # TAB8 Resource SCPI configuration
         # ==============================================================================
-        frame7 = add_Label_frame(tab8, frame_name='Ressouce Configuration', col=0, row=0)  # Ressource frame
+        frame7 = add_Label_frame(tab_resources, frame_name='Ressouce Configuration', col=0, row=0)  # Ressource frame
 
         self.zva_inst = tk.StringVar(value=r'TCPIP0::ZNA67-101810::inst0::INSTR')
         self.sig_gen_inst = tk.StringVar(value=r'TCPIP0::A-33521B-00526::inst0::INSTR')
@@ -713,7 +719,7 @@ class Window(tk.Tk, Toplevel):
         # ==============================================================================
         # TAB9
         # ==============================================================================
-        frame11 = add_Label_frame(tab=tab7, frame_name='Component information', col=0, row=0)  # Ressource frame
+        frame11 = add_Label_frame(tab=tab_cycling, frame_name='Component information', col=0, row=0)  # Ressource frame
 
         add_Label(frame11, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
         add_Label(frame11, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_padx, ipady=tab_padx)
@@ -740,7 +746,7 @@ class Window(tk.Tk, Toplevel):
         self.entered_cycling_var_bias = add_entry(frame11, textvar=self.test_cycling_var_nb_cycles, width=20, col=1,
                                                   row=5)
 
-        frame20 = add_Label_frame(tab=tab7, frame_name='Signal Generator', col=0, row=1)
+        frame20 = add_Label_frame(tab=tab_cycling, frame_name='Signal Generator', col=0, row=1)
 
         add_Label(frame20, label_name='Bias voltage', col=0, row=0).grid(sticky='e', ipadx=tab_padx,
                                                                          ipady=tab_padx)
@@ -764,15 +770,15 @@ class Window(tk.Tk, Toplevel):
                    command=lambda: self.set_symmetrical_voltage_bias(voltage=self.test_cycling_var_bias.get()), col=3,
                    row=0).grid(ipadx=tab_padx, ipady=tab_padx)
 
-        frame21 = add_Label_frame(tab=tab7, frame_name='Oscilloscpe', col=0, row=2)
+        frame21 = add_Label_frame(tab=tab_cycling, frame_name='Oscilloscpe', col=0, row=2)
 
         add_Button(tab=frame21, button_name='Cycling config',
                    command=scripts_and_functions.osc_cycling_config, col=0,
                    row=0).grid(ipadx=tab_padx, ipady=tab_padx)
 
-        frame22 = add_Label_frame(tab=tab7, frame_name='Cycling monitor', col=1, row=0, rowspan=3)
+        frame22 = add_Label_frame(tab=tab_cycling, frame_name='Cycling monitor', col=1, row=0, rowspan=3)
 
-        self.create_canvas(frame=frame22, figure=self.fig6, padding=2)
+        self.create_canvas(frame=frame22, figure=self.fig_cycling, padding=2)
         self.wm_resizable(width=True, height=True)
         # self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
@@ -823,19 +829,19 @@ class Window(tk.Tk, Toplevel):
         return self.txt_file_name_combobox
 
     def create_canvas_s3p(self, frame):  # Creates s3p display Canvas in the frame and at col and row location
-        canvas = FigureCanvasTkAgg(self.fig, master=frame)
+        canvas = FigureCanvasTkAgg(self.fig_s3p, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
 
     def create_canvas_s2p(self, frame):  # Creates s2p display Canvas in the frame and at col and row location
-        canvas = FigureCanvasTkAgg(self.fig2, master=frame)
+        canvas = FigureCanvasTkAgg(self.fig_s2p, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
 
     def create_canvas_snp(self, frame):  # Creates a canvas for sparameter display during tests
-        canvas = FigureCanvasTkAgg(self.fig5, master=frame)
+        canvas = FigureCanvasTkAgg(self.fig_snp_meas, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
@@ -843,7 +849,7 @@ class Window(tk.Tk, Toplevel):
     def create_canvas_txt(self,
                           frame):  # Creates pull in and pull out display Canvas in the frame and at col and row
         # location
-        canvas = FigureCanvasTkAgg(self.fig3, master=frame)
+        canvas = FigureCanvasTkAgg(self.fig_pull_in, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
@@ -851,7 +857,7 @@ class Window(tk.Tk, Toplevel):
     def create_canvas_pullin(self,
                              frame):  # Creates pull in and pull out display (in measurement frame) Canvas in the
         # frame and at col and row location
-        canvas = FigureCanvasTkAgg(self.fig4, master=frame)
+        canvas = FigureCanvasTkAgg(self.fig_pull_in_meas, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
         # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
         return canvas
@@ -868,10 +874,10 @@ class Window(tk.Tk, Toplevel):
             self):  # Gets the different entered strings at the set entries to construct a filename for the .s3p 
         # measurement
         self.text.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
-        filename = '{}-{}-{}-{}-{}-{}V'.format(self.tests3p_project.get(),
-                                               self.tests3p_cell.get(),
-                                               self.tests3p_reticule.get(),
-                                               self.tests3p_device.get(),
+        filename = '{}-{}-{}-{}-{}-{}V'.format(self.test_s3p_project.get(),
+                                               self.test_s3p_cell.get(),
+                                               self.test_s3p_reticule.get(),
+                                               self.test_s3p_device.get(),
                                                self.chosen_component_state.get(),
                                                self.chosen_bias_voltage.get())
         print(filename)
@@ -892,14 +898,14 @@ class Window(tk.Tk, Toplevel):
         self.text13.insert(index="%d.%d" % (1, 0), chars=filename)
         return filename
 
-    def create_testpullin_file(
+    def create_test_pull_in_file(
             self):  # Gets the different entered strings at the set entries to construct a filename for the pull in
         # measurement
         self.text3.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
-        filename = '{}-{}-{}-{}-{}V'.format(self.testpullin_project.get(),
-                                            self.testpullin_cell.get(),
-                                            self.testpullin_reticule.get(),
-                                            self.testpullin_device.get(),
+        filename = '{}-{}-{}-{}-{}V'.format(self.test_pull_in_project.get(),
+                                            self.test_pull_in_cell.get(),
+                                            self.test_pull_in_reticule.get(),
+                                            self.test_pull_in_device.get(),
                                             self.entered_ramp_volt.get())
         print(filename)
         self.text3.insert(index="%d.%d" % (1, 0), chars=filename)
@@ -911,12 +917,12 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.setup_zva_with_rst(ip)
 
     def set_fstart(self):  # Configure ZVA f_start (used in TAB5)
-        fstart = self.fstart.get()
+        fstart = self.f_start.get()
         scripts_and_functions.set_f_start(fstart)
         self.error_log(scripts_and_functions.zva)
 
-    def set_fstop(self):  # Configure ZVA fstop (used in TAB5)
-        fstop = self.fstop.get()
+    def set_fstop(self):  # Configure ZVA f_stop (used in TAB5)
+        fstop = self.f_stop.get()
         scripts_and_functions.set_fstop(fstop)
         self.error_log(scripts_and_functions.zva)
 
@@ -925,7 +931,7 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.number_of_points(nb_points)
         self.error_log(scripts_and_functions.zva)
 
-    def set_zva(self):  # Configure ZVA f_start/fstop/nbpoints (used in TAB5)
+    def set_zva(self):  # Configure ZVA f_start/f_stop/nbpoints (used in TAB5)
         self.set_fstart()
         self.set_fstop()
         self.set_nb_points()
@@ -938,7 +944,7 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         pc_file_dir=self.test_s3p_dir.get(),
                                                          file_format='s3p')
         self.plot_snp_test(filetype='.s3p')
         scripts_and_functions.print_error_log()
@@ -949,7 +955,7 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         pc_file_dir=self.test_s3p_dir.get(),
                                                          file_format='s2p')
         self.plot_snp_test(filetype='.s2p')
         scripts_and_functions.print_error_log()
@@ -960,7 +966,7 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(filename=self.text.get(index1="1.0", index2="end-1c"),
                                                          zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                                                         pc_file_dir=self.tests3p_dir.get(),
+                                                         pc_file_dir=self.test_s3p_dir.get(),
                                                          file_format='s1p')
         self.plot_snp_test(filetype='.s1p')
         scripts_and_functions.print_error_log()
@@ -974,7 +980,7 @@ class Window(tk.Tk, Toplevel):
     def acquire_pulldown_data(
             self):  # Calls scripts_and_functions module measure_pull_down_voltage() to acquire pull down voltage (used in TAB5)
         # try:
-        os.chdir(self.testpullin_dir.get())
+        os.chdir(self.test_pull_in_dir.get())
         scripts_and_functions.measure_pull_down_voltage(filename=self.text3.get(index1="1.0", index2="end-1c"))
         # scripts_and_functions.print_error_log()
         self.set_txt()
@@ -1020,7 +1026,7 @@ class Window(tk.Tk, Toplevel):
             self):  # Calls scripts_and_functions modules's bias_voltage() function using the voltage provided by
         # entry pull_in_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
-        bias = self.pullin_v_bias.get()
+        bias = self.pull_in_v_bias.get()
         scripts_and_functions.bias_pullin(bias)
         self.error_log(scripts_and_functions.sig_gen)
 
@@ -1052,12 +1058,12 @@ class Window(tk.Tk, Toplevel):
         v_bias = curve_bias[:, 0]
         measurement_values = self.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
         plt.figure(num=4)
-        number_of_graphs = len(self.ax4.get_lines()[0:])
-        self.ax4.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
-        self.ax4.set(xlabel='V_bias (V)')
-        self.ax4.set(ylabel='Isolation (dB)')
-        self.ax4.grid(visible=True)
-        self.ax4.legend(fancybox=True, shadow=True)
+        number_of_graphs = len(self.ax_pull_in_meas.get_lines()[0:])
+        self.ax_pull_in_meas.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
+        self.ax_pull_in_meas.set(xlabel='V_bias (V)')
+        self.ax_pull_in_meas.set(ylabel='Isolation (dB)')
+        self.ax_pull_in_meas.grid(visible=True)
+        self.ax_pull_in_meas.legend(fancybox=True, shadow=True)
         self.canvas4.draw()
         self.text5.delete("1.0", "end")
         self.text6.delete("1.0", "end")
@@ -1088,14 +1094,14 @@ class Window(tk.Tk, Toplevel):
         spar_dict_s3p = {'S11': [0, 0], 'S12': [0, 1], 'S13': [0, 2],
                          'S21': [1, 0], 'S22': [1, 1], 'S23': [1, 2],
                          'S31': [2, 0], 'S32': [0, 0], 'S33': [2, 2]}
-        [m, n] = spar_dict_s3p[self.sparmeter_chosen_s3p.get()]
+        [m, n] = spar_dict_s3p[self.s_parameter_chosen_s3p.get()]
         plt.figure(num=1)
         s_par_network.plot_s_db(m, n)
-        self.ax.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
-        self.ax.set_xlim(xmin=self.scale_frequency_lower_value.get(), xmax=self.scale_frequency_upper_value.get())
-        self.ax.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
-        self.ax.grid(visible=True)
-        self.ax.legend(fancybox=True, shadow=True)
+        self.ax_s3p.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
+        self.ax_s3p.set_xlim(xmin=self.scale_frequency_lower_value.get(), xmax=self.scale_frequency_upper_value.get())
+        self.ax_s3p.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
+        self.ax_s3p.grid(visible=True)
+        self.ax_s3p.legend(fancybox=True, shadow=True)
         self.canvas.draw()
 
     def plot_s2p(self):  # Display function that calls skrf Module to plot s2p files (used in display TAB)
@@ -1106,29 +1112,29 @@ class Window(tk.Tk, Toplevel):
         s_par_network.frequency.unit = 'Ghz'
         spar_dict_s2p = {'S11': [0, 0], 'S12': [0, 1],
                          'S21': [1, 0], 'S22': [1, 1], }
-        [m, n] = spar_dict_s2p[self.sparmeter_chosen_s2p.get()]
+        [m, n] = spar_dict_s2p[self.s_parameter_chosen_s2p.get()]
         plt.figure(num=2, tight_layout=True)
         s_par_network.plot_s_db(m, n)
-        self.ax2.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
-        self.ax2.set_xlim(xmin=self.scale_frequency_lower_value.get(), xmax=self.scale_frequency_upper_value.get())
-        self.ax2.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
-        self.ax2.grid(visible=True)
-        self.ax2.legend(fancybox=True, shadow=True)
+        self.ax2_s2p.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
+        self.ax2_s2p.set_xlim(xmin=self.scale_frequency_lower_value.get(), xmax=self.scale_frequency_upper_value.get())
+        self.ax2_s2p.set(ylabel='S{}{} (dB)'.format(m + 1, n + 1))
+        self.ax2_s2p.grid(visible=True)
+        self.ax2_s2p.legend(fancybox=True, shadow=True)
         self.canvas2.draw()
 
     def plot_snp_test(self, filetype='.s3p'):
-        self.fig5.clear()
-        self.ax5 = self.fig5.add_subplot(1, 1, 1)
+        self.fig_snp_meas.clear()
+        self.ax_snp_meas = self.fig_snp_meas.add_subplot(1, 1, 1)
         # Display function that calls skrf Module to plot s1p files (used in SNP test TAB)
         entered_filename = self.text.get(index1="1.0", index2="end-1c") + filetype
         print(entered_filename + '\n')
-        os.chdir('{}'.format(self.tests3p_dir.get()))
+        os.chdir('{}'.format(self.test_s3p_dir.get()))
         s_par_network = rf.Network('{}'.format(entered_filename))
         s_par_network.frequency.unit = 'GHz'
         plt.figure(num=5, tight_layout=True)
         s_par_network.plot_s_db()
-        self.ax5.grid(visible=True)
-        self.ax5.legend(fancybox=True, shadow=True)
+        self.ax_snp_meas.grid(visible=True)
+        self.ax_snp_meas.legend(fancybox=True, shadow=True)
         self.canvas5.draw()
 
     def plot_vpullin(self):  # Display function to plot Isolation vs pull in voltage files (used in display TAB)
@@ -1144,18 +1150,18 @@ class Window(tk.Tk, Toplevel):
             max_vbias = np.max(v_bias)
             iso = 3 * v_logamp / 0.040 - max_iso
             plt.figure(num=3)
-            self.ax3.plot(v_bias, iso, label="{}".format(f)[:-4])  # removesuffixe non fonctionnel dans python 3.6
-            self.ax3.set_ylim(ymin=self.scale_isolation_value.get(), ymax=0)
-            self.ax3.set_xlim(xmin=-self.scale_voltage_value.get(), xmax=self.scale_voltage_value.get())
-            self.ax3.set(ylabel='Isolation (dB)')
-            self.ax3.grid(visible=True)
-            self.ax3.legend(fancybox=True, shadow=True)
+            self.ax_pull_in.plot(v_bias, iso, label="{}".format(f)[:-4])  # removesuffixe non fonctionnel dans python 3.6
+            self.ax_pull_in.set_ylim(ymin=self.scale_isolation_value.get(), ymax=0)
+            self.ax_pull_in.set_xlim(xmin=-self.scale_voltage_value.get(), xmax=self.scale_voltage_value.get())
+            self.ax_pull_in.set(ylabel='Isolation (dB)')
+            self.ax_pull_in.grid(visible=True)
+            self.ax_pull_in.legend(fancybox=True, shadow=True)
             self.canvas3.draw()
 
     def calculate_pullin_out_voltage(
             self):  # Display function to calculate pull in/out voltages and associated Isolation values (used in
         # display TAB)
-        self.textscroll.delete('1.0', tk.END)
+        self.text_scroll.delete('1.0', tk.END)
         f = self.txt_file_name_combobox.get()
         with open(f, newline='') as input_file:
             data_np = np.loadtxt(f, delimiter=',', unpack=True, skiprows=1)
@@ -1253,29 +1259,29 @@ class Window(tk.Tk, Toplevel):
             # ninetypercent_iso, vpullout, tenpercent_iso, vpullin_minus, ninetypercent_iso_descent, vpullout_minus,
             # tenpercent_iso_ascent))
 
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_minus = {} dB \n'.format(
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Isolation_at_pullout_minus = {} dB \n'.format(
                                        round(tenpercent_iso_ascent, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
 
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_minus = {} dB \n'.format(
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Isolation_at_pullin_minus = {} dB \n'.format(
                                        round(ninetypercent_iso_descent, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
 
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullout_plus = {} dB  \n'.format(
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Isolation_at_pullout_plus = {} dB  \n'.format(
                                        round(tenpercent_iso, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
 
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Isolation_at_pullin_plus = {} dB \n'.format(
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Isolation_at_pullin_plus = {} dB \n'.format(
                                        round(ninetypercent_iso, ndigits=2)))
-            self.textscroll.insert(index="%d.%d" % (1, 0),
-                                   chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
+            self.text_scroll.insert(index="%d.%d" % (1, 0),
+                                    chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
 
             pull_dict = {'Vpullin_plus': vpullin, 'Vpullout_plus': vpullout,
                          'Isolation_at_pullin_plus': ninetypercent_iso, 'Isolation_at_pullout_plus': tenpercent_iso,
@@ -1284,45 +1290,45 @@ class Window(tk.Tk, Toplevel):
                          'Isolation_at_pullout_minus': tenpercent_iso_ascent}
             return pull_dict
 
-    def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax)
+    def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax_s3p)
         try:
-            list_graph_ax = self.ax.lines[-1]
+            list_graph_ax = self.ax_s3p.lines[-1]
             list_graph_ax.remove()
-            self.ax.legend(fancybox=True).remove()
+            self.ax_s3p.legend(fancybox=True).remove()
             self.canvas.draw()
         except IndexError as ind:
             print("No more graphs to delete")
 
-    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2)
+    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2_s2p)
         try:
-            list_graph_ax2 = self.ax2.lines[-1]
+            list_graph_ax2 = self.ax2_s2p.lines[-1]
             list_graph_ax2.remove()
-            self.ax2.legend(fancybox=True).remove()
+            self.ax2_s2p.legend(fancybox=True).remove()
             self.canvas2.draw()
         except IndexError as ind:
             print("No more graphs to delete")
 
-    def delete_axs_vpullin(self):  # Delete last drawn line in pull in graph display tab (in ax3)
+    def delete_axs_vpullin(self):  # Delete last drawn line in pull in graph display tab (in ax_pull_in)
         try:
-            list_graph_ax3 = self.ax3.lines[-1]
+            list_graph_ax3 = self.ax_pull_in.lines[-1]
             list_graph_ax3.remove()
-            self.ax3.legend(fancybox=True).remove()
+            self.ax_pull_in.legend(fancybox=True).remove()
             self.canvas3.draw()
         except IndexError as ind:
             print("No more graphs to delete")
 
     def update_ylim(self):
         value = self.scale_amplitude_value.get()
-        self.ax.set_ylim(ymin=0, ymax=value)
+        self.ax_s3p.set_ylim(ymin=0, ymax=value)
         self.plot_s3p()
-        self.ax.grid(visible=True)
+        self.ax_s3p.grid(visible=True)
 
     def update_xlim(self):
         value = self.scale_frequency_upper_value.get()
         value2 = self.scale_frequency_lower_value.get()
         self.plot_s3p()
-        self.ax.set_xlim(xmin=value2, xmax=value)
-        self.ax.grid(visible=True)
+        self.ax_s3p.set_xlim(xmin=value2, xmax=value)
+        self.ax_s3p.grid(visible=True)
 
     def add_slider(self, frame, _from, to, name, variable, step):
         slider = tk.Scale(master=frame, from_=_from, to=to, orient=tk.HORIZONTAL, label=name, length=400, digits=2,
@@ -1354,10 +1360,10 @@ class Window(tk.Tk, Toplevel):
     def calculate_pull_in_out_voltage_measurement(self, v_bias,
                                                   v_log_amp):  # same function as in display implemented in measurement
         self.text4.delete('1.0', tk.END)
-        list_graph_ax4 = self.ax4.lines[:]
+        list_graph_ax4 = self.ax_pull_in_meas.lines[:]
         if not (list_graph_ax4 == []):
             list_graph_ax4[-1].remove()
-        self.ax4.legend(fancybox=True)
+        self.ax_pull_in_meas.legend(fancybox=True)
         self.canvas2.draw()
 
         # Acquiring the indexes that correspond to both positive and negative bias triangles
