@@ -36,11 +36,11 @@ _version = '8'
 
 class AnnotatedCursor(Cursor):
     """
-    A crosshair cursor like `~matplotlib.widgets.Cursor` with a text showing \
+    A crosshair cursor like `~matplotlib.widgets.Cursor` with a text_file_name_s3p_test showing \
     the current coordinates.
     For the cursor to remain responsive you must keep a reference to it.
     The data of the axis specified as *dataaxis* must be in ascending
-    order. Otherwise, the `numpy.searchsorted` call might fail and the text
+    order. Otherwise, the `numpy.searchsorted` call might fail and the text_file_name_s3p_test
     disappears. You can satisfy the requirement by sorting the data you plot.
     Usually the data is already sorted (if it was created e.g. using
     `numpy.linspace`), but e.g. scatter plots might cause this problem.
@@ -51,28 +51,28 @@ class AnnotatedCursor(Cursor):
         The plot line from which the data coordinates are displayed.
     numberformat : `python format string <https://docs.python.org/3/\
     library/string.html#formatstrings>`_, optional, default: "{0:.4g};{1:.4g}"
-        The displayed text is created by calling *format()* on this string
+        The displayed text_file_name_s3p_test is created by calling *format()* on this string
         with the two coordinates.
 
     offset : (float, float) default: (5, 5)
-        The offset in display (pixel) coordinates of the text position
+        The offset in display (pixel) coordinates of the text_file_name_s3p_test position
         relative to the cross hair.
 
     dataaxis : {"x", "y"}, optional, default: "x"
         If "x" is specified, the vertical cursor line sticks to the mouse
         pointer. The horizontal cursor line sticks to *line*
-        at that x value. The text shows the data coordinates of *line*
+        at that x value. The text_file_name_s3p_test shows the data coordinates of *line*
         at the pointed x value. If you specify "y", it works in the opposite
         manner. But: For the "y" value, where the mouse points to, there might
         be multiple matching x values, if the plotted function is not biunique.
-        Cursor and text coordinate will always refer to only one x value.
+        Cursor and text_file_name_s3p_test coordinate will always refer to only one x value.
         So if you use the parameter value "y", ensure that your function is
         biunique.
 
     Other Parameters
     ----------------
-    textprops : `matplotlib.text` properties as dictionary
-        Specifies the appearance of the rendered text object.
+    textprops : `matplotlib.text_file_name_s3p_test` properties as dictionary
+        Specifies the appearance of the rendered text_file_name_s3p_test object.
 
     **cursorargs : `matplotlib.widgets.Cursor` properties
         Arguments passed to the internal `~matplotlib.widgets.Cursor` instance.
@@ -87,7 +87,7 @@ class AnnotatedCursor(Cursor):
             textprops = {}
         # The line object, for which the coordinates are displayed
         self.line = line
-        # The format string, on which .format() is called for creating the text
+        # The format string, on which .format() is called for creating the text_file_name_s3p_test
         self.numberformat = numberformat
         # Text position offset
         self.offset = np.array(offset)
@@ -99,9 +99,9 @@ class AnnotatedCursor(Cursor):
         # Saves ax_s3p as class attribute.
         super().__init__(**cursorargs)
 
-        # Default value for position of text.
+        # Default value for position of text_file_name_s3p_test.
         self.set_position(self.line.get_xdata()[0], self.line.get_ydata()[0])
-        # Create invisible animated text
+        # Create invisible animated text_file_name_s3p_test
         self.text = self.ax.text(
             self.ax.get_xbound()[0],
             self.ax.get_ybound()[0],
@@ -124,8 +124,8 @@ class AnnotatedCursor(Cursor):
             self.lastdrawnplotpoint = None
             return
 
-        # If the mouse left drawable area, we now make the text invisible.
-        # Baseclass will redraw complete s3p_canvas after, which makes both text
+        # If the mouse left drawable area, we now make the text_file_name_s3p_test invisible.
+        # Baseclass will redraw complete s3p_canvas after, which makes both text_file_name_s3p_test
         # and cursor disappear.
         if event.inaxes != self.ax:
             self.lastdrawnplotpoint = None
@@ -133,12 +133,12 @@ class AnnotatedCursor(Cursor):
             super().onmove(event)
             return
 
-        # Get the coordinates, which should be displayed as text,
+        # Get the coordinates, which should be displayed as text_file_name_s3p_test,
         # if the event coordinates are valid.
         plotpoint = None
         if event.xdata is not None and event.ydata is not None:
             # Get plot point related to current x position.
-            # These coordinates are displayed in text.
+            # These coordinates are displayed in text_file_name_s3p_test.
             plotpoint = self.set_position(event.xdata, event.ydata)
             # Modify event, such that the cursor is displayed on the
             # plotted line, not at the mouse pointer,
@@ -151,16 +151,16 @@ class AnnotatedCursor(Cursor):
         # return if they are the same.
         # Skip even the call of the base class, because this would restore the
         # background, draw the cursor lines and would leave us the job to
-        # re-draw the text.
+        # re-draw the text_file_name_s3p_test.
         if plotpoint is not None and plotpoint == self.lastdrawnplotpoint:
             return
 
         # Baseclass redraws s3p_canvas and cursor. Due to blitting,
-        # the added text is removed in this call, because the
+        # the added text_file_name_s3p_test is removed in this call, because the
         # background is redrawn.
         super().onmove(event)
 
-        # Check if the display of text is still necessary.
+        # Check if the display of text_file_name_s3p_test is still necessary.
         # If not, just return.
         # This behaviour is also cloned from the base class.
         if not self.get_active() or not self.visible:
@@ -168,7 +168,7 @@ class AnnotatedCursor(Cursor):
 
         # Draw the widget, if event coordinates are valid.
         if plotpoint is not None:
-            # Update position and displayed text.
+            # Update position and displayed text_file_name_s3p_test.
             # Position: Where the event occurred.
             # Text: Determined by set_position() method earlier
             # Position is transformed to pixel coordinates,
@@ -190,7 +190,7 @@ class AnnotatedCursor(Cursor):
             # same position (mouse moves slightly between two plot points)
             # can be skipped
             self.lastdrawnplotpoint = plotpoint
-        # otherwise, make text invisible
+        # otherwise, make text_file_name_s3p_test invisible
         else:
             self.text.set_visible(False)
 
@@ -208,7 +208,7 @@ class AnnotatedCursor(Cursor):
 
     def set_position(self, xpos, ypos):
         """
-        Finds the coordinates, which have to be shown in text.
+        Finds the coordinates, which have to be shown in text_file_name_s3p_test.
 
         The behaviour depends on the *dataaxis* attribute. Function looks
         up the matching plot coordinate for the given mouse position.
@@ -537,7 +537,7 @@ class Window(tk.Tk, Toplevel):
                              font=('Bahnschrift Light', 10))  # Filename
         self.text3.grid(column=0, row=0, sticky='n', columnspan=5)
         self.text4 = tk.Text(frame16, width=40, height=10, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
-                             font=('Bahnschrift Light', 10))  # Debug text display
+                             font=('Bahnschrift Light', 10))  # Debug text_file_name_s3p_test display
         self.text4.grid(column=0, row=3, sticky='n', columnspan=4)
 
         self.add_Button(tab=frame16, button_name='Reset Signal Generator', command=self.reset_sig_gen, col=0,
@@ -748,7 +748,7 @@ class Window(tk.Tk, Toplevel):
                               font=('Bahnschrift Light', 10))  # Filename
         self.text13.grid(column=0, row=0, sticky='n', columnspan=5)
         self.text14 = tk.Text(frame18, width=40, height=10, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
-                              font=('Bahnschrift Light', 10))  # Debug text display
+                              font=('Bahnschrift Light', 10))  # Debug text_file_name_s3p_test display
         self.text14.grid(column=0, row=3, sticky='n', columnspan=4)
 
         self.add_Button(tab=frame18, button_name='Reset Signal Generator', command=self.set_pulse_gen_pulsemode, col=0,
@@ -820,7 +820,7 @@ class Window(tk.Tk, Toplevel):
         action.grid(column=col, row=row)
         return (action)
 
-    def clicked_Button(self, button):  # Changes text to 'updated' on button press
+    def clicked_Button(self, button):  # Changes text_file_name_s3p_test to 'updated' on button press
         button.configure(text=' Updated ')
         return (button)
 
@@ -843,7 +843,7 @@ class Window(tk.Tk, Toplevel):
         return (entered)
 
     def add_combobox(self, tab, text, col, row,
-                     width):  # Adds a Combobox in the tab with a specified textvariable text at the designated column and row
+                     width):  # Adds a Combobox in the tab with a specified textvariable text_file_name_s3p_test at the designated column and row
         self.combobox = ttk.Combobox(tab, textvariable=text, state='readonly',
                                      values='', validate='focus', width=width, height=10,
                                      font=('Bahnschrift Light', 10))
@@ -851,7 +851,7 @@ class Window(tk.Tk, Toplevel):
         return (self.combobox)
 
     def add_scrolledtext(self, tab, text, col, row, scrol_w,
-                         scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text at row/col location and with scrol_w/scrol_h dimensions
+                         scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text_file_name_s3p_test at row/col location and with scrol_w/scrol_h dimensions
         scroll = scrolledtext.ScrolledText(tab, width=scrol_w, height=scrol_h, wrap=tk.WORD, border=2, relief=tk.SUNKEN,
                                            pady=0)
         scroll.pack(side='top')
@@ -1106,7 +1106,7 @@ class Window(tk.Tk, Toplevel):
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and display the measurement values in the text boxes(used in TAB6)
+            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         try:
             Rstest.sig_gen.write('TRIG')
             curve_det = Rstest.get_curve(channel=4)
