@@ -228,17 +228,20 @@ def close_powermeter():  # Close powermeter VISA Session
     print("Powermeter session closed \n")
 
 
-def close_all_ressources():  # Close all ressources VISA Session
-    # print(instr_list)
-    # if instr_list == ():
-    #     pass
-    # else:
-    #     close_zva()
-    #     close_sig_gen()
-    #     close_osc()
-    #     close_rf_gen()
-    #     close_powermeter()
-    print("All ressources have been closed \n")
+def close_all_resources():  # Close all ressources VISA Session
+    instr_list = rm.list_resources()
+    print(instr_list)
+    if instr_list == ():
+        pass
+    else:
+        # close_zva()
+        # close_sig_gen()
+        # close_osc()
+        # close_rf_gen()
+        # close_powermeter()
+        #
+
+        print("All ressources have been closed \n")
 
 
 def saves3p(filename):

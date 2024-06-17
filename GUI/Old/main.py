@@ -1100,7 +1100,7 @@ class Window(tk.Tk, Toplevel):
         Rstest.set_pulse_width(width)
         self.error_log(Rstest.sig_gen)
 
-    def close_ressources(self):  # Calls close_all_ressources to close all ressources
+    def close_ressources(self):  # Calls close_all_resources to close all ressources
 
         Rstest.close_all_ressources()
 

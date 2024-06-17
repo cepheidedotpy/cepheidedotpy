@@ -156,8 +156,8 @@ def add_combobox(tab, text, col, row,
     return combobox
 
 
-def close_resources():  # Calls close_all_ressources to close all ressources
-    scripts_and_functions.close_all_ressources()
+def close_resources():  # Calls close_all_resources to close all ressources
+    scripts_and_functions.close_all_resources()
 
 
 def call_s3p_config():
@@ -177,6 +177,24 @@ def call_s1p_config():
                                       inst_file=dir_and_var_declaration.instrument_file)
     pass
 
+def update_entries(directory, combobox, filetype):  # Updates directory entries
+    files = filetypes_dir(directory)
+    if filetype == '.s2p':
+        entry = files[1]
+    elif filetype == '.s3p':
+        entry = files[0]
+    elif filetype == '.txt':
+        entry = files[2]
+    combobox['values'] = entry
+    return combobox
+
+
+def create_canvas(figure, frame, toolbar=True):  # Creates s3p display Canvas in the frame and at col and row location
+    canvas = FigureCanvasTkAgg(figure, master=frame)
+    canvas._tkcanvas.pack(ipady=2, ipadx=2)
+    toolbar = NavigationToolbar2Tk(canvas=canvas, window=frame, pack_toolbar=toolbar)
+    return canvas
+
 
 class Window(tk.Tk, Toplevel):
     """
@@ -189,7 +207,6 @@ class Window(tk.Tk, Toplevel):
     fig_snp_meas: Figure
     fig_s2p: Figure
     fig_s3p: Figure
-
     fig_pull_in: Figure
 
     def __init__(self, master=None):
@@ -263,38 +280,39 @@ class Window(tk.Tk, Toplevel):
         # TAB1 S3P parameter display
         # ==============================================================================
         # This TAB is for S3P parameter display
-        frame1 = add_Label_frame(tab_s3p, 's3p Directory', 0, 0)  # s3p Frame
+        frame_s3p_display = add_Label_frame(tab_s3p, 's3p Directory', 0, 0)  # s3p Frame
         # s3p_dir_name is the directory variable used in the entry entereded_var_s3p
         self.s3p_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')  # Entry variable for s3p dir
         # Adding labels and frame3
-        add_Label(frame1, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_Label(frame_s3p_display, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                      ipady=tab_pad_x)  # Directory frame label
-        add_Label(frame1, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_Label(frame_s3p_display, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                 ipady=tab_pad_x)  # File frame label
-        add_Label(frame1, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
+        add_Label(frame_s3p_display, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
                                                                        ipady=tab_pad_x)  # File frame label
         self.frame3 = add_Label_frame(tab_s3p, frame_name='s3p Display', col=0, row=1)
         #  Adding entry for file directory
-        self.entered_var_s3p = add_entry(frame1, textvar=self.s3p_dir_name, width=70, col=2, row=1)
+        self.entered_var_s3p = add_entry(frame_s3p_display, textvar=self.s3p_dir_name, width=70, col=2, row=1)
 
         file_s3p = filetypes_dir(self.entered_var_s3p.get())[0]
 
-        self.s3p_file_name_combobox = add_combobox(frame1, text=file_s3p, col=2, row=2, width=100)
-
-        self.s_parameter_chosen_s3p = add_combobox(frame1, text=self.s_parameter_s3p, col=2, row=3, width=100)
+        self.s3p_file_name_combobox = add_combobox(frame_s3p_display, text=file_s3p, col=2, row=2, width=100)
+        self.s_parameter_chosen_s3p = add_combobox(frame_s3p_display, text=self.s_parameter_s3p, col=2, row=3, width=100)
         self.s_parameter_chosen_s3p['values'] = ('S11', 'S12', 'S13', 'S21', 'S22', 'S23', 'S31', 'S32', 'S33')
 
-        self.button_file_update = add_Button(tab=frame1, button_name=' Update Files ',
-                                             command=lambda: [self.update_entries_s3p_v2(),
+        self.button_file_update = add_Button(tab=frame_s3p_display, button_name=' Update Files ',
+                                             command=lambda: [update_entries(directory=self.entered_var_s3p.get(),
+                                                                             combobox=self.s3p_file_name_combobox,
+                                                                             filetype='.s3p'),
                                                               clicked_Button(self.button_file_update)], col=3,
                                              row=1)  # (self.update_entries_s3p_v2), (self.clicked_Button)
 
-        add_Button(tab=frame1, button_name='Exit', command=self._quit, col=5, row=1)
-        add_Button(frame1, button_name='Plot', command=self.plot_s3p, col=3, row=3)
-        add_Button(frame1, button_name='Delete graphs', command=self.delete_axs_s3p, col=3, row=2)
+        add_Button(tab=frame_s3p_display, button_name='Exit', command=self._quit, col=5, row=1)
+        add_Button(frame_s3p_display, button_name='Plot', command=self.plot_s3p, col=3, row=3)
+        add_Button(frame_s3p_display, button_name='Delete graphs', command=self.delete_axs_s3p, col=3, row=2)
 
-        self.s3p_canvas = self.create_canvas_s3p(frame=self.frame3)
+        self.s3p_canvas = create_canvas(figure=self.fig_s3p, frame=self.frame3)
 
         self.slider_amplitude = self.add_slider(frame=self.frame3, _from=0, to=-40, name="Amplitude (dB)",
                                                 variable=self.scale_amplitude_value, step=5)
@@ -329,7 +347,9 @@ class Window(tk.Tk, Toplevel):
         self.s_parameter_chosen_s2p['values'] = ('S11', 'S12', 'S21', 'S22')
 
         self.update_s2p_button = add_Button(tab=frame2, button_name=' Update Files ',
-                                            command=lambda: [self.update_entries_s2p_v2(),
+                                            command=lambda: [update_entries(directory=self.entered_var_s2p.get(),
+                                                                            combobox=self.s2p_file_name_combobox,
+                                                                            filetype='.s2p'),
                                                              clicked_Button(self.update_s2p_button)], col=3, row=1)
         add_Button(frame2, button_name='Exit', command=self._quit, col=5, row=1).grid_anchor('e')
         add_Button(frame2, button_name='Plot', command=self.plot_s2p, col=3, row=3)
@@ -367,7 +387,9 @@ class Window(tk.Tk, Toplevel):
         self.txt_file_name_combobox = add_combobox(frame5, text=file_txt, col=2, row=2, width=100)
 
         self.update_pull_in_button = add_Button(tab=frame5, button_name=' Update Files ',
-                                                command=lambda: [self.update_entries_txt(),
+                                                command=lambda: [update_entries(directory=self.entered_var_txt.get(),
+                                                                                combobox=self.txt_file_name_combobox,
+                                                                                filetype='.txt'),
                                                                  clicked_Button(self.update_pull_in_button)],
                                                 col=3, row=1)
         add_Button(frame5, 'Exit', command=self._quit, col=5, row=1).grid_anchor('e')
@@ -731,8 +753,16 @@ class Window(tk.Tk, Toplevel):
         add_Label(frame11, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         add_Label(frame11, label_name='Cycles', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x,
                                                                    ipady=tab_pad_x)
+        add_Label(frame11, label_name='Events', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
+                                                                   ipady=tab_pad_x)
+        add_Label(frame11, label_name='File name', col=0, row=7).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+
         add_Button(tab=frame11, button_name="Exit", command=self._quit,
-                   col=0, row=6).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+                   col=0, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_Button(tab=frame11, button_name="Start Cycling", command=self.cycling_test,
+                   col=1, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
+
 
         self.test_cycling_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement '
                                                    r'Data\Mechanical cycling')
@@ -741,7 +771,9 @@ class Window(tk.Tk, Toplevel):
         self.test_cycling_ret = tk.StringVar(value='Reticule')
         self.test_cycling_device = tk.StringVar(value='Device_Name')
         self.test_cycling_var_bias = tk.StringVar(value='Bias_voltage')
-        self.test_cycling_var_nb_cycles = tk.StringVar(value='1000000')
+        self.test_cycling_var_nb_cycles = tk.DoubleVar(value=1000000)
+        self.test_cycling_file_name = tk.StringVar(value='new_file')
+        self.test_cycling_events = tk.DoubleVar(value=100)
 
         self.entered_cycling_dir = add_entry(frame11, textvar=self.test_cycling_dir, width=20, col=1, row=0)
         self.entered_var_cycling_project = add_entry(frame11, textvar=self.test_cycling_project, width=20, col=1, row=1)
@@ -750,6 +782,8 @@ class Window(tk.Tk, Toplevel):
         self.entered_cycling_device = add_entry(frame11, textvar=self.test_cycling_device, width=20, col=1, row=4)
         self.entered_cycling_var_bias = add_entry(frame11, textvar=self.test_cycling_var_nb_cycles, width=20, col=1,
                                                   row=5)
+        self.entered_file_name = add_entry(frame11, textvar=self.test_cycling_file_name, width=20, col=1, row=7)
+        self.entered_test_cycling_events = add_entry(frame11, textvar=self.test_cycling_events, width=20, col=1, row=6)
 
         frame20 = add_Label_frame(tab=tab_cycling, frame_name='Signal Generator', col=0, row=1)
 
@@ -765,7 +799,7 @@ class Window(tk.Tk, Toplevel):
         self.test_cycling_var_nb_of_cycles = tk.DoubleVar(value=1_000_000)
 
         self.entered_var_cycling_bias = add_entry(frame20, textvar=self.test_cycling_var_bias, width=15, col=1, row=0)
-        self.entered_var_cycling_bias = add_entry(frame20, textvar=self.test_cycling_var_nb_of_cycles,
+        self.entered_var_cycling_nb_cycles = add_entry(frame20, textvar=self.test_cycling_var_nb_of_cycles,
                                                   width=15, col=1, row=1)
 
         add_Button(tab=frame20, button_name='Cycling config', command=self.sig_gen_cycling_config, col=0, row=2).grid(
@@ -785,7 +819,7 @@ class Window(tk.Tk, Toplevel):
 
         self.create_canvas(frame=frame22, figure=self.fig_cycling, padding=2)
         self.wm_resizable(width=True, height=True)
-        # self.protocol(name='WM_RESIZABLE')
+        self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
 
     # ==============================================================================
@@ -806,33 +840,10 @@ class Window(tk.Tk, Toplevel):
 
     def _quit(self):  # Exit GUI cleanly (used in all TABS)
         self.quit()
-        scripts_and_functions.close_all_ressources()
+        scripts_and_functions.close_all_resources()
         plt.close()
         self.destroy()
 
-    def update_entries_s3p_v2(self):  # Updates directory entries
-        entry_s3p = filetypes_dir(self.entered_var_s3p.get())[0]
-        if entry_s3p == 'empty':
-            self.s3p_file_name_combobox.set('empty_directory')
-        else:
-            self.s3p_file_name_combobox['values'] = entry_s3p
-        return self.s3p_file_name_combobox
-
-    def update_entries_s2p_v2(self):  # Updates directory entries
-        entry_s2p = filetypes_dir(self.entered_var_s2p.get())[1]
-        if entry_s2p == 'empty' or '':
-            self.s2p_file_name_combobox.set('empty_directory')
-        else:
-            self.s2p_file_name_combobox['values'] = entry_s2p
-        return self.s2p_file_name_combobox
-
-    def update_entries_txt(self):  # Updates directory entries
-        entry_txt = filetypes_dir(self.entered_var_txt.get())[2]
-        if entry_txt == 'empty':
-            self.txt_file_name_combobox.set('empty_directory')
-        else:
-            self.txt_file_name_combobox['values'] = entry_txt
-        return self.txt_file_name_combobox
 
     def create_canvas_s3p(self, frame):  # Creates s3p display Canvas in the frame and at col and row location
         canvas = FigureCanvasTkAgg(self.fig_s3p, master=frame)
@@ -1489,9 +1500,16 @@ class Window(tk.Tk, Toplevel):
         time.sleep(3)
         self.error_log(scripts_and_functions.sig_gen)
 
+    def cycling_test(self):
+        Print("Started cycling")
+        scripts_and_functions.cycling_sequence(number_of_cycles=self.test_cycling_var_nb_of_cycles.get(),
+                                               number_of_pulses_in_wf=1000, filename=r'{}-{}-{}-{}-{}'.format(
+                self.test_cycling_project.get(), self.test_cycling_ret.get(), self.test_cycling_cell.get(),
+                self.test_cycling_device.get(), self.test_cycling_var_nb_cycles.get(), self.test_cycling_var_bias.get()
+            ), events=self.test_cycling_events.get(), df_path=self.test_cycling_dir.get())
 
 # Main ------------------------------------------------------------------------
 app = Window()
-fonts = list(font.families())
+# fonts = list(font.families())
 app.mainloop()
 # Main ------------------------------------------------------------------------
