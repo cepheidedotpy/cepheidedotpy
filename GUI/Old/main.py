@@ -358,7 +358,7 @@ class Window(tk.Tk, Toplevel):
         # s3p_dir_name is the directory variable used in the entry entereded_var_s3p
         self.s3p_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')  # Entry variable for s3p dir
-        # Adding labels and frame3
+        # Adding labels and frame_s3p_display
         self.add_Label(frame1, 'Directory', col=1, row=1).grid(sticky='e', ipadx=tab_padx,
                                                                ipady=tab_padx)  # Directory frame label
         self.add_Label(frame1, 'File', col=1, row=2).grid(sticky='e', ipadx=tab_padx,
@@ -547,7 +547,7 @@ class Window(tk.Tk, Toplevel):
         self.add_Button(tab=frame16, button_name='Plot IsovsV',
                         command=lambda: [self.trace_pulldown(), self.acquire_pulldown_data()], col=1, row=5).grid(
             ipadx=tab_padx, ipady=tab_padx)
-        # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pulldown, col=1, row=5).grid(ipadx=tab_pad_x,ipady=tab_pad_x)
+        # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pull_down, col=1, row=5).grid(ipadx=tab_pad_x,ipady=tab_pad_x)
         # ------------------------------------------------------------------------------
         frame13 = self.add_Label_frame(tab=tab4, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
         self.canvas4 = self.create_canvas_pullin(col=2, row=5, frame=frame13)
@@ -1378,7 +1378,7 @@ class Window(tk.Tk, Toplevel):
         return (slider)
 
     def set_txt(self):  # (used in TAB5)
-        # self.text2.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
+        # self.text_snp_debug.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
         self.text2.delete("1.0", "end")
         self.text4.delete("1.0", "end")
         error_logs = Rstest.print_error_log()
