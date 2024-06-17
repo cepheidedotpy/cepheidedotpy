@@ -125,7 +125,7 @@ class AnnotatedCursor(Cursor):
             return
 
         # If the mouse left drawable area, we now make the text invisible.
-        # Baseclass will redraw complete canvas after, which makes both text
+        # Baseclass will redraw complete s3p_canvas after, which makes both text
         # and cursor disappear.
         if event.inaxes != self.ax:
             self.lastdrawnplotpoint = None
@@ -155,7 +155,7 @@ class AnnotatedCursor(Cursor):
         if plotpoint is not None and plotpoint == self.lastdrawnplotpoint:
             return
 
-        # Baseclass redraws canvas and cursor. Due to blitting,
+        # Baseclass redraws s3p_canvas and cursor. Due to blitting,
         # the added text is removed in this call, because the
         # background is redrawn.
         super().onmove(event)
@@ -276,7 +276,7 @@ class AnnotatedCursor(Cursor):
 
     def _update(self):
         """
-        Overridden method for either blitting or drawing the widget canvas.
+        Overridden method for either blitting or drawing the widget s3p_canvas.
 
         Passes call to base class if blitting is activated, only.
         In other cases, one draw_idle call is enough, which is placed
@@ -547,7 +547,7 @@ class Window(tk.Tk, Toplevel):
         self.add_Button(tab=frame16, button_name='Plot IsovsV',
                         command=lambda: [self.trace_pulldown(), self.acquire_pulldown_data()], col=1, row=5).grid(
             ipadx=tab_padx, ipady=tab_padx)
-        # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pulldown, col=1, row=5).grid(ipadx=tab_padx,ipady=tab_padx)
+        # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pulldown, col=1, row=5).grid(ipadx=tab_pad_x,ipady=tab_pad_x)
         # ------------------------------------------------------------------------------
         frame13 = self.add_Label_frame(tab=tab4, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
         self.canvas4 = self.create_canvas_pullin(col=2, row=5, frame=frame13)
@@ -923,27 +923,27 @@ class Window(tk.Tk, Toplevel):
     def create_canvas_s3p(self, col, row, frame):  # Creates s3p display Canvas in the frame and at col and row location
         canvas = FigureCanvasTkAgg(self.fig, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
-        # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
+        # toolbar = NavigationToolbar2Tk(s3p_canvas = s3p_canvas, window = frame, pack_toolbar = True)
         return (canvas)
 
     def create_canvas_s2p(self, col, row, frame):  # Creates s2p display Canvas in the frame and at col and row location
         canvas = FigureCanvasTkAgg(self.fig2, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
-        # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
+        # toolbar = NavigationToolbar2Tk(s3p_canvas = s3p_canvas, window = frame, pack_toolbar = True)
         return (canvas)
 
     def create_canvas_txt(self, col, row,
                           frame):  # Creates pull in and pull out display Canvas in the frame and at col and row location
         canvas = FigureCanvasTkAgg(self.fig3, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
-        # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
+        # toolbar = NavigationToolbar2Tk(s3p_canvas = s3p_canvas, window = frame, pack_toolbar = True)
         return (canvas)
 
     def create_canvas_pullin(self, col, row,
                              frame):  # Creates pull in and pull out display (in measurement frame) Canvas in the frame and at col and row location
         canvas = FigureCanvasTkAgg(self.fig4, master=frame)
         canvas._tkcanvas.pack(ipady=2, ipadx=2)
-        # toolbar = NavigationToolbar2Tk(canvas = canvas, window = frame, pack_toolbar = True)
+        # toolbar = NavigationToolbar2Tk(s3p_canvas = s3p_canvas, window = frame, pack_toolbar = True)
         return (canvas)
 
     def create_tests3p_file(
@@ -1074,13 +1074,13 @@ class Window(tk.Tk, Toplevel):
         self.text14.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_log())
 
     def set_Bias_Voltage(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pull_in_v as an input (used in TAB5)
+            self):  # Calls inst_command modules's bias_voltage_s3p() function using the voltage provided by entry pull_in_v as an input (used in TAB5)
         bias = self.pullin_v.get()
         Rstest.bias_voltage(bias)
         self.error_log(Rstest.sig_gen)
 
     def set_bias_pullin(
-            self):  # Calls inst_command modules's bias_voltage() function using the voltage provided by entry pull_in_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
+            self):  # Calls inst_command modules's bias_voltage_s3p() function using the voltage provided by entry pull_in_v as an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pullin_v_bias.get()
         Rstest.bias_pullin(bias)
         self.error_log(Rstest.sig_gen)
@@ -1342,7 +1342,7 @@ class Window(tk.Tk, Toplevel):
         self.ax.legend(fancybox=True)
         self.canvas.draw()
 
-    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax2_s2p)
+    def delete_axs_s2p(self):  # Delete last drawn line in s2p display tab (in ax_s2p)
         list_graph_ax2 = self.ax2.lines[-1]
         list_graph_ax2.remove()
         self.ax2.legend(fancybox=True)

@@ -89,7 +89,7 @@ class AnnotatedCursor(Cursor):
             return
 
         # If the mouse left drawable area, we now make the text invisible.
-        # Baseclass will redraw complete canvas after, which makes both text
+        # Baseclass will redraw complete s3p_canvas after, which makes both text
         # and cursor disappear.
         if event.inaxes != self.ax:
             self.lastdrawnplotpoint = None
@@ -119,7 +119,7 @@ class AnnotatedCursor(Cursor):
         if plotpoint is not None and plotpoint == self.lastdrawnplotpoint:
             return
 
-        # Baseclass redraws canvas and cursor. Due to blitting,
+        # Baseclass redraws s3p_canvas and cursor. Due to blitting,
         # the added text is removed in this call, because the
         # background is redrawn.
         super().onmove(event)
@@ -240,7 +240,7 @@ class AnnotatedCursor(Cursor):
 
     def _update(self):
         """
-        Overridden method for either blitting or drawing the widget canvas.
+        Overridden method for either blitting or drawing the widget s3p_canvas.
 
         Passes call to base class if blitting is activated, only.
         In other cases, one draw_idle call is enough, which is placed

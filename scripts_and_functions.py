@@ -27,11 +27,9 @@ rm = pyvisa.ResourceManager()
 
 sig_gen = sig_gen_init()
 osc = osc_init()
-
-
-# zva = zva_init()
-# powermeter = powermeter_init()
-# rf_gen = rf_gen_init()
+zva = zva_init()
+powermeter = powermeter_init()
+rf_gen = rf_gen_init()
 
 
 def sig_gen_opc_control(function):
