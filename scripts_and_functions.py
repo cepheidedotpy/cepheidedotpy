@@ -27,9 +27,11 @@ rm = pyvisa.ResourceManager()
 
 sig_gen = sig_gen_init()
 osc = osc_init()
-zva = zva_init()
-powermeter = powermeter_init()
-rf_gen = rf_gen_init()
+
+
+# zva = zva_init()
+# powermeter = powermeter_init()
+# rf_gen = rf_gen_init()
 
 
 def sig_gen_opc_control(function):
@@ -673,15 +675,11 @@ def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
 def connect():
     machines = ['ZNA67-101810', 'A-33521B-00526', 'DPO5054-C011738', 'rssmb100a179766', '192.168.0.30']
     machine_names = ['zva', 'sig_gen', 'osc', 'rf_gen', 'powermeter']
-    # machine_dict = {zip(machine_names, machines)}
-    # for machine, machine_name in zip(machines, machine_names):
-    #     try:
-    #         if machine_name == 'zva':
-    #             machine_dict[machine_name]=RsInstrument(f'TCPIP0::{machine}::inst0::INSTR', id_query=True, reset=False)
-    #         else:
-    #             machine_dict[machine_name]=rm.open_resource(f'TCPIP0::{machine}::inst0::INSTR')
-    #     except pyvisa.errors.VisaIOError:
-    #         print(f"Machine {machine_name} ({machine}) is offline. Skipping...")
+    # machine_dict = {zip(machine_names, machines)} for machine, machine_name in zip(machines, machine_names): try:
+    # if machine_name == 'zva': machine_dict[machine_name]=RsInstrument(f'TCPIP0::{machine}::inst0::INSTR',
+    # id_query=True, reset=False) else: machine_dict[machine_name]=rm.open_resource(f'TCPIP0::{
+    # machine}::inst0::INSTR') except pyvisa.errors.VisaIOError: print(f"Machine {machine_name} ({machine}) is
+    # offline. Skipping...")
 
     zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
     sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
@@ -747,7 +745,7 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     :param ramp_stop: End time of the positive ramp
     :param ramp_start_minus: Starting time of the negative ramp
     :param ramp_stop_minus: End time of the negative ramp
-    :param delay: Input delay of the oscilloscope to position at the end of the cycling wavefrm
+    :param delay: Input delay of the oscilloscope to position at the end of the cycling waveform
     :param conversion_coeff: Conversion coefficient from power to voltage of the detector
     :return: Dataframe containing all the Mems characteristics
     """
@@ -792,12 +790,12 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_s
     ramp_voltage_descent_minus = v_bias_curve[t0_ramp_minus:min_negative_bias_index]
     ramp_voltage_ascent_minus = v_bias_curve[min_negative_bias_index:t0_plus_rampwidth_minus]
 
-    # plt.plot(ramp_voltage_curve, label='ramp_voltage_curve')
-    # plt.plot(negative_ramp_voltage_curve, label='negative_ramp_voltage_curve')
-    # plt.plot(ramp_voltage_ascent, label='ramp_voltage_ascent')
-    # plt.plot(ramp_voltage_descent, label='ramp_voltage_descent')
-    # plt.plot(ramp_voltage_descent_minus, label='ramp_voltage_descent_minus')
-    # plt.plot(ramp_voltage_ascent_minus, label='ramp_voltage_ascent_minus')
+    # plt.figure(ramp_voltage_curve, label='ramp_voltage_curve')
+    # plt.figure(negative_ramp_voltage_curve, label='negative_ramp_voltage_curve')
+    # plt.figure(ramp_voltage_ascent, label='ramp_voltage_ascent')
+    # plt.figure(ramp_voltage_descent, label='ramp_voltage_descent')
+    # plt.figure(ramp_voltage_descent_minus, label='ramp_voltage_descent_minus')
+    # plt.figure(ramp_voltage_ascent_minus, label='ramp_voltage_ascent_minus')
     # plt.legend()
     # plt.show()
 
@@ -879,19 +877,189 @@ def format_duration(seconds):
     return formatted_time
 
 
-def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename='test', wf_duration=0.205, events=100,
+# def cycling_sequence(number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000, filename: str = "test",
+#                      wf_duration: float = 0.205, events: float = 100,
+#                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
+#                      figure: plt.Figure = None):
+#     """
+#     Cycling test sequence outputs MEMS characteristics during the tested duration, results are
+#     :param figure: Figure to plot the dataframe data into
+#     :param df_path: File path
+#     :param number_of_cycles: Total number of cycles in sequence duration
+#     :param number_of_pulses_in_wf: Number of pulses in waveform
+#     :param filename: Test sequence output filename
+#     :param wf_duration: Total duration of the waveform in the sequence
+#     :param events: Number of trigger events before oscilloscope performs an acquisition
+#     :return: File containing a dataframe
+#     """
+#     number_of_triggers_before_acq = events  # number of  B trigger events in A -> B sequence
+#     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
+#     cycles = pd.Series(
+#         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
+#         name="cycles")
+#     print(cycles)
+#     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
+#     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#     print(f"Number of triggers required :{number_of_triggered_acquisitions}")
+#     print("Starting number of triggers = {}\n".format(starting_number_of_acq))
+#     print("Number of remaining cycles = {}\n".format(number_of_cycles))
+#     print(f"Estimated test duration: {format_duration(test_duration)}")
+#
+#     file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
+#                                     "iso_ascent", "iso_descent_minus", "switching_time",
+#                                     "amplitude_variation", "release_time"], index=None)
+#     for column in file_df.columns:
+#         file_df[column] = 0
+#
+#     count = starting_number_of_acq
+#     sig_gen.write("OUTput 1")
+#     # file_df["cycle count"] = cycles
+#
+#     while count < number_of_triggered_acquisitions + starting_number_of_acq:
+#         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#         remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
+#         print(f"Remaining cycle count = {remaining_count}")
+#         if count == new_value:
+#             time.sleep(1)
+#             print("Waiting for trigger...", end='\n')
+#         else:
+#             count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#             ch_4_detector = get_curve_cycling(channel=4)
+#             ch_2_bias = get_curve_cycling(channel=2)
+#             data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
+#             file_df = pd.concat([file_df, data], join="outer")
+#             print(file_df)
+#             if figure is not None:
+#                 for series, axes in zip(file_df.columns, figure.axes):
+#                     # figure.clear()
+#                     # axes.figure(cycles, series)
+#                     figure.axes[0].plot(cycles[:len(file_df["vpullin_plus"])], file_df["vpullin_plus"])
+#                     figure.axes[1].plot(cycles[:len(file_df["vpullin_plus"])], file_df["vpullout_plus"])
+#                     figure.axes[2].plot(cycles[:len(file_df["vpullin_plus"])], file_df["iso_ascent"])
+#                     figure.axes[3].plot(cycles[:len(file_df["vpullin_plus"])], file_df["amplitude_variation"])
+#                     figure.axes[4].plot(cycles[:len(file_df["vpullin_plus"])], file_df["switching_time"])
+#                     figure.axes[5].plot(cycles[:len(file_df["vpullin_plus"])], file_df["release_time"])
+#                     plt.show()
+#     file_df["cycle count"] = cycles
+#
+#     sig_gen.write("OUTput 0")
+#     file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv")
+#     print("Test complete!")
+#     return file_df
+
+def detect_sticking_events(df, thresholds):
+    """
+    Detect sticking events based on thresholds and append a 'sticking events' column to the dataframe.
+
+    :param df: The dataframe containing the test data.
+    :param thresholds: Dictionary with column names as keys and threshold values as values.
+    :return: DataFrame with the 'sticking events' column appended.
+    """
+    sticking_events = []
+
+    for i in range(len(df)):
+        event_detected = False
+        for col, threshold in thresholds.items():
+            if df.at[i, col] > threshold:
+                event_detected = True
+                break
+        sticking_events.append(1 if event_detected else 0)
+
+    df['sticking events'] = sticking_events
+    return df
+
+
+# def cycling_sequence(number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000, filename: str = "test",
+#                      wf_duration: float = 0.205, events: float = 100,
+#                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
+#                      figure: plt.Figure = None):
+#     """
+#     Cycling test sequence outputs MEMS characteristics during the tested duration.
+#
+#     :param figure: Figure to plot the dataframe data into.
+#     :param df_path: File path.
+#     :param number_of_cycles: Total number of cycles in sequence duration.
+#     :param number_of_pulses_in_wf: Number of pulses in waveform.
+#     :param filename: Test sequence output filename.
+#     :param wf_duration: Total duration of the waveform in the sequence.
+#     :param events: Number of trigger events before oscilloscope performs an acquisition.
+#     :return: File containing a dataframe.
+#     """
+#     number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
+#     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
+#     cycles = pd.Series(
+#         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
+#         name="cycles")
+#
+#     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
+#     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#
+#     print(f"Number of triggers required: {number_of_triggered_acquisitions}")
+#     print(f"Starting number of triggers: {starting_number_of_acq}")
+#     print(f"Number of remaining cycles: {number_of_cycles}")
+#     print(f"Estimated test duration: {format_duration(test_duration)}")
+#
+#     file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
+#                                     "iso_ascent", "iso_descent_minus", "switching_time",
+#                                     "amplitude_variation", "release_time", "cycles"])
+#
+#     count = starting_number_of_acq
+#     sig_gen.write("OUTput 1")
+#
+#     while count < number_of_triggered_acquisitions + starting_number_of_acq:
+#         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+#         remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
+#         print(f"Remaining cycle count: {remaining_count}")
+#
+#         if count == new_value:
+#             time.sleep(1)
+#             print("Waiting for trigger...", end='\n')
+#         else:
+#             count = new_value
+#             ch_4_detector = get_curve_cycling(channel=4)
+#             ch_2_bias = get_curve_cycling(channel=2)
+#             data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
+#             data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
+#             file_df = pd.concat([file_df, data], ignore_index=True)
+#             print(file_df)
+#
+#             if figure is not None:
+#                 for series, axes in zip(file_df.columns[:-1], figure.axes):
+#                     cycles_so_far = file_df["cycles"][:len(file_df[series])]
+#                     axes.plot(cycles_so_far, file_df[series])
+#
+#
+#     # Define thresholds for detecting sticking events
+#     thresholds = {
+#         "amplitude_variation": 3,  # Example threshold, adjust as needed
+#         "switching_time": 30e-6,  # Example threshold, adjust as needed
+#         "release_time": 30e-6  # Example threshold, adjust as needed
+#     }
+#     file_df = detect_sticking_events(file_df, thresholds)
+#
+#     sig_gen.write("OUTput 0")
+#     file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv", index=False)
+#     print("Test complete!")
+#     return file_df
+
+def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000,
+                     filename: str = "test",
+                     wf_duration: float = 0.205, events: float = 100,
                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling"):
     """
-    Cycling test sequence outputs MEMS characteristics during the tested duration, results are
-    :param df_path: File path
-    :param number_of_cycles: Total number of cycles in sequence duration
-    :param number_of_pulses_in_wf: Number of pulses in waveform
-    :param filename: Test sequence output filename
-    :param wf_duration: Total duration of the waveform in the sequence
-    :param events: Number of trigger events before oscilloscope performs an acquisition
-    :return: File containing a dataframe
+    Cycling test sequence outputs MEMS characteristics during the tested duration.
+
+    :param app: Reference to the Tkinter application instance to update the plot.
+    :param new_data_event: Event to signal new data is available.
+    :param df_path: File path.
+    :param number_of_cycles: Total number of cycles in sequence duration.
+    :param number_of_pulses_in_wf: Number of pulses in waveform.
+    :param filename: Test sequence output filename.
+    :param wf_duration: Total duration of the waveform in the sequence.
+    :param events: Number of trigger events before oscilloscope performs an acquisition.
+    :return: File containing a dataframe.
     """
-    number_of_triggers_before_acq = events  # number of  B trigger events in A -> B sequence
+    number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
     cycles = pd.Series(
         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
@@ -899,36 +1067,50 @@ def cycling_sequence(number_of_cycles=1e9, number_of_pulses_in_wf=1000, filename
 
     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-    print(f"Number of triggers required :{number_of_triggered_acquisitions}")
-    print("Starting number of triggers = {}\n".format(starting_number_of_acq))
-    print("Number of remaining cycles = {}\n".format(number_of_cycles))
+
+    print(f"Number of triggers required: {number_of_triggered_acquisitions}")
+    print(f"Starting number of triggers: {starting_number_of_acq}")
+    print(f"Number of remaining cycles: {number_of_cycles}")
     print(f"Estimated test duration: {format_duration(test_duration)}")
 
-    file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "Vpullout_plus", "Vpullout_minus",
-                                    "iso_ascent", "iso_descent_minus", "switching_time",
-                                    "amplitude_variation", "release_time"])
-    for column in file_df.columns:
-        file_df[column] = 0
-
     count = starting_number_of_acq
+    sig_gen.write("OUTput 1")
 
+    app.is_cycling = True
     while count < number_of_triggered_acquisitions + starting_number_of_acq:
         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
         remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
-        print(f"Remaining cycle count = {remaining_count}")
+        print(f"Remaining cycle count: {remaining_count}")
+
         if count == new_value:
-            time.sleep(1)
+
             print("Waiting for trigger...", end='\n')
+
+            time.sleep(1)
         else:
-            count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+            count = new_value
             ch_4_detector = get_curve_cycling(channel=4)
             ch_2_bias = get_curve_cycling(channel=2)
-            data = extract_data(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
-            file_df = pd.concat([file_df, data], join="outer")
-            print(file_df)
-            file_df["cycle count"] = cycles
-    file_df.to_csv(path_or_buf=f"{df_path}'\'{filename}.csv")
+            data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
+            data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
+            app.file_df = pd.concat([app.file_df, data], ignore_index=True)
+            new_data_event.set()  # Signal that new data is available
+            print(app.file_df)
+
+    # Define thresholds for detecting sticking events
+    thresholds = {
+        "amplitude_variation": 1,  # Example threshold, adjust as needed
+        "switching_time": 50e-6,  # Example threshold, adjust as needed
+        "release_time": 50e-6  # Example threshold, adjust as needed
+    }
+    app.file_df = detect_sticking_events(app.file_df, thresholds)
+
+    sig_gen.write("OUTput 0")
+    app.file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv", index=False)
+    app.is_cycling = False
+    new_data_event.set()  # Signal that final data is available
     print("Test complete!")
+    return app.file_df
 
 
 def online_mode():
@@ -961,18 +1143,30 @@ def online_mode():
         print("Connection error")
 
 
-def load_config(pc_file=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_setup.znxml',
-                inst_file=r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'):
+def load_config(pc_file: str = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_setup.znxml',
+                inst_file: str = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'):
+    """
+    Loads a configuration file from the PC to the instrument and activates it.
+
+    Parameters:
+    pc_file (str): The file path of the configuration file on the PC. Default is a specified file path.
+    inst_file (str): The file path on the instrument where the configuration will be loaded. Default is a specified file path.
+    """
+    # Reset the ZVA instrument to its default state.
     zva.reset()
-    # Transfer the file to the instrument
+
+    # Transfer the configuration file from the PC to the instrument.
     zva.send_file_from_pc_to_instrument(pc_file, inst_file)
-    # Load the transferred setup
+
+    # Load the transferred setup on the instrument.
     zva.write_str_with_opc(f'MMEM:LOAD:STAT 1,"{inst_file}"')
+
+    # Print a confirmation message indicating the configuration file has been loaded.
     print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
 
 
-def calculate_pullin_out_voltage_measurement(v_bias,
-                                             v_log_amp):  # same function as in display implemented in measurement
+def calculate_pull_in_out_voltage_measurement(v_bias,
+                                              v_log_amp):  # same function as in display implemented in measurement
 
     # Acquiring the indexes that correspond to both positive and negative bias triangles
     # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
@@ -1045,9 +1239,17 @@ def calculate_pullin_out_voltage_measurement(v_bias,
 
     pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
     Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
-    # print(f"""Vpullin = {Vpullin} | Isolation measured = {}\nVpullout = {Vpullout} | Isolation measured = {} \nVpullin_minus = {} |
-    # Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(Vpullin, ninetypercent_iso,
-    # Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent, Vpullout_minus, tenpercent_iso_ascent"""))
+    print(
+        """Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | 
+        Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n"""
+        .format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent,
+                Vpullout_minus, tenpercent_iso_ascent))
+    pull_dict = {'Vpullin_plus': Vpullin, 'Vpullout_plus': Vpullout, 'Isolation_at_pullin_plus': ninetypercent_iso,
+                 'Isolation_at_pullout_plus': tenpercent_iso,
+                 'Vpullin_minus': Vpullin_minus, 'Vpullout_minus': Vpullout_minus,
+                 'Isolation_at_pullin_minus': ninetypercent_iso_descent,
+                 'Isolation_at_pullout_minus': tenpercent_iso_ascent}
+    return pull_dict
 
 
 def plot_function(list_x, list_y):
@@ -1196,39 +1398,21 @@ def sig_gen_cycling_config():
     sig_gen.write("*OPC?")
     print("Signal Generator cycling config")
 
+
 def osc_cycling_config():
     osc.write('RECALL:SETUP "C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set"')
     print("Oscilloscope cycling config")
     sig_gen.write("*OPC?")
 
-# sig_gen.write('OUTPut 1')
-
-# sig_gen_cycling_config()
-
-# starting_number_of_acquisitions = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-# counter = starting_number_of_acquisitions
-# while counter == starting_number_of_acquisitions:
-#     counter = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#     time.sleep(1)
-#
-# ch_2 = get_curve_cycling(2)
-# ch_4 = get_curve_cycling(4)
-#
-# df = extract_data_v2(rf_detector_channel=ch_4, v_bias_channel=ch_2)
-#
-# sig_gen.write('OUTPut 0')
-#
-# for column, value in zip(df.columns, df.values[0]):
-#     print(f"{column} = {value}")
-
 # try:
-#     cycling_sequence(number_of_cycles=1e6)
-# except:
-#     print("Cycling sequence error", end='\n')
-#     osc.close()
-#     sig_gen.write('OUTPut 0')
-# sig_gen.write('OUTPut 0')
-# zva = zva_init()
-# print(format_duration(3600*24))
-# powermeter = powermeter_init()
-# rf_gen = rf_gen_init()
+#     test_fig, ax = plt.subplots(nrows=2, ncols=3)
+#
+#     os.chdir(r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling")
+#     cycling_sequence(number_of_cycles=2e5, number_of_pulses_in_wf=1000, filename=r"test", figure=test_fig)
+#     plt.show()
+# except KeyboardInterrupt:
+#     sig_gen.write("OUTput 0")
+# finally:
+#     sig_gen.write("OUTput 0")
+#
+#

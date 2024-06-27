@@ -165,8 +165,8 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.0253, ramp_st
 #
 # fig_s3p, ax_s3p = plt.subplots(nrows=1, ncols=1)
 #
-# ax_s3p.plot(mems_characteristics['iso_ascent'], label = 'ascent')
-# ax_s3p.plot(mems_characteristics['iso_descent'], label = 'descent')
+# ax_s3p.figure(mems_characteristics['iso_ascent'], label = 'ascent')
+# ax_s3p.figure(mems_characteristics['iso_descent'], label = 'descent')
 #
 # formatter = ticker.ScalarFormatter(useMathText=True)
 # formatter.set_scientific(True)

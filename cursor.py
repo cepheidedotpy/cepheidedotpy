@@ -5,14 +5,14 @@ class AnnotatedCursor(Cursor):
     For the cursor to remain responsive you must keep a reference to it.
     The data of the axis specified as *dataaxis* must be in ascending
     order. Otherwise, the `numpy.searchsorted` call might fail and the text_file_name_s3p_test
-    disappears. You can satisfy the requirement by sorting the data you plot.
+    disappears. You can satisfy the requirement by sorting the data you figure.
     Usually the data is already sorted (if it was created e.g. using
     `numpy.linspace`), but e.g. scatter plots might cause this problem.
     The cursor sticks to the plotted line.
     Parameters
     ----------
     line : `matplotlib.lines.Line2D`
-        The plot line from which the data coordinates are displayed.
+        The figure line from which the data coordinates are displayed.
     numberformat : `python format string <https://docs.python.org/3/\
     library/string.html#formatstrings>`_, optional, default: "{0:.4g};{1:.4g}"
         The displayed text_file_name_s3p_test is created by calling *format()* on this string
@@ -101,12 +101,12 @@ class AnnotatedCursor(Cursor):
         # if the event coordinates are valid.
         plotpoint = None
         if event.xdata is not None and event.ydata is not None:
-            # Get plot point related to current x position.
+            # Get figure point related to current x position.
             # These coordinates are displayed in text_file_name_s3p_test.
             plotpoint = self.set_position(event.xdata, event.ydata)
             # Modify event, such that the cursor is displayed on the
             # plotted line, not at the mouse pointer,
-            # if the returned plot point is valid
+            # if the returned figure point is valid
             if plotpoint is not None:
                 event.xdata = plotpoint[0]
                 event.ydata = plotpoint[1]
@@ -151,7 +151,7 @@ class AnnotatedCursor(Cursor):
             self.needclear = True
 
             # Remember the recently drawn cursor position, so events for the
-            # same position (mouse moves slightly between two plot points)
+            # same position (mouse moves slightly between two figure points)
             # can be skipped
             self.lastdrawnplotpoint = plotpoint
         # otherwise, make text_file_name_s3p_test invisible
@@ -175,7 +175,7 @@ class AnnotatedCursor(Cursor):
         Finds the coordinates, which have to be shown in text_file_name_s3p_test.
 
         The behaviour depends on the *dataaxis* attribute. Function looks
-        up the matching plot coordinate for the given mouse position.
+        up the matching figure coordinate for the given mouse position.
 
         Parameters
         ----------
@@ -193,7 +193,7 @@ class AnnotatedCursor(Cursor):
             *None* is the fallback value.
         """
 
-        # Get plot line data
+        # Get figure line data
         xdata = self.line.get_xdata()
         ydata = self.line.get_ydata()
 
@@ -211,7 +211,7 @@ class AnnotatedCursor(Cursor):
             raise ValueError(f"The data axis specifier {self.dataaxis} should "
                              f"be 'x' or 'y'")
 
-        # If position is valid and in valid plot data range.
+        # If position is valid and in valid figure data range.
         if pos is not None and lim[0] <= pos <= lim[-1]:
             # Find closest x value in sorted x vector.
             # This requires the plotted data to be sorted.
@@ -219,7 +219,7 @@ class AnnotatedCursor(Cursor):
             # Return none, if this index is out of range.
             if index < 0 or index >= len(data):
                 return None
-            # Return plot point as tuple.
+            # Return figure point as tuple.
             return xdata[index], ydata[index]
 
         # Return none if there is no good related point for this x position.

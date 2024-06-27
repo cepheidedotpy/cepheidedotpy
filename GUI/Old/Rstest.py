@@ -900,9 +900,9 @@ def online_mode():
 # def display_figure():
 #     fig_s3p, ax_s3p = plt.subplots(nrows=1, ncols=1)
 #     # Display -----------------------------------------------------------------------------------------------------------------------
-#     ax_s3p.plot(t, rf_detector, label='rf_detector')
-#     ax_s3p.plot(t, v_bias, label='v_bias')
-#     ax_s3p.plot(v_bias, rf_detector, label='rf_detector vs v_bias')
+#     ax_s3p.figure(t, rf_detector, label='rf_detector')
+#     ax_s3p.figure(t, v_bias, label='v_bias')
+#     ax_s3p.figure(v_bias, rf_detector, label='rf_detector vs v_bias')
 #
 #     formatter = ticker.ScalarFormatter(useMathText=True)
 #     formatter.set_scientific(True)

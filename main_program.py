@@ -4,29 +4,29 @@ Created on Fri Nov 25 14:31:59 2022
 This Tkinter app can get S3P & S2P files in a directory and display them
 after selection
 @author: T0188303
-_version :8
+_version :10
 """
 import os
 import time
 import tkinter as tk
-from os import listdir
-from os.path import isfile, join
+import tkinter.ttk
 from tkinter import Menu
 from tkinter import Toplevel
-from tkinter import font
+# from tkinter import font
 from tkinter import scrolledtext
 from tkinter import ttk
+from tkinter.ttk import Notebook
+from typing import Optional
 
 # Implement the default Matplotlib key bindings.
 import matplotlib.pyplot as plt
 import numpy as np
+import skrf as rf
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
-
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg)  # , NavigationToolbar2Tk)
 from matplotlib.figure import Figure
 
 import dir_and_var_declaration
-import skrf as rf
 # ==============================================================================
 # Imports#%matplotlib inline
 # ==============================================================================
@@ -35,7 +35,7 @@ import scripts_and_functions as scripts_and_functions
 # %matplotlib inline
 
 """ This GUI is used to display S Parameters inside a Folder chosen by the user."""
-_version = '9.2'
+_version = '10'
 
 # This code is dated to 15/02/24
 
@@ -48,161 +48,448 @@ plt.style.use('default')
 plt.rcParams["legend.fontsize"] = 10
 plt.rcParams["axes.labelsize"] = 10
 plt.rcParams["font.size"] = 10
-plt.rcParams["axes.titlesize"] = 15
+plt.rcParams["axes.titlesize"] = 12
 
 
-def add_Tab(tab_name, notebook, col,
-            row):  # Adds a tab to notebook at defined column and row and returns the tab instance
-    tab_inst = ttk.Frame(notebook, relief='ridge', borderwidth=10)  # Create a tab
-    notebook.add(tab_inst, text='{}'.format(tab_name))  # Add the tab
+def add_tab(tab_name: str, notebook: ttk.Notebook, col: int, row: int) -> ttk.LabelFrame:
+    """
+    Adds a tab to a notebook at the defined column and row and returns the tab instance.
+
+    Parameters:
+    tab_name (str): Name of the tab.
+    notebook (ttk.Notebook): Notebook in which the tab is to be created.
+    col (int): Column position within the notebook.
+    row (int): Row position within the notebook.
+
+    Returns:
+    ttk.Frame: The created tab (frame) instance.
+    """
+    # Create a new frame (tab) with 'ridge' relief and a border width of 10.
+    tab_inst = ttk.LabelFrame(notebook, relief='ridge', borderwidth=10)
+
+    # Add the newly created tab to the notebook with the given tab name.
+    notebook.add(tab_inst, text='{}'.format(tab_name))
+
+    # Position the notebook at the specified column and row in the parent widget.
     notebook.grid(column=col, row=row)
+
+    # Return the created tab (frame) instance.
     return tab_inst
 
 
-def add_Button(tab, button_name, command, col,
-               row):  # Adds a button with a button_name, command, column and row
-    action = ttk.Button(tab, text=button_name, command=command, width=12, padding=0)
+def add_button(tab: ttk.LabelFrame, button_name: str, command, col: int, row: int) -> ttk.Button:
+    """
+    Adds a button to a specified tab (LabelFrame) with given name, command, column, and row.
+    The button changes color for 500 milliseconds when pressed.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the button is to be added.
+    button_name (str): The text to be displayed on the button.
+    command (callable): The function to be executed when the button is pressed.
+    col (int): The column position within the LabelFrame.
+    row (int): The row position within the LabelFrame.
+
+    Returns:
+    ttk.Button: The created Button widget.
+    """
+
+    def on_press():
+        # Change the button color to a highlight color when pressed.
+        action.configure(style='Pressed.TButton')
+
+        # Call the original command.
+        command()
+
+        # Schedule the color to revert back to the original after 500 milliseconds.
+        action.after(500, lambda: action.configure(style='TButton'))
+
+    # Create a Button widget with the specified text and additional configurations.
+    action = ttk.Button(
+        tab,  # The parent LabelFrame where the button is added.
+        text=button_name,  # The text displayed on the button.
+        command=on_press,  # The function to be executed on button press.
+        width=len(button_name),  # Set the button width to the length of the button name.
+        padding=1  # Set padding around the button.
+    )
+
+    # Enable the button.
     action.configure(state='enabled')
+
+    # Place the Button widget at the specified column and row in the LabelFrame.
     action.grid(column=col, row=row)
+
+    # Define a new style for the pressed button.
+    style = ttk.Style()
+    style.configure('Pressed.TButton', background='blue')  # Change 'blue' to any color you prefer.
+
+    # Return the created Button widget.
     return action
 
 
-def clicked_Button(button):  # Changes text_file_name_s3p_test to 'updated' on button press
+def update_button(button: ttk.Button) -> ttk.Button:
+    """
+    Changes the text on a button to 'Updated' for 500 milliseconds when the button is pressed,
+    then changes it back to 'Update files'.
+
+    Parameters:
+    button (ttk.Button): The button whose text is to be changed.
+
+    Returns:
+    ttk.Button: The same button with updated behavior.
+    """
+
+    def update_text_back():
+        # Change the button text back to 'Update files' after 500 milliseconds.
+        button.configure(text='Update files')
+
+    # Change the button text to 'Updated' immediately.
     button.configure(text='Updated')
-    button.configure(text='Update files')
+    # Schedule the text to change back to 'Update files' after 500 milliseconds.
+    button.after(500, update_text_back)
+
     return button
 
 
-def add_Label(tab, label_name, col,
-              row):  # Adds a label in tab named label_name at the designated column and row
+def add_label(tab: ttk.LabelFrame, label_name: str, col: int, row: int) -> ttk.Label:
+    """
+    Adds a Label widget to a specified tab (LabelFrame) at the given column and row.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the Label is to be added.
+    label_name (str): The text to be displayed on the Label.
+    col (int): The column position within the LabelFrame.
+    row (int): The row position within the LabelFrame.
+
+    Returns:
+    ttk.Label: The created Label widget.
+    """
+    # Create a Label widget with the specified text.
     label = ttk.Label(tab, text=label_name)
+
+    # Place the Label widget at the specified column and row in the LabelFrame.
     label.grid(column=col, row=row)
+
+    # Return the created Label widget.
     return label
 
 
-def add_scrolled_text(tab, scrol_w,
-                      scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text_file_name_s3p_test at row/col location
-    # and with scrol_w/scrol_h dimensions
-    scroll = scrolledtext.ScrolledText(tab, width=scrol_w, height=scrol_h, wrap=tk.WORD, border=2, relief=tk.SUNKEN,
-                                       pady=0)
+def add_scrolled_text(tab: ttk.LabelFrame, scrolled_width: int, scrolled_height: int) -> scrolledtext.ScrolledText:
+    """
+    Adds a ScrolledText widget to a specified tab (LabelFrame) with given width and height.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the ScrolledText is to be added.
+    scrolled_width (int): The width of the ScrolledText widget.
+    scrolled_height (int): The height of the ScrolledText widget.
+
+    Returns:
+    scrolledtext.ScrolledText: The created ScrolledText widget.
+    """
+    # Create a ScrolledText widget with the specified width, height, and other configurations.
+    scroll = scrolledtext.ScrolledText(
+        tab,  # The parent LabelFrame where the ScrolledText is added.
+        width=scrolled_width,  # Width of the ScrolledText widget.
+        height=scrolled_height,  # Height of the ScrolledText widget.
+        wrap=tk.WORD,  # Wrap text by words.
+        border=2,  # Set border width of the widget.
+        relief=tk.SUNKEN,  # Sunken relief appearance.
+        pady=0  # Padding on the y-axis.
+    )
+
+    # Pack the ScrolledText widget to the top of the parent LabelFrame.
     scroll.pack(side='top')
+
+    # Return the created ScrolledText widget.
     return scroll
 
 
-def add_Label_frame(tab, frame_name, col, row,
-                    rowspan=1):  # Adds a label_frame in tab named label_name at the designated column and row (
-    # label anchor set to North West)
-    frame = ttk.LabelFrame(tab, text=frame_name, borderwidth=5, relief=tk.RIDGE, labelanchor='nw')
-    frame.grid(column=col, row=row, sticky=tk.N + tk.S + tk.W + tk.E, rowspan=rowspan)
+def add_label_frame(tab: ttk.LabelFrame, frame_name: str, col: int, row: int, row_span: int = 1) -> ttk.LabelFrame:
+    """
+    Adds a LabelFrame to a specified tab (LabelFrame) with given name, column, row, and row span.
+    The LabelFrame is created with a 'ridge' relief and the label anchor set to North West.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the new LabelFrame is to be added.
+    frame_name (str): The text to be displayed on the LabelFrame.
+    col (int): The column position within the parent LabelFrame.
+    row (int): The row position within the parent LabelFrame.
+    row_span (int, optional): The number of rows the LabelFrame should span. Default is 1.
+
+    Returns:
+    ttk.LabelFrame: The created LabelFrame widget.
+    """
+    # Create a LabelFrame widget with the specified text, border width, relief, and label anchor.
+    frame = ttk.LabelFrame(
+        tab,  # The parent LabelFrame where the new LabelFrame is added.
+        text=frame_name,  # The text displayed on the LabelFrame.
+        borderwidth=5,  # Set the border width of the LabelFrame.
+        relief=tk.RIDGE,  # Set the relief style to 'ridge'.
+        labelanchor='nw'  # Set the label anchor to North West.
+    )
+
+    # Place the LabelFrame widget at the specified column and row in the parent LabelFrame,
+    # making it span the specified number of rows and stick to all sides of the cell.
+    frame.grid(
+        column=col,  # The column position within the parent LabelFrame.
+        row=row,  # The row position within the parent LabelFrame.
+        sticky=tk.N + tk.S + tk.W + tk.E,  # Make the LabelFrame stick to all sides of the cell.
+        rowspan=row_span  # Set the number of rows the LabelFrame should span.
+    )
+
+    # Return the created LabelFrame widget.
     return frame
 
 
-def extension_detector(file):  # Seprate file name and extension
+def extension_detector(file: str) -> tuple:
+    """
+    Separates the file name and extension from a given file path.
+
+    Parameters:
+    file (str): The file path or file name to be processed.
+
+    Returns:
+    tuple: A tuple containing the file extension and the file name without the extension.
+    """
+    # Separate the file name and extension using os.path.splitext.
     file, extension = os.path.splitext(file)
+
+    # Return the extension and the file name.
     return extension, file
 
 
-def filetypes_dir(
-        path):  # Calls extension_detector to separate different file types at set path and returns s3p, s2p and txt
-    # file tuples
-    if path == '':
+def filetypes_dir(path: str) -> tuple:
+    """
+    Separates different file types in the specified directory and returns tuples of s3p, s2p, and txt files.
+
+    Parameters:
+    path (str): The directory path to search for files.
+
+    Returns:
+    tuple: Three tuples containing s3p, s2p, and txt files, respectively.
+    """
+    if not path:
         return 'empty', 'empty'
-        pass
-    else:
-        file_list = [f for f in listdir(path) if isfile(join(path, f))]
-        # Separating file types
-        # nb_files = 0
-        nb_txt = 0
-        nb_s3p = 0
-        nb_s2p = 0
-        nb_other = 0
-        txt_file = []
-        s3p_file = []
-        s2p_file = []
-        other_file = []
-        for nb_files in range(len(file_list)):
-            if extension_detector(file_list[nb_files])[0] == '.txt':
-                nb_txt += 1
-                txt_file.append(file_list[nb_files])
-            elif extension_detector(file_list[nb_files])[0] == '.s3p':
-                nb_s3p += 1
-                s3p_file.append(file_list[nb_files])
-            elif extension_detector(file_list[nb_files])[0] == '.s2p':
-                nb_s2p += 1
-                s2p_file.append(file_list[nb_files])
-            else:
-                nb_other += 1
-                other_file.append(file_list[nb_files])
-        s3p_file_as_tuple = tuple(s3p_file)
-        s2p_file_as_tuple = tuple(s2p_file)
-        txt_file_as_tuple = tuple(txt_file)
-        return s3p_file_as_tuple, s2p_file_as_tuple, txt_file_as_tuple
+
+    # List all files in the directory
+    file_list = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+
+    # Initialize lists to store different types of files
+    txt_files = []
+    s3p_files = []
+    s2p_files = []
+
+    # Loop through each file and classify by extension
+    for file in file_list:
+        extension, _ = extension_detector(file)
+        if extension == '.txt':
+            txt_files.append(file)
+        elif extension == '.s3p':
+            s3p_files.append(file)
+        elif extension == '.s2p':
+            s2p_files.append(file)
+
+    # Convert lists to tuples and return
+    return tuple(s3p_files), tuple(s2p_files), tuple(txt_files)
 
 
-def add_entry(tab, textvar, width, col,
-              row):  # Adds an entry in the tab with a specified text_file_name_s3p_test variable at the designated column and row
-    entered = ttk.Entry(tab, width=width, textvariable=textvar, validate='focus', font=('Bahnschrift Light', 10))
-    entered.grid(column=col, row=row, sticky="WE")
+def add_entry(tab: ttk.LabelFrame, text_var: tk.StringVar | tk.DoubleVar, width: int, col: int, row: int) -> ttk.Entry:
+    """
+    Adds an Entry widget to a specified tab (LabelFrame) with given text variable, width, column, and row.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the Entry is to be added.
+    text_var (tk.StringVar or tk.DoubleVar): The text variable associated with the Entry widget.
+    width (int): The width of the Entry widget.
+    col (int): The column position within the parent LabelFrame.
+    row (int): The row position within the parent LabelFrame.
+
+    Returns:
+    ttk.Entry: The created Entry widget.
+    """
+    # Create an Entry widget with the specified width, text variable, validation, and font.
+    entered = ttk.Entry(
+        tab,  # The parent LabelFrame where the Entry is added.
+        width=width,  # The width of the Entry widget.
+        textvariable=text_var,  # The text variable associated with the Entry widget.
+        validate='focus',  # Validation on focus.
+        font=('Bahnschrift Light', 10)  # Font style and size.
+    )
+
+    # Place the Entry widget at the specified column and row in the parent LabelFrame,
+    # and make it stretch horizontally.
+    entered.grid(
+        column=col,  # The column position within the parent LabelFrame.
+        row=row,  # The row position within the parent LabelFrame.
+        sticky="WE"  # Make the Entry widget stretch horizontally.
+    )
+
+    # Return the created Entry widget.
     return entered
 
 
-def add_combobox(tab, text, col, row,
-                 width):  # Adds a Combobox in the tab with a specified text_file_name_s3p_test variable text_file_name_s3p_test at the designated
-    # column and row
-    combobox = ttk.Combobox(tab, textvariable=text, state='readonly',
-                            values=[''], validate='focus', width=width, height=10,
-                            font=('Bahnschrift Light', 10))
-    combobox.grid(column=col, row=row)
+def add_combobox(tab: ttk.LabelFrame, text: tk.StringVar, col: int, row: int, width: int) -> ttk.Combobox:
+    """
+    Adds a Combobox widget to a specified tab (LabelFrame) with given text variable, column, row, and width.
+
+    Parameters:
+    tab (ttk.LabelFrame): The parent LabelFrame where the Combobox is to be added.
+    text (tk.StringVar): The text variable associated with the Combobox widget.
+    col (int): The column position within the parent LabelFrame.
+    row (int): The row position within the parent LabelFrame.
+    width (int): The width of the Combobox widget.
+
+    Returns:
+    ttk.Combobox: The created Combobox widget.
+    """
+    # Create a Combobox widget with the specified text variable, state, values, validation, width, height, and font.
+    combobox = ttk.Combobox(
+        tab,  # The parent LabelFrame where the Combobox is added.
+        textvariable=text,  # The text variable associated with the Combobox widget.
+        state='readonly',  # Make the Combobox read-only.
+        values=[''],  # Initialize the Combobox with an empty list of values.
+        validate='focus',  # Validation on focus.
+        width=width,  # The width of the Combobox widget.
+        font=('Bahnschrift Light', 10)  # Font style and size.
+    )
+
+    # Place the Combobox widget at the specified column and row in the parent LabelFrame.
+    combobox.grid(
+        column=col,  # The column position within the parent LabelFrame.
+        row=row  # The row position within the parent LabelFrame.
+    )
+
+    # Return the created Combobox widget.
     return combobox
 
 
-def close_resources():  # Calls close_all_resources to close all ressources
+def close_resources():  # Calls close_all_resources to close all resources
     scripts_and_functions.close_all_resources()
 
 
 def call_s3p_config():
-    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s3p,
-                                      inst_file=dir_and_var_declaration.instrument_file)
-    pass
+    """
+    Calls the load_config function to load the s3p configuration file to the instrument.
+    Uses predefined file paths from the dir_and_var_declaration module.
+    """
+    # Call the load_config function with predefined file paths for the s3p configuration.
+    scripts_and_functions.load_config(
+        pc_file=dir_and_var_declaration.pc_file_s3p,  # Path to the s3p configuration file on the PC.
+        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+    )
 
 
 def call_s2p_config():
-    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s2p,
-                                      inst_file=dir_and_var_declaration.instrument_file)
-    pass
+    """
+    Calls the load_config function to load the s2p configuration file to the instrument.
+    Uses predefined file paths from the dir_and_var_declaration module.
+    """
+    # Call the load_config function with predefined file paths for the s2p configuration.
+    scripts_and_functions.load_config(
+        pc_file=dir_and_var_declaration.pc_file_s2p,  # Path to the s2p configuration file on the PC.
+        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+    )
 
 
 def call_s1p_config():
-    scripts_and_functions.load_config(pc_file=dir_and_var_declaration.pc_file_s1p,
-                                      inst_file=dir_and_var_declaration.instrument_file)
-    pass
+    """
+    Calls the load_config function to load the s1p configuration file to the instrument.
+    Uses predefined file paths from the dir_and_var_declaration module.
+    """
+    # Call the load_config function with predefined file paths for the s1p configuration.
+    scripts_and_functions.load_config(
+        pc_file=dir_and_var_declaration.pc_file_s1p,  # Path to the s1p configuration file on the PC.
+        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+    )
 
 
-def update_entries(directory, combobox, filetype):  # Updates directory entries
+def update_entries(directory: str, combobox: ttk.Combobox, filetype: str) -> ttk.Combobox:
+    """
+    Updates the values of a Combobox based on the specified file type from the given directory.
+
+    Parameters:
+    directory (str): The directory path to search for files.
+    combobox (ttk.Combobox): The Combobox widget to update with file names.
+    filetype (str): The file type to filter for updating the Combobox values.
+
+    Returns:
+    ttk.Combobox: The updated Combobox widget.
+    """
+    # Get the files in the directory classified by their extensions.
     files = filetypes_dir(directory)
+
+    # Update the Combobox values based on the specified file type.
     if filetype == '.s2p':
-        entry = files[1]
+        combobox['values'] = files[1]  # Update with s2p files.
     elif filetype == '.s3p':
-        entry = files[0]
+        combobox['values'] = files[0]  # Update with s3p files.
     elif filetype == '.txt':
-        entry = files[2]
-    combobox['values'] = entry
+        combobox['values'] = files[2]  # Update with txt files.
+
+    # Return the updated Combobox widget.
     return combobox
 
 
-def create_canvas(figure, frame, toolbar=True):  # Creates s3p display Canvas in the frame and at col and row location
+def create_canvas(figure: plt.Figure, frame: ttk.LabelFrame, toolbar: Optional[bool] = True) -> FigureCanvasTkAgg:
+    """
+    Creates display Canvas in the specified frame, and optionally adds a toolbar.
+
+    Parameters:
+    figure (plt.Figure): The matplotlib figure to be displayed on the canvas.
+    frame (ttk.Frame): The parent frame where the canvas is to be added.
+    toolbar (bool, optional): Whether to add a navigation toolbar. Default is True.
+
+    Returns:
+    FigureCanvasTkAgg: The created canvas with the matplotlib figure.
+    """
+    # Create a FigureCanvasTkAgg widget with the specified figure and parent frame.
     canvas = FigureCanvasTkAgg(figure, master=frame)
-    canvas._tkcanvas.pack(ipady=2, ipadx=2)
-    toolbar = NavigationToolbar2Tk(canvas=canvas, window=frame, pack_toolbar=toolbar)
+
+    # Pack the canvas widget with specified padding.
+    canvas.get_tk_widget().pack(ipady=2, ipadx=2)
+
+    # Optionally add a navigation toolbar.
+    if toolbar:
+        NavigationToolbar2Tk(canvas=canvas, window=frame)
+
+    # Return the created canvas widget.
     return canvas
 
 
-def file_name_creation(data_list, text, end_characters=''):
-    text.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
+def file_name_creation(data_list: list, text: tkinter.Text, end_characters: str = '') -> str:
+    """
+    Creates a filename by joining elements of a data list with hyphens and appending end characters.
+    Updates a given text widget with the created filename and prints it.
+
+    Parameters:
+    data_list (list): List of strings to be joined into a filename.
+    text (tkinter.Text): Text widget to be updated with the created filename.
+    end_characters (str, optional): Characters to be appended at the end of the filename. Default is an empty string.
+
+    Returns:
+    str: The created filename.
+    """
+    # Clear the current content of the text widget.
+    text.delete(index1="1.0", index2="1.end")
+
+    # Create the filename by joining elements of the data list with hyphens and appending end characters.
     filename = '-'.join(data_list) + end_characters
-    text.insert(index="%d.%d" % (1, 0), chars=filename)
+
+    # Insert the created filename into the text widget at the beginning.
+    text.insert(index="1.0", chars=filename)
+
+    # Print the created filename.
     print(filename)
+
+    # Return the created filename.
     return filename
+
+
+def add_slider(frame, _from, to, name, variable, step):
+    slider = tk.Scale(master=frame, from_=_from, to=to, orient=tk.HORIZONTAL, label=name, length=400, digits=2,
+                      relief=tk.GROOVE, border=3, sliderrelief=tk.RIDGE, tickinterval=step, variable=variable,
+                      font=('Bahnschrift Light', 10))
+    # slider.pack()
+    return slider
 
 
 class Window(tk.Tk, Toplevel):
@@ -213,6 +500,9 @@ class Window(tk.Tk, Toplevel):
     This class inherits from tk.Tk to provide a main application window.
     It initializes the GUI components and binds the necessary event handlers.
     """
+    tabControl: Notebook
+    fig_cycling: Figure
+    fig_pull_in_meas: Figure
     fig_snp_meas: Figure
     fig_s2p: Figure
     fig_s3p: Figure
@@ -242,6 +532,7 @@ class Window(tk.Tk, Toplevel):
         self.fig_pull_in = plt.figure(num=3, dpi=100, tight_layout=True, figsize=(13, 3.5), frameon=True)
         self.ax_pull_in = self.fig_pull_in.add_subplot(1, 1, 1)
         self.ax_pull_in.grid()
+        self.ax_pull_in.set(xlabel="V_bias (V)", ylabel="Isolation (dB)", title="Isolation vs Bias voltage")
 
         # figure that contains pull-in plots for measurement display
         self.fig_pull_in_meas = plt.figure(num=4, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
@@ -255,14 +546,27 @@ class Window(tk.Tk, Toplevel):
 
         # figure that contains Cycling parameters during cycling test
         self.fig_cycling = plt.figure(num=6, dpi=100, tight_layout=True, figsize=(10, 6), frameon=True)
-        self.ax_cycling_pull_in = self.fig_cycling.add_subplot(3, 2, 1)
-        self.ax_cycling_pull_out = self.fig_cycling.add_subplot(3, 2, 2)
-        self.ax_cycling_isolation = self.fig_cycling.add_subplot(3, 2, 3)
-        self.ax_cycling_insertion_loss = self.fig_cycling.add_subplot(3, 2, 4)
-        self.ax_cycling_t_down = self.fig_cycling.add_subplot(3, 2, 5)
-        self.ax_cycling_t_up = self.fig_cycling.add_subplot(3, 2, 6)
+        # self.ax_cycling_pull_in = self.fig_cycling.add_subplot(3, 2, 1).set_title(label="Pull-in Voltage")
+        self.ax_cycling_pull_in = self.fig_cycling.add_subplot(3, 2, 1).set(xlabel="Cycles", ylabel="Pull-in (V)",
+                                                                            title="Pull-in Voltage")
+        self.ax_cycling_pull_out = self.fig_cycling.add_subplot(3, 2, 2).set(xlabel="Cycles", ylabel="Pull-out (V)",
+                                                                             title="Pull-out Voltage")
+        self.ax_cycling_isolation = self.fig_cycling.add_subplot(3, 2, 3).set(xlabel="Cycles", ylabel="Isolation (dB)",
+                                                                              title="Isolation")
+        self.ax_cycling_insertion_loss = self.fig_cycling.add_subplot(3, 2,
+                                                                      4).set(xlabel="Cycles",
+                                                                             ylabel="Insertion loss variation (dB)",
+                                                                             title="Insertion loss variation")
+        self.ax_cycling_t_down = self.fig_cycling.add_subplot(3, 2, 5).set(xlabel="Cycles", ylabel="ts_down (s)",
+                                                                           title="Down state switching time")
+        self.ax_cycling_t_up = self.fig_cycling.add_subplot(3, 2, 6).set(xlabel="Cycles", ylabel="ts_up (s)",
+                                                                         title="Up state switching time")
         for ax in self.fig_cycling.axes:
             ax.grid()
+
+        self.fig_power_meas = plt.figure(num=7, dpi=100, tight_layout=True, figsize=(6.5, 6), frameon=True)
+        self.ax_power_meas = self.fig_power_meas.add_subplot(1, 1, 1)
+        self.ax_power_meas.grid()
 
         self.s_parameter_s3p = tk.StringVar(value='S11')
         self.s_parameter_s2p = tk.StringVar(value='S11')
@@ -276,62 +580,62 @@ class Window(tk.Tk, Toplevel):
         self.ax_s3p.set_ylim(ymin=self.scale_amplitude_value.get(), ymax=0)
         self.ax_s3p.set_xlim(xmin=0, xmax=self.scale_frequency_upper_value.get())
 
-        tab_s3p = add_Tab(tab_name=' S3P Files ', notebook=self.tabControl, col=0, row=1)  # s3p Tab display
-        tab_s2p = add_Tab(tab_name=' S2P Files ', notebook=self.tabControl, col=0, row=1)  # s2p Tab display
-        tab_pull_in = add_Tab(tab_name=' Pull-in Files ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab display
-        tab_pull_in_meas = add_Tab(tab_name=' Pull-in Test ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab
-        tab_snp_meas = add_Tab(tab_name=' SNP Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
-        tab_power_meas = add_Tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
-        tab_cycling = add_Tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
-        tab_resources = add_Tab(tab_name=' Resource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+        tab_s3p = add_tab(tab_name=' S3P Files ', notebook=self.tabControl, col=0, row=1)  # s3p Tab display
+        tab_s2p = add_tab(tab_name=' S2P Files ', notebook=self.tabControl, col=0, row=1)  # s2p Tab display
+        tab_pull_in = add_tab(tab_name=' Pull-in Files ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab display
+        tab_pull_in_meas = add_tab(tab_name=' Pull-in Test ', notebook=self.tabControl, col=0, row=1)  # Pull-in Tab
+        tab_snp_meas = add_tab(tab_name=' SNP Test ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
+        tab_power_meas = add_tab(tab_name=' Power Test ', notebook=self.tabControl, col=0, row=1)  # Power test Tab
+        tab_cycling = add_tab(tab_name=' Cycling tab ', notebook=self.tabControl, col=0, row=1)  # Cycling test Tab
+        tab_resources = add_tab(tab_name=' Resource Page ', notebook=self.tabControl, col=0, row=1)  # s3p test Tab
 
         # ==============================================================================
         # TAB1 S3P parameter display
         # ==============================================================================
         # This TAB is for S3P parameter display
-        frame_s3p_display = add_Label_frame(tab_s3p, 's3p Directory', 0, 0)  # s3p Frame
-        self.frame_s3p_display = add_Label_frame(tab_s3p, frame_name='s3p Display', col=0, row=1)
+        frame_s3p_directory = add_label_frame(tab_s3p, 's3p Directory', 0, 0)  # s3p Frame
+        frame_s3p_display = add_label_frame(tab_s3p, frame_name='s3p Display', col=0, row=1)
 
         # s3p_dir_name is the directory variable used in the entry entereded_var_s3p
         self.s3p_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')  # Entry variable for s3p dir
         # Adding labels and frame_s3p_display
-        add_Label(frame_s3p_display, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
-                                                                                ipady=tab_pad_x)
+        add_label(frame_s3p_directory, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
+                                                                                  ipady=tab_pad_x)
         # Directory frame label
-        add_Label(frame_s3p_display, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
-                                                                           ipady=tab_pad_x)  # File frame label
-        add_Label(frame_s3p_display, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
-                                                                                  ipady=tab_pad_x)  # File frame label
+        add_label(frame_s3p_directory, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
+                                                                             ipady=tab_pad_x)  # File frame label
+        add_label(frame_s3p_directory, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
+                                                                                    ipady=tab_pad_x)  # File frame label
         #  Adding entry for file directory
-        self.entered_var_s3p = add_entry(frame_s3p_display, textvar=self.s3p_dir_name, width=70, col=2, row=1)
+        self.entered_var_s3p = add_entry(frame_s3p_directory, text_var=self.s3p_dir_name, width=70, col=2, row=1)
 
         file_s3p = filetypes_dir(self.entered_var_s3p.get())[0]
 
-        self.s3p_file_name_combobox = add_combobox(frame_s3p_display, text=file_s3p, col=2, row=2, width=100)
-        self.s_parameter_chosen_s3p = add_combobox(frame_s3p_display, text=self.s_parameter_s3p, col=2, row=3,
+        self.s3p_file_name_combobox = add_combobox(frame_s3p_directory, text=file_s3p, col=2, row=2, width=100)
+        self.s_parameter_chosen_s3p = add_combobox(frame_s3p_directory, text=self.s_parameter_s3p, col=2, row=3,
                                                    width=100)
         self.s_parameter_chosen_s3p['values'] = ('S11', 'S12', 'S13', 'S21', 'S22', 'S23', 'S31', 'S32', 'S33')
 
-        self.button_file_update = add_Button(tab=frame_s3p_display, button_name=' Update Files ',
+        self.button_file_update = add_button(tab=frame_s3p_directory, button_name=' Update Files ',
                                              command=lambda: [update_entries(directory=self.entered_var_s3p.get(),
                                                                              combobox=self.s3p_file_name_combobox,
                                                                              filetype='.s3p'),
-                                                              clicked_Button(self.button_file_update)], col=3,
-                                             row=1)  # (self.update_entries_s3p_v2), (self.clicked_Button)
+                                                              update_button(self.button_file_update)], col=3,
+                                             row=1)  # (self.update_entries_s3p_v2), (self.update_button)
 
-        add_Button(tab=frame_s3p_display, button_name='Exit', command=self._quit, col=5, row=1)
-        add_Button(frame_s3p_display, button_name='Plot', command=self.plot_s3p, col=3, row=3)
-        add_Button(frame_s3p_display, button_name='Delete graphs', command=self.delete_axs_s3p, col=3, row=2)
+        add_button(tab=frame_s3p_directory, button_name='Exit', command=self._quit, col=5, row=1)
+        add_button(tab=frame_s3p_directory, button_name='Plot', command=self.plot_s3p, col=3, row=3)
+        add_button(tab=frame_s3p_directory, button_name='Delete graphs', command=self.delete_axs_s3p, col=3, row=2)
 
-        self.s3p_canvas = create_canvas(figure=self.fig_s3p, frame=self.frame_s3p_display)
+        self.s3p_canvas = create_canvas(figure=self.fig_s3p, frame=frame_s3p_display)
 
-        self.slider_amplitude = self.add_slider(frame=self.frame_s3p_display, _from=0, to=-40, name="Amplitude (dB)",
+        self.slider_amplitude = add_slider(frame=frame_s3p_display, _from=0, to=-40, name="Amplitude (dB)",
                                                 variable=self.scale_amplitude_value, step=5)
-        self.slider_frequency = self.add_slider(frame=self.frame_s3p_display, _from=1e9, to=40e9,
+        self.slider_frequency = add_slider(frame=frame_s3p_display, _from=1e9, to=40e9,
                                                 name="Upper Frequency Limit (Hz)",
                                                 variable=self.scale_frequency_upper_value, step=10e9)
-        self.slider_lower_frequency = self.add_slider(frame=self.frame_s3p_display, _from=1e9, to=40e9,
+        self.slider_lower_frequency = add_slider(frame=frame_s3p_display, _from=1e9, to=40e9,
                                                       name=" Lower Frequency Limit (Hz)",
                                                       variable=self.scale_frequency_lower_value, step=10e9)
 
@@ -342,42 +646,42 @@ class Window(tk.Tk, Toplevel):
         # TAB2 S2P parameter display
         # ==============================================================================
         # This TAB is for S2P parameter display
-        frame_s2p_dir = add_Label_frame(tab_s2p, 's2p Directory', 0, 0)  # s2p Frame
-        self.frame_s2p_display = add_Label_frame(tab_s2p, frame_name='s2p Display', col=0, row=1)
+        frame_s2p_dir = add_label_frame(tab_s2p, 's2p Directory', 0, 0)  # s2p Frame
+        frame_s2p_display = add_label_frame(tab_s2p, frame_name='s2p Display', col=0, row=1)
 
         self.s2p_dir_name = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S2P')
-        add_Label(frame_s2p_dir, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_s2p_dir, label_name='Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                             ipady=tab_pad_x)
-        add_Label(frame_s2p_dir, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_s2p_dir, label_name='File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                        ipady=tab_pad_x)
-        add_Label(frame_s2p_dir, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_s2p_dir, label_name='S parameter', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x,
                                                                               ipady=tab_pad_x)
 
-        self.entered_var_s2p = add_entry(frame_s2p_dir, textvar=self.s2p_dir_name, width=70, col=2, row=1)
+        self.entered_var_s2p = add_entry(frame_s2p_dir, text_var=self.s2p_dir_name, width=70, col=2, row=1)
 
         file_s2p = filetypes_dir(self.entered_var_s2p.get())[1]
         self.s2p_file_name_combobox = add_combobox(frame_s2p_dir, text=file_s2p, col=2, row=2, width=100)
         self.s_parameter_chosen_s2p = add_combobox(frame_s2p_dir, text=self.s_parameter_s2p, col=2, row=3, width=100)
         self.s_parameter_chosen_s2p['values'] = ('S11', 'S12', 'S21', 'S22')
 
-        self.update_s2p_button = add_Button(tab=frame_s2p_dir, button_name=' Update Files ',
+        self.update_s2p_button = add_button(tab=frame_s2p_dir, button_name=' Update Files ',
                                             command=lambda: [update_entries(directory=self.entered_var_s2p.get(),
                                                                             combobox=self.s2p_file_name_combobox,
                                                                             filetype='.s2p'),
-                                                             clicked_Button(self.update_s2p_button)], col=3, row=1)
-        add_Button(frame_s2p_dir, button_name='Exit', command=self._quit, col=5, row=1).grid_anchor('e')
-        add_Button(frame_s2p_dir, button_name='Plot', command=self.plot_s2p, col=3, row=3)
-        add_Button(frame_s2p_dir, button_name='Delete Graphs', command=self.delete_axs_s2p, col=3, row=2)
+                                                             update_button(self.update_s2p_button)], col=3, row=1)
+        add_button(frame_s2p_dir, button_name='Exit', command=self._quit, col=5, row=1).grid_anchor('e')
+        add_button(frame_s2p_dir, button_name='Plot', command=self.plot_s2p, col=3, row=3)
+        add_button(frame_s2p_dir, button_name='Delete Graphs', command=self.delete_axs_s2p, col=3, row=2)
 
-        self.s2p_canvas = create_canvas(figure=self.fig_s2p, frame=self.frame_s2p_display)
+        self.s2p_canvas = create_canvas(figure=self.fig_s2p, frame=frame_s2p_display)
 
-        self.slider_amplitude_s2p = self.add_slider(frame=self.frame_s2p_display, _from=0, to=-40,
+        self.slider_amplitude_s2p = add_slider(frame=frame_s2p_display, _from=0, to=-40,
                                                     name="Amplitude (dB)",
                                                     variable=self.scale_amplitude_value, step=5)
-        self.slider_frequency_s2p = self.add_slider(frame=self.frame_s2p_display, _from=1e9, to=40e9,
+        self.slider_frequency_s2p = add_slider(frame=frame_s2p_display, _from=1e9, to=40e9,
                                                     name="Upper Frequency limit (Hz)",
                                                     variable=self.scale_frequency_upper_value, step=10e9)
-        self.slider_lower_frequency_s2p = self.add_slider(frame=self.frame_s2p_display, _from=1e9, to=40e9,
+        self.slider_lower_frequency_s2p = add_slider(frame=frame_s2p_display, _from=1e9, to=40e9,
                                                           name=" Lower Frequency Limit (Hz)",
                                                           variable=self.scale_frequency_lower_value, step=10e9)
 
@@ -388,42 +692,43 @@ class Window(tk.Tk, Toplevel):
         # TAB3 Pull voltage vs isolation display
         # ==============================================================================
         # This TAB is for Pull voltage vs isolation display
-        frame_v_pull_in_dir = add_Label_frame(tab_pull_in, frame_name='Vpull-in Directory', col=0, row=0)  # s2p Frame
+        frame_v_pull_in_dir = add_label_frame(tab_pull_in, frame_name='Vpull-in Directory', col=0, row=0)  # s2p Frame
+        frame_v_pull_in_graph = add_label_frame(tab_pull_in, frame_name='Graph', col=0, row=3)  # s2p Frame
 
         self.pull_in_dir_name = tk.StringVar(
             value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Pullin voltage')
 
-        add_Label(frame_v_pull_in_dir, 'Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_v_pull_in_dir, 'Directory', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                        ipady=tab_pad_x)
-        add_Label(frame_v_pull_in_dir, 'File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_v_pull_in_dir, 'File', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                   ipady=tab_pad_x)
 
-        self.frame_v_pull_in_display = add_Label_frame(tab_pull_in, frame_name='Pull-in Display', col=0, row=1)
+        self.frame_v_pull_in_display = add_label_frame(tab_pull_in, frame_name='Pull-in Display', col=0, row=1)
 
-        self.entered_var_txt = add_entry(frame_v_pull_in_dir, textvar=self.pull_in_dir_name, width=70, col=2, row=1)
+        self.entered_var_txt = add_entry(frame_v_pull_in_dir, text_var=self.pull_in_dir_name, width=70, col=2, row=1)
 
         file_txt = filetypes_dir(self.entered_var_txt.get())[2]
         self.txt_file_name_combobox = add_combobox(frame_v_pull_in_dir, text=file_txt, col=2, row=2, width=100)
 
-        self.update_pull_in_button = add_Button(tab=frame_v_pull_in_dir, button_name=' Update Files ',
+        self.update_pull_in_button = add_button(tab=frame_v_pull_in_dir, button_name=' Update Files ',
                                                 command=lambda: [update_entries(directory=self.entered_var_txt.get(),
                                                                                 combobox=self.txt_file_name_combobox,
                                                                                 filetype='.txt'),
-                                                                 clicked_Button(self.update_pull_in_button)],
+                                                                 update_button(self.update_pull_in_button)],
                                                 col=3, row=1)
-        add_Button(frame_v_pull_in_dir, 'Exit', command=self._quit, col=5, row=1).grid_anchor('e')
-        add_Button(frame_v_pull_in_dir, 'Plot', command=lambda: [self.plot_vpull_in(),
+        add_button(frame_v_pull_in_dir, 'Exit', command=self._quit, col=5, row=1).grid_anchor('e')
+        add_button(frame_v_pull_in_dir, 'Plot', command=lambda: [self.plot_vpull_in(),
                                                                  self.calculate_pull_in_out_voltage()], col=3, row=3)
-        add_Button(frame_v_pull_in_dir, 'Delete Graphs', command=self.delete_axs_vpullin, col=3, row=2)
-        add_Button(frame_v_pull_in_dir, 'Calculate Pull-in and Pull-out voltages',
+        add_button(frame_v_pull_in_dir, 'Delete Graphs', command=self.delete_axs_vpullin, col=3, row=2)
+        add_button(frame_v_pull_in_dir, 'Calculate Pull-in and Pull-out voltages',
                    command=self.calculate_pull_in_out_voltage, col=2, row=3).configure(width=40)
-        self.text_scroll = add_scrolled_text(tab=self.frame_v_pull_in_display, scrol_w=100, scrol_h=3)
+        self.text_scroll = add_scrolled_text(tab=self.frame_v_pull_in_display, scrolled_width=100, scrolled_height=3)
 
-        self.canvas_v_pull_in_display = create_canvas(figure=self.fig_pull_in, frame=self.frame_v_pull_in_display)
+        self.canvas_v_pull_in_display = create_canvas(figure=self.fig_pull_in, frame=frame_v_pull_in_graph)
 
-        self.slider_isolation = self.add_slider(frame=self.frame_v_pull_in_display, _from=0, to=-40,
+        self.slider_isolation = add_slider(frame=frame_v_pull_in_graph, _from=0, to=-40,
                                                 name="Isolation (dB)", variable=self.scale_isolation_value, step=5)
-        self.slider_voltage = self.add_slider(frame=self.frame_v_pull_in_display, _from=0, to=50,
+        self.slider_voltage = add_slider(frame=frame_v_pull_in_graph, _from=0, to=50,
                                               name="Voltage upper limit (V)", variable=self.scale_voltage_value, step=5)
 
         self.slider_isolation.pack(side='left')
@@ -432,23 +737,23 @@ class Window(tk.Tk, Toplevel):
         # TAB4 Pull down voltage vs isolation measurement
         # ==============================================================================
         # This TAB is for Pull down voltage vs isolation measurement
-        frame_test_pull_in_comp_info = add_Label_frame(tab_pull_in_meas, frame_name='Component information', col=0,
+        frame_test_pull_in_comp_info = add_label_frame(tab_pull_in_meas, frame_name='Component information', col=0,
                                                        row=0)
-        frame_test_pull_in_sig_gen = add_Label_frame(tab=tab_pull_in_meas, frame_name='Signal Generator', col=0, row=1)
-        frame_test_pull_in_gen_controls = add_Label_frame(tab=tab_pull_in_meas, frame_name='General controls', col=2,
+        frame_test_pull_in_sig_gen = add_label_frame(tab=tab_pull_in_meas, frame_name='Signal Generator', col=0, row=1)
+        frame_test_pull_in_gen_controls = add_label_frame(tab=tab_pull_in_meas, frame_name='General controls', col=2,
                                                           row=0)
 
-        add_Label(frame_test_pull_in_comp_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_comp_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                                      ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_comp_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_comp_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                                          ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_comp_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_comp_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                                       ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_comp_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_comp_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
                                                                                           ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_comp_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_comp_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
                                                                                         ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_comp_info, label_name='Bias Voltage', col=0, row=5).grid(sticky='e',
+        add_label(frame_test_pull_in_comp_info, label_name='Bias Voltage', col=0, row=5).grid(sticky='e',
                                                                                               ipadx=tab_pad_x,
                                                                                               ipady=tab_pad_x)
 
@@ -461,42 +766,52 @@ class Window(tk.Tk, Toplevel):
         self.test_pull_in_file_created = tk.StringVar(value=r'EMPTY')
         self.test_pull_in_bias_voltage = tk.StringVar(value=r'Bias_Voltage')
 
-        add_Button(tab=frame_test_pull_in_comp_info, button_name='Create-file', command=self.create_test_pull_in_file,
-                   col=2, row=0)
-
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_dir, width=20, col=1, row=0)
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_project, width=20, col=1, row=1)
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_cell, width=20, col=1, row=2)
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_reticule, width=20, col=1, row=3)
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_device, width=20, col=1, row=4)
-        add_entry(tab=frame_test_pull_in_comp_info, textvar=self.test_pull_in_bias_voltage, width=20, col=1, row=5)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_dir, width=20, col=1, row=0)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_project, width=20, col=1, row=1)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_cell, width=20, col=1, row=2)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_reticule, width=20, col=1, row=3)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_device, width=20, col=1, row=4)
+        add_entry(tab=frame_test_pull_in_comp_info, text_var=self.test_pull_in_bias_voltage, width=20, col=1, row=5)
 
         # Signal Generator-------------------------------------------------------------
         self.pull_in_v_bias = tk.DoubleVar(value=10)  # Peak bias voltage for ramp function
         self.ramp_width = tk.DoubleVar(value=100)  # Ramp length for ramp function
-        self.chosen_bias_voltage_pull_in = add_entry(tab=frame_test_pull_in_comp_info, textvar=self.pull_in_v_bias,
+        self.chosen_bias_voltage_pull_in = add_entry(tab=frame_test_pull_in_comp_info, text_var=self.pull_in_v_bias,
                                                      width=20, col=1, row=5)
-        add_Label(frame_test_pull_in_sig_gen, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_sig_gen, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                                             ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_sig_gen, label_name='Ramp length', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_sig_gen, label_name='Ramp length', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                                            ipady=tab_pad_x)
-        self.entered_ramp_volt = add_entry(frame_test_pull_in_sig_gen, textvar=self.pull_in_v_bias, width=10, col=1,
+        self.entered_ramp_volt = add_entry(frame_test_pull_in_sig_gen, text_var=self.pull_in_v_bias, width=10, col=1,
                                            row=0)
-        self.entered_ramp_width = add_entry(frame_test_pull_in_sig_gen, textvar=self.ramp_width, width=10, col=1, row=1)
-        add_Label(frame_test_pull_in_sig_gen, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x,
+        self.txt_file_name_meas_combobox = [self.test_pull_in_project.get(),
+                                            self.test_pull_in_cell.get(),
+                                            self.test_pull_in_reticule.get(),
+                                            self.test_pull_in_device.get(),
+                                            self.entered_ramp_volt.get()]
+        add_button(tab=frame_test_pull_in_comp_info, button_name='Create-file',
+                   command=lambda: [self.txt_file_name_meas_combobox,
+                                    file_name_creation(data_list=self.txt_file_name_meas_combobox,
+                                                       text=self.text_file_name_pull_in_test, end_characters='V')],
+                   col=2, row=0)
+
+        self.entered_ramp_width = add_entry(frame_test_pull_in_sig_gen, text_var=self.ramp_width, width=10, col=1,
+                                            row=1)
+        add_label(frame_test_pull_in_sig_gen, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x,
                                                                                    ipady=tab_pad_x)
-        add_Label(frame_test_pull_in_sig_gen, label_name='(µs)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x,
+        add_label(frame_test_pull_in_sig_gen, label_name='(µs)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x,
                                                                                     ipady=tab_pad_x)
-        add_Button(tab=frame_test_pull_in_sig_gen, button_name='Set Bias Voltage', command=self.set_bias_pull_in,
+        add_button(tab=frame_test_pull_in_sig_gen, button_name='Set Bias Voltage', command=self.set_bias_pull_in,
                    col=3, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_test_pull_in_sig_gen, button_name='Set Ramp Width', command=self.set_ramp_width, col=3,
+        add_button(tab=frame_test_pull_in_sig_gen, button_name='Set Ramp Width', command=self.set_ramp_width, col=3,
                    row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_test_pull_in_sig_gen, button_name='Set Pulse Gen', command=self.set_pulse_gen_ramp,
+        add_button(tab=frame_test_pull_in_sig_gen, button_name='Set Pulse Gen', command=self.set_pulse_gen_ramp,
                    col=3, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
         # General controls---------------------------------------------------------------
 
-        self.text_file_name_pull_in_test = tk.Text(frame_test_pull_in_gen_controls, width=40, height=1, wrap=tk.WORD, border=4, borderwidth=2,
+        self.text_file_name_pull_in_test = tk.Text(frame_test_pull_in_gen_controls, width=40, height=1, wrap=tk.WORD,
+                                                   border=4, borderwidth=2,
                                                    relief=tk.SUNKEN, font=('Bahnschrift Light', 10))  # Filename
         self.text_file_name_pull_in_test.grid(column=0, row=0, sticky='n', columnspan=5)
         self.text4 = tk.Text(frame_test_pull_in_gen_controls, width=40, height=10, wrap=tk.WORD, border=4,
@@ -504,41 +819,41 @@ class Window(tk.Tk, Toplevel):
         # Debug text_file_name_s3p_test display
         self.text4.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame_test_pull_in_gen_controls, button_name='Reset Signal Generator',
+        add_button(tab=frame_test_pull_in_gen_controls, button_name='Reset Signal Generator',
                    command=self.reset_sig_gen, col=0, row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_test_pull_in_gen_controls, button_name='Exit', command=lambda: [self._quit(),
+        add_button(tab=frame_test_pull_in_gen_controls, button_name='Exit', command=lambda: [self._quit(),
                                                                                              close_resources()], col=1,
                    row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_test_pull_in_gen_controls, button_name='Plot IsovsV',
+        add_button(tab=frame_test_pull_in_gen_controls, button_name='Plot IsovsV',
                    command=lambda: [self.trace_pull_down(), self.acquire_pull_down_data()], col=1, row=5).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
         # -------------------------------------------------------------------------------------------------------------
-        frame13 = add_Label_frame(tab=tab_pull_in_meas, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
+        frame13 = add_label_frame(tab=tab_pull_in_meas, frame_name='Oscilloscope Tecktronix', col=1, row=0, row_span=2)
         self.canvas_v_pull_in_meas = create_canvas(figure=self.fig_pull_in_meas, frame=frame13)
 
-        frame_test_pull_in_sig_gen = add_Label_frame(tab=tab_pull_in_meas, frame_name='Measurement', col=2, row=1,
-                                                     rowspan=2)
-        add_Label(frame_test_pull_in_sig_gen,
+        frame_test_pull_in_sig_gen = add_label_frame(tab=tab_pull_in_meas, frame_name='Measurement', col=2, row=1,
+                                                     row_span=2)
+        add_label(frame_test_pull_in_sig_gen,
                   label_name='Positive-Pull-in', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         self.text5 = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4, borderwidth=2,
                              relief=tk.SUNKEN, font=('Bahnschrift Light', 10))  # Positive Pull-in
         self.text5.grid(column=1, row=0, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen,
+        add_label(frame_test_pull_in_sig_gen,
                   label_name='Negative-Pull-in', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         self.text6 = tk.Text(frame_test_pull_in_sig_gen, width=15,
                              height=1, wrap=tk.WORD, border=4, borderwidth=2, relief=tk.SUNKEN,
                              font=('Bahnschrift Light', 10))  # Negative Pull-in
         self.text6.grid(column=1, row=1, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen,
+        add_label(frame_test_pull_in_sig_gen,
                   label_name='Positive-Pull-out', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         self.text7 = tk.Text(frame_test_pull_in_sig_gen,
                              width=15, height=1, wrap=tk.WORD, border=4,
                              borderwidth=2, relief=tk.SUNKEN, font=('Bahnschrift Light', 10))  # Positive Pull-out
         self.text7.grid(column=1, row=2, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen, label_name='Negative-Pull-out', col=0, row=3).grid(sticky='e',
+        add_label(frame_test_pull_in_sig_gen, label_name='Negative-Pull-out', col=0, row=3).grid(sticky='e',
                                                                                                  ipadx=tab_pad_x,
                                                                                                  ipady=tab_pad_x)
         self.text8 = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4, borderwidth=2,
@@ -546,7 +861,7 @@ class Window(tk.Tk, Toplevel):
                              font=('Bahnschrift Light', 10))  # Negative Pull-out
         self.text8.grid(column=1, row=3, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen, label_name='Isolation at PI(+)', col=0, row=4).grid(sticky='e',
+        add_label(frame_test_pull_in_sig_gen, label_name='Isolation at PI(+)', col=0, row=4).grid(sticky='e',
                                                                                                   ipadx=tab_pad_x,
                                                                                                   ipady=tab_pad_x)
         self.text9 = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4, borderwidth=2,
@@ -554,7 +869,7 @@ class Window(tk.Tk, Toplevel):
                              font=('Bahnschrift Light', 10))  # Isolation at PI (+)
         self.text9.grid(column=1, row=4, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen, label_name='Isolation at PO (+)', col=0, row=5).grid(sticky='e',
+        add_label(frame_test_pull_in_sig_gen, label_name='Isolation at PO (+)', col=0, row=5).grid(sticky='e',
                                                                                                    ipadx=tab_pad_x,
                                                                                                    ipady=tab_pad_x)
         self.text_iso_pull_out_plus = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4,
@@ -562,7 +877,7 @@ class Window(tk.Tk, Toplevel):
                                               font=('Bahnschrift Light', 10))  # Isolation at PO (+)
         self.text_iso_pull_out_plus.grid(column=1, row=5, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen, label_name='Isolation at PI (-)', col=0, row=6).grid(sticky='e',
+        add_label(frame_test_pull_in_sig_gen, label_name='Isolation at PI (-)', col=0, row=6).grid(sticky='e',
                                                                                                    ipadx=tab_pad_x,
                                                                                                    ipady=tab_pad_x)
         self.text_iso_pull_in_minus = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4,
@@ -570,7 +885,7 @@ class Window(tk.Tk, Toplevel):
                                               font=('Bahnschrift Light', 10))  # Isolation at PI (-)
         self.text_iso_pull_in_minus.grid(column=1, row=6, sticky='n', columnspan=5)
 
-        add_Label(frame_test_pull_in_sig_gen, label_name='Isolation at PO (-)', col=0, row=7).grid(sticky='e',
+        add_label(frame_test_pull_in_sig_gen, label_name='Isolation at PO (-)', col=0, row=7).grid(sticky='e',
                                                                                                    ipadx=tab_pad_x,
                                                                                                    ipady=tab_pad_x)
         self.text_iso_pull_out_minus = tk.Text(frame_test_pull_in_sig_gen, width=15, height=1, wrap=tk.WORD, border=4,
@@ -580,25 +895,25 @@ class Window(tk.Tk, Toplevel):
         # ==============================================================================
         # TAB5 S-parameters test
         # ==============================================================================
-        frame_snp_compo_info = add_Label_frame(tab_snp_meas, frame_name='Component information', col=0,
+        frame_snp_compo_info = add_label_frame(tab_snp_meas, frame_name='Component information', col=0,
                                                row=0)  # s3p frame
-        frame_snp_sig_gen = add_Label_frame(tab=tab_snp_meas, frame_name='Signal Generator', col=0, row=1)
-        frame_snp_zva = add_Label_frame(tab=tab_snp_meas, frame_name='ZVA', col=3, row=1)
-        frame_snp_gene_controls = add_Label_frame(tab=tab_snp_meas, frame_name='General controls', col=3, row=0)
+        frame_snp_sig_gen = add_label_frame(tab=tab_snp_meas, frame_name='Signal Generator', col=0, row=1)
+        frame_snp_zva = add_label_frame(tab=tab_snp_meas, frame_name='ZVA', col=3, row=1)
+        frame_snp_gene_controls = add_label_frame(tab=tab_snp_meas, frame_name='General controls', col=3, row=0)
 
-        add_Label(frame_snp_compo_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                              ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                                  ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                               ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
                                                                                   ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
                                                                                 ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Status', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Status', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x,
                                                                                 ipady=tab_pad_x)
-        add_Label(frame_snp_compo_info, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_compo_info, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
                                                                                       ipady=tab_pad_x)
 
         self.test_s3p_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S3P')
@@ -607,19 +922,21 @@ class Window(tk.Tk, Toplevel):
         self.test_s3p_reticule = tk.StringVar(value=r'Reticule')
         self.test_s3p_device = tk.StringVar(value=r'Device_name')
         self.test_s3p_file_created = tk.StringVar(value=r'EMPTY')
-        self.component_state = add_combobox(frame_snp_compo_info, text='Active', col=1, row=5, width=20)
+        self.test_s3p_state = tk.StringVar(value=r'Active')
+
+        # self.component_state = add_combobox(frame_snp_compo_info, text=self.test_s3p_state, col=1, row=5, width=20)
         self.bias_voltage_s3p = tk.StringVar(value=r'Bias_Voltage')
 
-        self.chosen_component_state = add_combobox(frame_snp_compo_info, text=self.component_state, col=1, row=5,
+        self.chosen_component_state = add_combobox(frame_snp_compo_info, text=self.test_s3p_state, col=1, row=5,
                                                    width=20)
         self.chosen_component_state['values'] = ('Active', 'Frozen')
         self.chosen_component_state.current(0)
 
-        add_entry(tab=frame_snp_compo_info, textvar=self.test_s3p_dir, width=20, col=1, row=0)
-        add_entry(tab=frame_snp_compo_info, textvar=self.test_s3p_project, width=20, col=1, row=1)
-        add_entry(tab=frame_snp_compo_info, textvar=self.test_s3p_cell, width=20, col=1, row=2)
-        add_entry(tab=frame_snp_compo_info, textvar=self.test_s3p_reticule, width=20, col=1, row=3)
-        add_entry(tab=frame_snp_compo_info, textvar=self.test_s3p_device, width=20, col=1, row=4)
+        add_entry(tab=frame_snp_compo_info, text_var=self.test_s3p_dir, width=20, col=1, row=0)
+        add_entry(tab=frame_snp_compo_info, text_var=self.test_s3p_project, width=20, col=1, row=1)
+        add_entry(tab=frame_snp_compo_info, text_var=self.test_s3p_cell, width=20, col=1, row=2)
+        add_entry(tab=frame_snp_compo_info, text_var=self.test_s3p_reticule, width=20, col=1, row=3)
+        add_entry(tab=frame_snp_compo_info, text_var=self.test_s3p_device, width=20, col=1, row=4)
 
         #  ------------------------------------------------------------------------------
         self.text_file_name_s3p_test = tk.Text(frame_snp_gene_controls, width=40, height=1, wrap=tk.WORD, border=4,
@@ -629,42 +946,42 @@ class Window(tk.Tk, Toplevel):
         self.pull_in_v = tk.DoubleVar(value=10)
         self.pulse_width = tk.DoubleVar(value=5)
         self.pulse_freq = tk.DoubleVar(value=0.1)
-        self.chosen_bias_voltage = add_entry(tab=frame_snp_compo_info, textvar=self.pull_in_v, width=20, col=1, row=6)
+        self.chosen_bias_voltage = add_entry(tab=frame_snp_compo_info, text_var=self.pull_in_v, width=20, col=1, row=6)
 
         self.file_s3p = [self.test_s3p_project.get(), self.test_s3p_cell.get(), self.test_s3p_reticule.get(),
                          self.test_s3p_device.get(), self.chosen_component_state.get(), self.chosen_bias_voltage.get()]
 
-        add_Button(tab=frame_snp_compo_info, button_name='Create-file',
+        add_button(tab=frame_snp_compo_info, button_name='Create-file',
                    command=lambda: [self.file_s3p, file_name_creation(
                        data_list=self.file_s3p, text=self.text_file_name_s3p_test, end_characters='V')], col=2, row=0)
 
-        add_Label(frame_snp_sig_gen, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_sig_gen, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                                    ipady=tab_pad_x)
-        add_Label(frame_snp_sig_gen, label_name='Pulse Width', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_sig_gen, label_name='Pulse Width', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                                   ipady=tab_pad_x)
-        self.entered_pull_in_volt = add_entry(frame_snp_sig_gen, textvar=self.pull_in_v, width=10, col=1, row=0)
-        self.entered_pulse_width = add_entry(frame_snp_sig_gen, textvar=self.pulse_width, width=10, col=1, row=1)
-        add_Label(frame_snp_sig_gen, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_snp_sig_gen, label_name='(s)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        self.entered_pull_in_volt = add_entry(frame_snp_sig_gen, text_var=self.pull_in_v, width=10, col=1, row=0)
+        self.entered_pulse_width = add_entry(frame_snp_sig_gen, text_var=self.pulse_width, width=10, col=1, row=1)
+        add_label(frame_snp_sig_gen, label_name='(V)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_snp_sig_gen, label_name='(s)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        add_Label(frame_snp_sig_gen, label_name='Pulse Frequency', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_sig_gen, label_name='Pulse Frequency', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                                       ipady=tab_pad_x)
-        self.entered_pulse_freq = add_entry(frame_snp_sig_gen, textvar=self.pulse_freq, width=10, col=1, row=2)
-        add_Label(frame_snp_sig_gen, label_name='(Hz)', col=2, row=2).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        self.entered_pulse_freq = add_entry(frame_snp_sig_gen, text_var=self.pulse_freq, width=10, col=1, row=2)
+        add_label(frame_snp_sig_gen, label_name='(Hz)', col=2, row=2).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        add_Button(tab=frame_snp_sig_gen, button_name='Set Bias Voltage', command=self.set_bias_voltage, col=3,
+        add_button(tab=frame_snp_sig_gen, button_name='Set Bias Voltage', command=self.set_bias_voltage, col=3,
                    row=0).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_sig_gen, button_name='Set Pulse Width', command=self.set_ramp_width, col=3,
+        add_button(tab=frame_snp_sig_gen, button_name='Set Pulse Width', command=self.set_ramp_width, col=3,
                    row=1).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_sig_gen, button_name='Set prf', command=self.set_prf, col=3, row=2).grid(sticky='e',
-                                                                                                          ipadx=tab_pad_x,
-                                                                                                          ipady=tab_pad_x)
-        add_Button(tab=frame_snp_sig_gen, button_name='Set Pulse Gen', command=self.set_pulse_gen, col=3, row=3).grid(
+        add_button(tab=frame_snp_sig_gen,
+                   button_name='Set prf', command=self.set_prf, col=3, row=2).grid(sticky='e', ipadx=tab_pad_x,
+                                                                                   ipady=tab_pad_x)
+        add_button(tab=frame_snp_sig_gen, button_name='Set Pulse Gen', command=self.set_pulse_gen, col=3, row=3).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         # ------------------------------------------------------------------------------
-        frame19 = add_Label_frame(tab=tab_snp_meas, frame_name='SNP measurement', col=1, row=0, rowspan=2)
+        frame19 = add_label_frame(tab=tab_snp_meas, frame_name='SNP measurement', col=1, row=0, row_span=2)
         self.canvas_snp_meas = create_canvas(figure=self.fig_snp_meas, frame=frame19)
 
         # ------------------------------------------------------------------------------
@@ -675,80 +992,80 @@ class Window(tk.Tk, Toplevel):
         self.f_stop = tk.DoubleVar(value=10)
         self.nb_points = tk.DoubleVar(value=100)
 
-        add_Label(frame_snp_zva, label_name='Fstart', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_snp_zva, label_name='Fstop', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_snp_zva, label_name='Nb Points', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_snp_zva, label_name='Fstart', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_snp_zva, label_name='Fstop', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_snp_zva, label_name='Nb Points', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                             ipady=tab_pad_x)
-        self.entered_f_start = add_entry(frame_snp_zva, textvar=self.f_start, width=10, col=1, row=0)
-        self.entered_fstop = add_entry(frame_snp_zva, textvar=self.f_stop, width=10, col=1, row=1)
-        self.entered_nb_points = add_entry(frame_snp_zva, textvar=self.nb_points, width=10, col=1, row=2)
-        add_Label(frame_snp_zva, label_name='(GHz)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_snp_zva, label_name='(GHz)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_snp_zva, label_name='(Pts)', col=2, row=2).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        self.entered_f_start = add_entry(frame_snp_zva, text_var=self.f_start, width=10, col=1, row=0)
+        self.entered_fstop = add_entry(frame_snp_zva, text_var=self.f_stop, width=10, col=1, row=1)
+        self.entered_nb_points = add_entry(frame_snp_zva, text_var=self.nb_points, width=10, col=1, row=2)
+        add_label(frame_snp_zva, label_name='(GHz)', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_snp_zva, label_name='(GHz)', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_snp_zva, label_name='(Pts)', col=2, row=2).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        add_Button(tab=frame_snp_zva, button_name='Set Fstart', command=self.set_f_start, col=3, row=0).grid(sticky='e',
-                                                                                                             ipadx=tab_pad_x,
-                                                                                                             ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Set Fstop', command=self.set_fstop, col=3, row=1).grid(sticky='e',
-                                                                                                          ipadx=tab_pad_x,
-                                                                                                          ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Set Nb points', command=self.set_nb_points, col=3, row=2).grid(
+        add_button(tab=frame_snp_zva, button_name='Set Fstart',
+                   command=self.set_f_start, col=3, row=0).grid(sticky='e',
+                                                                ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_button(tab=frame_snp_zva, button_name='Set Fstop',
+                   command=self.set_fstop, col=3, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_button(tab=frame_snp_zva, button_name='Set Nb points', command=self.set_nb_points, col=3, row=2).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Set ZVA', command=self.set_zva, col=3, row=3).grid(sticky='e',
+        add_button(tab=frame_snp_zva, button_name='Set ZVA', command=self.set_zva, col=3, row=3).grid(sticky='e',
                                                                                                       ipadx=tab_pad_x,
                                                                                                       ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Capture S3P', command=self.data_acquire, col=1, row=4).grid(
+        add_button(tab=frame_snp_zva, button_name='Capture S3P', command=self.data_acquire, col=1, row=4).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Capture S2P', command=self.data_acquire_s2p, col=2, row=4).grid(
+        add_button(tab=frame_snp_zva, button_name='Capture S2P', command=self.data_acquire_s2p, col=2, row=4).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_zva, button_name='Capture S1P', command=self.data_acquire_s1p, col=3, row=4).grid(
+        add_button(tab=frame_snp_zva, button_name='Capture S1P', command=self.data_acquire_s1p, col=3, row=4).grid(
             sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
         # ------------------------------------------------------------------------------
 
-        self.text_snp_debug = tk.Text(frame_snp_gene_controls, width=40, height=10, wrap=tk.WORD, border=4, borderwidth=2,
+        self.text_snp_debug = tk.Text(frame_snp_gene_controls, width=40, height=10, wrap=tk.WORD, border=4,
+                                      borderwidth=2,
                                       relief=tk.SUNKEN,
                                       font=('Bahnschrift Light', 10))
         self.text_snp_debug.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame_snp_gene_controls, button_name='Comms prep', command=scripts_and_functions.comprep_zva,
+        add_button(tab=frame_snp_gene_controls, button_name='Comms prep', command=scripts_and_functions.comprep_zva,
                    col=0, row=1).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(
+        add_button(tab=frame_snp_gene_controls, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(
             ipadx=tab_pad_x,
             ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='Exit', command=lambda: [self._quit(), close_resources()],
+        add_button(tab=frame_snp_gene_controls, button_name='Exit', command=lambda: [self._quit(), close_resources()],
                    col=1,
                    row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='Reset Signal Gen', command=self.set_pulse_gen_pulse_mode,
+        add_button(tab=frame_snp_gene_controls, button_name='Reset Signal Gen', command=self.set_pulse_gen_pulse_mode,
                    col=1,
                    row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='S1P config', command=call_s1p_config, col=0, row=4).grid(
+        add_button(tab=frame_snp_gene_controls, button_name='S1P config', command=call_s1p_config, col=0, row=4).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='S2P config', command=call_s2p_config, col=1, row=4).grid(
+        add_button(tab=frame_snp_gene_controls, button_name='S2P config', command=call_s2p_config, col=1, row=4).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_snp_gene_controls, button_name='S3P config', command=call_s3p_config, col=2, row=4).grid(
+        add_button(tab=frame_snp_gene_controls, button_name='S3P config', command=call_s3p_config, col=2, row=4).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
 
         # ==============================================================================
         # TAB6 Power measurement TAB
         # ==============================================================================
-        frame_power_compo_info = add_Label_frame(tab_power_meas, frame_name='Component information', col=0,
+        frame_power_compo_info = add_label_frame(tab_power_meas, frame_name='Component information', col=0,
                                                  row=0)  # power sweep frame
 
-        add_Label(frame_power_compo_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                                ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                                    ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                                 ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x,
                                                                                     ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x,
                                                                                   ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Status', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Status', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x,
                                                                                   ipady=tab_pad_x)
-        add_Label(frame_power_compo_info, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_power_compo_info, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
                                                                                         ipady=tab_pad_x)
 
         self.test_pow_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Power handling')
@@ -757,35 +1074,54 @@ class Window(tk.Tk, Toplevel):
         self.test_pow_reticule = tk.StringVar(value=r'Reticule')
         self.test_pow_device = tk.StringVar(value=r'Device_name')
         self.test_pow_file_created = tk.StringVar(value=r'EMPTY')
-        self.component_state_pow = add_combobox(frame_power_compo_info, text='Active', col=1, row=5, width=20)
+        self.test_pow_state = tk.StringVar(value=r'EMPTY')
+
         self.bias_voltage_pow = tk.StringVar(value=r'Bias_Voltage')
 
-        self.chosen_component_state_pow = add_combobox(frame_power_compo_info, text=self.component_state, col=1, row=5,
+        self.chosen_component_state_pow = add_combobox(frame_power_compo_info, text=self.test_pow_state, col=1, row=5,
                                                        width=20)
         self.chosen_component_state_pow['values'] = ('Active', 'Frozen')
         self.chosen_component_state_pow.current(0)
 
-        add_entry(tab=frame_power_compo_info, textvar=self.test_pow_dir, width=20, col=1, row=0)
-        add_entry(tab=frame_power_compo_info, textvar=self.test_pow_project, width=20, col=1, row=1)
-        add_entry(tab=frame_power_compo_info, textvar=self.test_pow_cell, width=20, col=1, row=2)
-        add_entry(tab=frame_power_compo_info, textvar=self.test_pow_reticule, width=20, col=1, row=3)
-        add_entry(tab=frame_power_compo_info, textvar=self.test_pow_device, width=20, col=1, row=4)
-        add_entry(tab=frame_power_compo_info, textvar=self.bias_voltage_pow, width=20, col=1, row=6)
+        add_entry(tab=frame_power_compo_info, text_var=self.test_pow_dir, width=20, col=1, row=0)
+        add_entry(tab=frame_power_compo_info, text_var=self.test_pow_project, width=20, col=1, row=1)
+        add_entry(tab=frame_power_compo_info, text_var=self.test_pow_cell, width=20, col=1, row=2)
+        add_entry(tab=frame_power_compo_info, text_var=self.test_pow_reticule, width=20, col=1, row=3)
+        add_entry(tab=frame_power_compo_info, text_var=self.test_pow_device, width=20, col=1, row=4)
+        add_entry(tab=frame_power_compo_info, text_var=self.bias_voltage_pow, width=20, col=1, row=6)
 
         self.power_test_file_name = [self.test_pow_project.get(), self.test_pow_cell.get(),
                                      self.test_pow_reticule.get(),
                                      self.test_pow_device.get(), self.chosen_component_state_pow.get(),
                                      self.bias_voltage_pow.get()]
 
-        add_Button(tab=frame_power_compo_info, button_name='Create-file',
+        add_button(tab=frame_power_compo_info, button_name='Create-file',
                    command=lambda: [self.power_test_file_name,
                                     file_name_creation(data_list=self.power_test_file_name,
                                                        text=self.text_power_file_name, end_characters='V')],
                    col=2, row=0)
-        add_Button(tab=frame_power_compo_info, button_name='Send trigger', command=scripts_and_functions.send_trig,
+        add_button(tab=frame_power_compo_info, button_name='Send trigger', command=scripts_and_functions.send_trig,
                    col=2, row=1)
         # General controls---------------------------------------------------------------
-        frame_power_meas = add_Label_frame(tab=tab_power_meas, frame_name='General controls', col=2, row=0)
+        frame_power_meas = add_label_frame(tab=tab_power_meas, frame_name='General controls', col=2, row=0)
+        frame_power_meas_graph = add_label_frame(tab=tab_power_meas, frame_name='Power test Graph', col=1, row=0,
+                                                 row_span=2)
+        frame_power_meas_sig_gen = add_label_frame(tab=tab_power_meas, frame_name='Signal Generator', col=0, row=1,
+                                                   row_span=1)
+        frame_power_meas_rf_gen = add_label_frame(tab=tab_power_meas, frame_name='RF Generator', col=2, row=1,
+                                                  row_span=1)
+
+        rf_gen_min_power = tk.DoubleVar(value=-40)
+        rf_gen_max_power = tk.DoubleVar(value=-20)
+        rf_gen_step = tk.DoubleVar(value=1)
+
+        add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_min_power, width=20, col=1, row=0)
+        add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_max_power, width=20, col=1, row=1)
+        add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_step, width=20, col=1, row=2)
+
+        add_label(tab=frame_power_meas_rf_gen, label_name="Min Power", col=0, row=0)
+        add_label(tab=frame_power_meas_rf_gen, label_name="Max Power", col=0, row=1)
+        add_label(tab=frame_power_meas_rf_gen, label_name="Step Power", col=0, row=2)
 
         self.text_power_file_name = tk.Text(frame_power_meas, width=40, height=1, wrap=tk.WORD, border=4,
                                             borderwidth=2, relief=tk.SUNKEN, font=('Bahnschrift Light', 10))  # Filename
@@ -795,17 +1131,22 @@ class Window(tk.Tk, Toplevel):
                                         font=('Bahnschrift Light', 10))  # Debug text_file_name_s3p_test display
         self.text_power_debug.grid(column=0, row=3, sticky='n', columnspan=4)
 
-        add_Button(tab=frame_power_meas, button_name='Reset Signal Generator',
+        add_button(tab=frame_power_meas_sig_gen, button_name='Reset Signal Generator',
                    command=self.set_pulse_gen_pulse_mode, col=0,
+                   row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_button(tab=frame_power_meas, button_name='Exit', command=lambda: [self._quit(), close_resources()], col=1,
                    row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_power_meas, button_name='Exit', command=lambda: [self._quit(), close_resources()], col=1,
-                   row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_power_meas, button_name='Launch Test',
-                   command=None, col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_button(tab=frame_power_meas, button_name='Launch Test',
+                   command=lambda: scripts_and_functions.power_test_sequence(), col=1, row=5).grid(ipadx=tab_pad_x,
+                                                                                                   ipady=tab_pad_x)
+        add_button(tab=frame_power_meas_sig_gen, button_name='Setup power test',
+                   command=NotImplemented, col=1, row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
+        create_canvas(figure=self.fig_power_meas, frame=frame_power_meas_graph, toolbar=True)
         # ==============================================================================
         # TAB8 Resource SCPI configuration
         # ==============================================================================
-        frame_resources = add_Label_frame(tab_resources, frame_name='Ressouce Configuration', col=0, row=0)
+        frame_resources = add_label_frame(tab_resources, frame_name='Ressouce Configuration', col=0, row=0)
         # Resource frame
 
         self.zva_inst = tk.StringVar(value=r'TCPIP0::ZNA67-101810::inst0::INSTR')
@@ -814,49 +1155,52 @@ class Window(tk.Tk, Toplevel):
         self.powermeter_inst = tk.StringVar(value=u'TCPIP0::A-N1912A-00589::inst0::INSTR')
         self.rf_gen_inst = tk.StringVar(value=u'TCPIP0::rssmb100a179766::inst0::INSTR')
 
-        add_Label(frame_resources, label_name='ZVA', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_resources, label_name='Signal Generator', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame_resources, label_name='ZVA', col=1, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_resources, label_name='Signal Generator', col=1, row=2).grid(sticky='e', ipadx=tab_pad_x,
                                                                                      ipady=tab_pad_x)
-        add_Label(frame_resources,
+        add_label(frame_resources,
                   label_name='Oscilloscope', col=1, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_resources,
+        add_label(frame_resources,
                   label_name='Powermeter', col=1, row=4).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_resources,
+        add_label(frame_resources,
                   label_name='RF Generator', col=1, row=5).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        self.entered_var_zva_address = add_entry(frame_resources, textvar=self.zva_inst, width=70, col=2, row=1)
-        self.entered_var_sig_gen_address = add_entry(frame_resources, textvar=self.sig_gen_inst, width=70, col=2, row=2)
-        self.entered_var_osc_address = add_entry(frame_resources, textvar=self.osc_inst, width=70, col=2, row=3)
-        self.entered_var_powermeter_address = add_entry(frame_resources, textvar=self.powermeter_inst, width=70, col=2,
+        self.entered_var_zva_address = add_entry(frame_resources, text_var=self.zva_inst, width=70, col=2, row=1)
+        self.entered_var_sig_gen_address = add_entry(frame_resources, text_var=self.sig_gen_inst, width=70, col=2,
+                                                     row=2)
+        self.entered_var_osc_address = add_entry(frame_resources, text_var=self.osc_inst, width=70, col=2, row=3)
+        self.entered_var_powermeter_address = add_entry(frame_resources, text_var=self.powermeter_inst, width=70, col=2,
                                                         row=4)
-        self.entered_var_rf_gen_address = add_entry(frame_resources, textvar=self.rf_gen_inst, width=70, col=2, row=5)
+        self.entered_var_rf_gen_address = add_entry(frame_resources, text_var=self.rf_gen_inst, width=70, col=2, row=5)
 
         # ==============================================================================
         # TAB9
         # ==============================================================================
-        frame_cycling_comp_info = add_Label_frame(tab=tab_cycling, frame_name='Component information', col=0,
+        frame_cycling_comp_info = add_label_frame(tab=tab_cycling, frame_name='Component information', col=0,
                                                   row=0)  # Resource frame
 
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Project', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Cell', col=0, row=2).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Reticule', col=0, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Device', col=0, row=4).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Cycles', col=0, row=5).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='Events', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Label(frame_cycling_comp_info,
+        add_label(frame_cycling_comp_info,
                   label_name='File name', col=0, row=7).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+        add_label(frame_cycling_comp_info,
+                  label_name='x10^5', col=2, row=5).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        add_Button(tab=frame_cycling_comp_info, button_name="Exit", command=self._quit,
+        add_button(tab=frame_cycling_comp_info, button_name="Exit", command=self._quit,
                    col=0, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-        add_Button(tab=frame_cycling_comp_info, button_name="Start Cycling", command=self.cycling_test,
+        add_button(tab=frame_cycling_comp_info, button_name="Start Cycling", command=self.cycling_test,
                    col=1, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
         self.test_cycling_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement '
@@ -866,60 +1210,59 @@ class Window(tk.Tk, Toplevel):
         self.test_cycling_ret = tk.StringVar(value='Reticule')
         self.test_cycling_device = tk.StringVar(value='Device_Name')
         self.test_cycling_var_bias = tk.StringVar(value='Bias_voltage')
-        self.test_cycling_var_nb_cycles = tk.DoubleVar(value=1000000)
+        self.test_cycling_var_nb_cycles = tk.DoubleVar(value=1)
         self.test_cycling_file_name = tk.StringVar(value='new_file')
         self.test_cycling_events = tk.DoubleVar(value=100)
 
         self.entered_cycling_dir = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_dir, width=20, col=1, row=0)
+            frame_cycling_comp_info, text_var=self.test_cycling_dir, width=20, col=1, row=0)
         self.entered_var_cycling_project = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_project, width=20, col=1, row=1)
+            frame_cycling_comp_info, text_var=self.test_cycling_project, width=20, col=1, row=1)
         self.entered_var_cycling_cell = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_cell, width=20, col=1, row=2)
+            frame_cycling_comp_info, text_var=self.test_cycling_cell, width=20, col=1, row=2)
         self.entered_cycling_ret = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_ret, width=15, col=1, row=3)
+            frame_cycling_comp_info, text_var=self.test_cycling_ret, width=15, col=1, row=3)
         self.entered_cycling_device = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_device, width=20, col=1, row=4)
+            frame_cycling_comp_info, text_var=self.test_cycling_device, width=20, col=1, row=4)
         self.entered_cycling_var_bias = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_var_nb_cycles, width=20, col=1, row=5)
+            frame_cycling_comp_info, text_var=self.test_cycling_var_nb_cycles, width=20, col=1, row=5)
         self.entered_file_name = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_file_name, width=20, col=1, row=7)
+            frame_cycling_comp_info, text_var=self.test_cycling_file_name, width=20, col=1, row=7)
         self.entered_test_cycling_events = add_entry(
-            frame_cycling_comp_info, textvar=self.test_cycling_events, width=20, col=1, row=6)
+            frame_cycling_comp_info, text_var=self.test_cycling_events, width=20, col=1, row=6)
 
-        frame20 = add_Label_frame(tab=tab_cycling, frame_name='Signal Generator', col=0, row=1)
+        frame20 = add_label_frame(tab=tab_cycling, frame_name='Signal Generator', col=0, row=1)
 
-        add_Label(frame20, label_name='Bias voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame20, label_name='Bias voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                          ipady=tab_pad_x)
-        add_Label(frame20, label_name='V', col=2, row=0).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame20, label_name='V', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x,
                                                               ipady=tab_pad_x)
-        add_Label(frame20, label_name='Number of Cycles', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+        add_label(frame20, label_name='Number of Cycles', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
                                                                              ipady=tab_pad_x)
-        add_Label(frame20, label_name='Cycles', col=2, row=1).grid(sticky='e', ipadx=tab_pad_x,
-                                                                   ipady=tab_pad_x)
+        add_label(frame20, label_name='Cycles (x10^5)', col=2, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
         self.test_cycling_var_bias = tk.StringVar(value='40')
-        self.test_cycling_var_nb_of_cycles = tk.DoubleVar(value=1_000_000)
 
-        self.entered_var_cycling_bias = add_entry(frame20, textvar=self.test_cycling_var_bias, width=15, col=1, row=0)
-        self.entered_var_cycling_nb_cycles = add_entry(frame20, textvar=self.test_cycling_var_nb_of_cycles,
+        self.entered_var_cycling_bias = add_entry(frame20, text_var=self.test_cycling_var_bias, width=15, col=1, row=0)
+        self.entered_var_cycling_nb_cycles = add_entry(frame20, text_var=self.test_cycling_var_nb_cycles,
                                                        width=15, col=1, row=1)
 
-        add_Button(tab=frame20, button_name='Cycling config', command=self.sig_gen_cycling_config, col=0, row=2).grid(
+        add_button(tab=frame20, button_name='Cycling config', command=self.sig_gen_cycling_config, col=0, row=2).grid(
             ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        add_Button(tab=frame20, button_name='Set Bias voltage',
+        add_button(tab=frame20, button_name='Set Bias voltage',
                    command=lambda: self.set_symmetrical_voltage_bias(voltage=self.test_cycling_var_bias.get()), col=3,
                    row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        frame21 = add_Label_frame(tab=tab_cycling, frame_name='Oscilloscpe', col=0, row=2)
+        frame21 = add_label_frame(tab=tab_cycling, frame_name='Oscilloscope', col=0, row=2)
 
-        add_Button(tab=frame21, button_name='Cycling config',
+        add_button(tab=frame21, button_name='Cycling config',
                    command=scripts_and_functions.osc_cycling_config, col=0,
                    row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
-        frame22 = add_Label_frame(tab=tab_cycling, frame_name='Cycling monitor', col=1, row=0, rowspan=3)
+        frame22 = add_label_frame(tab=tab_cycling, frame_name='Cycling monitor', col=1, row=0, row_span=3)
 
-        self.fig_cycling = create_canvas(figure=self.fig_cycling, frame=frame22)
+        create_canvas(figure=self.fig_cycling, frame=frame22)
+
         self.wm_resizable(width=True, height=True)
         self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
@@ -945,19 +1288,6 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.close_all_resources()
         plt.close()
         self.destroy()
-
-    def create_test_pull_in_file(
-            self):  # Gets the different entered strings at the set entries to construct a filename for the pull in
-        # measurement
-        self.text_file_name_pull_in_test.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
-        filename = '{}-{}-{}-{}-{}V'.format(self.test_pull_in_project.get(),
-                                            self.test_pull_in_cell.get(),
-                                            self.test_pull_in_reticule.get(),
-                                            self.test_pull_in_device.get(),
-                                            self.entered_ramp_volt.get())
-        print(filename)
-        self.text_file_name_pull_in_test.insert(index="%d.%d" % (1, 0), chars=filename)
-        return filename
 
     # ZVA Functions ---------------------------------------------------------------
     def reset_zva(self):  # Reset zva using the IP address at Resource Page (used in TAB5)
@@ -1037,7 +1367,8 @@ class Window(tk.Tk, Toplevel):
         # used in TAB5)
         # try:
         os.chdir(self.test_pull_in_dir.get())
-        scripts_and_functions.measure_pull_down_voltage(filename=self.text_file_name_pull_in_test.get(index1="1.0", index2="end-1c"))
+        scripts_and_functions.measure_pull_down_voltage(
+            filename=self.text_file_name_pull_in_test.get(index1="1.0", index2="end-1c"))
         # scripts_and_functions.print_error_log()
         self.set_txt()
         # except:
@@ -1103,7 +1434,7 @@ class Window(tk.Tk, Toplevel):
 
     # Plots functions -------------------------------------------------------------
     def trace_pull_down(self):
-        # Measurement function that calls scripts_and_functions Module to trigger sig_gen to plot pull in trace and
+        # Measurement function that calls scripts_and_functions Module to trigger sig_gen to figure pull in trace and
         # display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         # try:
         scripts_and_functions.sig_gen.write('TRIG')
@@ -1115,7 +1446,7 @@ class Window(tk.Tk, Toplevel):
         measurement_values = self.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
         plt.figure(num=4)
         number_of_graphs = len(self.ax_pull_in_meas.get_lines()[0:])
-        self.ax_pull_in_meas.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
+        self.ax_pull_in_meas.plot(v_bias, rf_detector, label='figure n°{}'.format(number_of_graphs))
         self.ax_pull_in_meas.set(xlabel='V_bias (V)')
         self.ax_pull_in_meas.set(ylabel='Isolation (dB)')
         self.ax_pull_in_meas.grid(visible=True)
@@ -1143,7 +1474,7 @@ class Window(tk.Tk, Toplevel):
         # except:
         #     print("Error in trace pull down function [Line 905]")
 
-    def plot_s3p(self):  # Display function that calls skrf Module to plot s3p files (used in display TAB)
+    def plot_s3p(self):  # Display function that calls skrf Module to figure s3p files (used in display TAB)
         entered_filename = self.s3p_file_name_combobox.get()
         print(entered_filename + '\n')
         os.chdir('{}'.format(self.entered_var_s3p.get()))
@@ -1163,7 +1494,7 @@ class Window(tk.Tk, Toplevel):
         self.ax_s3p.legend(fancybox=True, shadow=True)
         self.s3p_canvas.draw()
 
-    def plot_s2p(self):  # Display function that calls skrf Module to plot s2p files (used in display TAB)
+    def plot_s2p(self):  # Display function that calls skrf Module to figure s2p files (used in display TAB)
         entered_filename = self.s2p_file_name_combobox.get()
         print(entered_filename + '\n')
         os.chdir('{}'.format(self.entered_var_s2p.get()))
@@ -1184,7 +1515,7 @@ class Window(tk.Tk, Toplevel):
     def plot_snp_test(self, filetype='.s3p'):
         self.fig_snp_meas.clear()
         self.ax_snp_meas = self.fig_snp_meas.add_subplot(1, 1, 1)
-        # Display function that calls skrf Module to plot s1p files (used in SNP test TAB)
+        # Display function that calls skrf Module to figure s1p files (used in SNP test TAB)
         entered_filename = self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c") + filetype
         print(entered_filename + '\n')
         os.chdir('{}'.format(self.test_s3p_dir.get()))
@@ -1196,7 +1527,7 @@ class Window(tk.Tk, Toplevel):
         self.ax_snp_meas.legend(fancybox=True, shadow=True)
         self.canvas_snp_meas.draw()
 
-    def plot_vpull_in(self):  # Display function to plot Isolation vs pull in voltage files (used in display TAB)
+    def plot_vpull_in(self):  # Display function to figure Isolation vs pull in voltage files (used in display TAB)
         f = self.txt_file_name_combobox.get()
         os.chdir('{}'.format(self.pull_in_dir_name.get()))
         with open(f, newline=''):
@@ -1393,14 +1724,6 @@ class Window(tk.Tk, Toplevel):
         self.ax_s3p.set_xlim(xmin=value2, xmax=value)
         self.ax_s3p.grid(visible=True)
 
-    @staticmethod
-    def add_slider(frame, _from, to, name, variable, step):
-        slider = tk.Scale(master=frame, from_=_from, to=to, orient=tk.HORIZONTAL, label=name, length=400, digits=2,
-                          relief=tk.GROOVE, border=3, sliderrelief=tk.RIDGE, tickinterval=step, variable=variable,
-                          font=('Bahnschrift Light', 10))
-        # slider.pack()
-        return slider
-
     def set_txt(self):  # (used in TAB5)
         # self.text_snp_debug.delete(index1="%d.%d" % (1, 0), index2="%d.%s" % (1, 'end'))
         self.text_snp_debug.delete("1.0", "end")
@@ -1442,7 +1765,7 @@ class Window(tk.Tk, Toplevel):
         first_index_neg = np.where(v_bias == negative_bias[0])[0]
         # Position of the last negative bias index along v_bias array
         last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-        # Calculating the max and min indexes in both casses
+        # Calculating the max and min indexes in both cases
         max_positive_bias_index = np.argmax(positive_bias)
         min_positive_bias_index = 0
         max_negative_bias_index = 0
@@ -1539,11 +1862,11 @@ class Window(tk.Tk, Toplevel):
 
     def cycling_test(self):
         print("Started cycling")
-        scripts_and_functions.cycling_sequence(number_of_cycles=self.test_cycling_var_nb_of_cycles.get(),
+        scripts_and_functions.cycling_sequence(number_of_cycles=(self.test_cycling_var_nb_cycles.get()) * 1e5,
                                                number_of_pulses_in_wf=1000, filename=r'{}-{}-{}-{}-{}'.format(
                 self.test_cycling_project.get(), self.test_cycling_ret.get(), self.test_cycling_cell.get(),
                 self.test_cycling_device.get(), self.test_cycling_var_nb_cycles.get(), self.test_cycling_var_bias.get()
-            ), events=self.test_cycling_events.get(), df_path=self.test_cycling_dir.get())
+            ), events=self.test_cycling_events.get(), df_path=self.test_cycling_dir.get(), figure=self.fig_cycling)
 
 
 # Main ------------------------------------------------------------------------

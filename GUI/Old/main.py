@@ -41,14 +41,14 @@ class AnnotatedCursor(Cursor):
     For the cursor to remain responsive you must keep a reference to it.
     The data of the axis specified as *dataaxis* must be in ascending
     order. Otherwise, the `numpy.searchsorted` call might fail and the text_file_name_s3p_test
-    disappears. You can satisfy the requirement by sorting the data you plot.
+    disappears. You can satisfy the requirement by sorting the data you figure.
     Usually the data is already sorted (if it was created e.g. using
     `numpy.linspace`), but e.g. scatter plots might cause this problem.
     The cursor sticks to the plotted line.
     Parameters
     ----------
     line : `matplotlib.lines.Line2D`
-        The plot line from which the data coordinates are displayed.
+        The figure line from which the data coordinates are displayed.
     numberformat : `python format string <https://docs.python.org/3/\
     library/string.html#formatstrings>`_, optional, default: "{0:.4g};{1:.4g}"
         The displayed text_file_name_s3p_test is created by calling *format()* on this string
@@ -137,12 +137,12 @@ class AnnotatedCursor(Cursor):
         # if the event coordinates are valid.
         plotpoint = None
         if event.xdata is not None and event.ydata is not None:
-            # Get plot point related to current x position.
+            # Get figure point related to current x position.
             # These coordinates are displayed in text_file_name_s3p_test.
             plotpoint = self.set_position(event.xdata, event.ydata)
             # Modify event, such that the cursor is displayed on the
             # plotted line, not at the mouse pointer,
-            # if the returned plot point is valid
+            # if the returned figure point is valid
             if plotpoint is not None:
                 event.xdata = plotpoint[0]
                 event.ydata = plotpoint[1]
@@ -187,7 +187,7 @@ class AnnotatedCursor(Cursor):
             self.needclear = True
 
             # Remember the recently drawn cursor position, so events for the
-            # same position (mouse moves slightly between two plot points)
+            # same position (mouse moves slightly between two figure points)
             # can be skipped
             self.lastdrawnplotpoint = plotpoint
         # otherwise, make text_file_name_s3p_test invisible
@@ -211,7 +211,7 @@ class AnnotatedCursor(Cursor):
         Finds the coordinates, which have to be shown in text_file_name_s3p_test.
 
         The behaviour depends on the *dataaxis* attribute. Function looks
-        up the matching plot coordinate for the given mouse position.
+        up the matching figure coordinate for the given mouse position.
 
         Parameters
         ----------
@@ -229,7 +229,7 @@ class AnnotatedCursor(Cursor):
             *None* is the fallback value.
         """
 
-        # Get plot line data
+        # Get figure line data
         xdata = self.line.get_xdata()
         ydata = self.line.get_ydata()
 
@@ -247,7 +247,7 @@ class AnnotatedCursor(Cursor):
             raise ValueError(f"The data axis specifier {self.dataaxis} should "
                              f"be 'x' or 'y'")
 
-        # If position is valid and in valid plot data range.
+        # If position is valid and in valid figure data range.
         if pos is not None and lim[0] <= pos <= lim[-1]:
             # Find closest x value in sorted x vector.
             # This requires the plotted data to be sorted.
@@ -255,7 +255,7 @@ class AnnotatedCursor(Cursor):
             # Return none, if this index is out of range.
             if index < 0 or index >= len(data):
                 return None
-            # Return plot point as tuple.
+            # Return figure point as tuple.
             return (xdata[index], ydata[index])
 
         # Return none if there is no good related point for this x position.
@@ -379,7 +379,7 @@ class Window(tk.Tk, Toplevel):
         self.button1 = self.add_Button(tab=frame1, button_name=' Update Files ',
                                        command=lambda: [self.update_entries_s3p_v2(),
                                                         self.clicked_Button(self.button1)], col=3,
-                                       row=1)  # (self.update_entries_s3p_v2), (self.clicked_Button)
+                                       row=1)  # (self.update_entries_s3p_v2), (self.update_button)
 
         self.add_Button(tab=frame1, button_name='Exit', command=self._quit, col=5, row=1)
         self.add_Button(frame1, 'Plot', command=self.plot_s3p, col=3, row=3)
@@ -547,7 +547,7 @@ class Window(tk.Tk, Toplevel):
         self.add_Button(tab=frame16, button_name='Plot IsovsV',
                         command=lambda: [self.trace_pulldown(), self.acquire_pulldown_data()], col=1, row=5).grid(
             ipadx=tab_padx, ipady=tab_padx)
-        # self.add_Button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pull_down, col=1, row=5).grid(ipadx=tab_pad_x,ipady=tab_pad_x)
+        # self.add_button(tab=frame16, button_name='Plot IsovsV',command=self.trace_pull_down, col=1, row=5).grid(ipadx=tab_pad_x,ipady=tab_pad_x)
         # ------------------------------------------------------------------------------
         frame13 = self.add_Label_frame(tab=tab4, frame_name='Oscilloscope Tecktronix', col=1, row=0, rowspan=2)
         self.canvas4 = self.create_canvas_pullin(col=2, row=5, frame=frame13)
@@ -781,7 +781,7 @@ class Window(tk.Tk, Toplevel):
                                                              row=4)
         self.entered_var_rf_gen_address = self.add_entry(frame7, textvar=self.rf_gen_inst, width=70, col=2, row=5)
 
-        self.
+        self.wm_resizable(width=True, height=True)
         self.protocol(name='WM_RESIZABLE')
         self.tabControl.pack()
 
@@ -851,7 +851,7 @@ class Window(tk.Tk, Toplevel):
         return (self.combobox)
 
     def add_scrolledtext(self, tab, text, col, row, scrol_w,
-                         scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text_file_name_s3p_test at row/col location and with scrol_w/scrol_h dimensions
+                         scrol_h):  # Adds a ScrolledText instance in tab with a textvariable text_file_name_s3p_test at row/col location and with scrol_w/scrolled_height dimensions
         scroll = scrolledtext.ScrolledText(tab, width=scrol_w, height=scrol_h, wrap=tk.WORD, border=2, relief=tk.SUNKEN,
                                            pady=0)
         scroll.pack(side='top')
@@ -1106,7 +1106,7 @@ class Window(tk.Tk, Toplevel):
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls inst_command Module to trigger sig_gen to plot pull in trace and display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
+            self):  # Measurement function that calls inst_command Module to trigger sig_gen to figure pull in trace and display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         try:
             Rstest.sig_gen.write('TRIG')
             curve_det = Rstest.get_curve(channel=4)
@@ -1117,7 +1117,7 @@ class Window(tk.Tk, Toplevel):
             measurement_values = self.calculate_pullin_out_voltage_measurement(v_bias, curve_det[:, 0])
             plt.figure(num=4)
             number_of_graphs = len(self.ax4.get_lines()[0:])
-            self.ax4.plot(v_bias, rf_detector, label='plot n°{}'.format(number_of_graphs))
+            self.ax4.plot(v_bias, rf_detector, label='figure n°{}'.format(number_of_graphs))
             self.ax4.set(xlabel='V_bias (V)')
             self.ax4.set(ylabel='Isolation (dB)')
             self.ax4.grid(visible=True)
@@ -1142,7 +1142,7 @@ class Window(tk.Tk, Toplevel):
         except:
             print("Error in trace pull down function [Line 905]")
 
-    def plot_s3p(self):  # Display function that calls skrf Module to plot s3p files (used in display TAB)
+    def plot_s3p(self):  # Display function that calls skrf Module to figure s3p files (used in display TAB)
         entered_filename = self.s3p_file_name_combobox.get()
         print(entered_filename + '\n')
         cwd = os.chdir('{}'.format(self.entered_var_s3p.get()))
@@ -1172,7 +1172,7 @@ class Window(tk.Tk, Toplevel):
                 linewidth=1, )
             cursor.visible(True)
 
-    def plot_s2p(self):  # Display function that calls skrf Module to plot s2p files (used in display TAB)
+    def plot_s2p(self):  # Display function that calls skrf Module to figure s2p files (used in display TAB)
         entered_filename = self.s2p_file_name_combobox.get()
         print(entered_filename + '\n')
         cwd = os.chdir('{}'.format(self.entered_var_s2p.get()))
@@ -1200,7 +1200,7 @@ class Window(tk.Tk, Toplevel):
                 linewidth=1, )
             cursor2.visible(True)
 
-    def plot_vpullin(self):  # Display function to plot Isolation vs pull in voltage files (used in display TAB)
+    def plot_vpullin(self):  # Display function to figure Isolation vs pull in voltage files (used in display TAB)
         f = self.txt_file_name_combobox.get()
         cwd = os.chdir('{}'.format(self.pullin_dir_name.get()))
         with open(f, newline='') as input_file:
