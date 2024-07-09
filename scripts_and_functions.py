@@ -21,17 +21,15 @@ os.system('cls')
 
 path = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
 
+global zva, sig_gen, osc, rf_gen
 os.chdir('{}'.format(path))
 # Opening resource manager
 rm = pyvisa.ResourceManager()
-
 sig_gen = sig_gen_init()
 osc = osc_init()
-
-
-# zva = zva_init()
-# powermeter = powermeter_init()
-# rf_gen = rf_gen_init()
+# # zva = zva_init()
+powermeter = powermeter_init()
+rf_gen = rf_gen_init()
 
 
 def sig_gen_opc_control(function):
@@ -41,6 +39,22 @@ def sig_gen_opc_control(function):
         while opc_test == '0':
             time.sleep(0.1)
             opc_test = sig_gen.query("*OPC?").removesuffix('\n')
+            if opc_test == 0:
+                print(f'Operation still in progress OPC_value={opc_test}')
+            else:
+                print(f'{function.__name__} execution done!')
+        return result
+
+    return wrapper
+
+
+def powermeter_opc_control(function):
+    def wrapper(*args, **kwargs):
+        result = function(*args, **kwargs)
+        opc_test = '0'
+        while opc_test == '0':
+            time.sleep(0.1)
+            opc_test = powermeter.query("*OPC?").removesuffix('\n')
             if opc_test == 0:
                 print(f'Operation still in progress OPC_value={opc_test}')
             else:
@@ -326,7 +340,8 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
     if extension == 's3p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s3p".format(zva_file_dir, filename),
-                                                r"{}\{}.s3p".format(pc_file_dir, filename), append_to_pc_file=False)
+                                                r"{}\{}.s3p".format(pc_file_dir, filename),
+                                                append_to_pc_file=False)
         except TimeoutException as e:
             print(e.args[0])
             print('TimeoutException Error \n')
@@ -341,7 +356,8 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
     if extension == 's2p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s2p".format(zva_file_dir, filename),
-                                                r"{}\{}.s2p".format(pc_file_dir, filename), append_to_pc_file=False)
+                                                r"{}\{}.s2p".format(pc_file_dir, filename),
+                                                append_to_pc_file=False)
         except TimeoutException as e:
             print(e.args[0])
             print('TimeoutException Error \n')
@@ -356,7 +372,8 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
     if extension == 's1p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s1p".format(zva_file_dir, filename),
-                                                r"{}\{}.s1p".format(pc_file_dir, filename), append_to_pc_file=False)
+                                                r"{}\{}.s1p".format(pc_file_dir, filename),
+                                                append_to_pc_file=False)
         except TimeoutException as e:
             print(e.args[0])
             print('TimeoutException Error \n')
@@ -374,14 +391,14 @@ def setup_zva_with_rst(ip):
     # Resetting the ZNA67
     zva = RsInstrument('{}'.format(ip), id_query=True, reset=True)
     zva.opc_query_after_write = True
-    zva.write_str_with_opc(r"MMEMory:LOAD:STATe 1, 'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\SPST.znxml'")
+    zva.write_str_with_opc(r"MMEMory:LOAD:STATe 1, '{}'".format(dir_and_var_declaration.zva_spst_config))
     zva.write_str_with_opc("SYSTem:DISPlay:UPDate ON")
     print('ZVA Reset complete!', end='\n')
 
 
 def setup_sig_gen_ramp_with_rst(ip):
     sig_gen = rm.open_resource('{}'.format(ip))
-    sig_gen.write('MMEM:LOAD:STAT "RAMP.sta"')  # Load STATE_4
+    sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
     error_log = sig_gen.query('SYSTem:ERRor?')
     print('Signal generator Reset complete!', end='\n')
 
@@ -391,7 +408,7 @@ def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
         sig_gen.write('*RST')
         # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
         # LOADING MEM state 4
-        sig_gen.write('MMEM:LOAD:STAT "STATE_4.sta"')  # Load STATE_4
+        sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
         sig_gen.write('SOURce1:FUNCtion PULSe')  # selecting pulse function
         sig_gen.write("SOURce:VOLTage:OFFSET 0")
@@ -413,12 +430,17 @@ def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
         print('Signal Generator Configuration error')
 
 
+def configuration_sig_gen_power():
+    sig_gen.write('*RST')
+    sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.power_test_setup_sig_gen))
+
+
 def configuration_sig_gen_snp(frequence_gen=150, amplitude=1, pulse_width=0.001333):
     try:
         sig_gen.write('*RST')
         # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
         # LOADING MEM state 4
-        sig_gen.write('MMEM:LOAD:STAT "STATE_pulse.sta"')  # Load STATE_4
+        sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.snp_meas_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
         sig_gen.write('SOURce1:FUNCtion PULSe')  # selecting pulse function
         sig_gen.write("SOURce:VOLTage:OFFSET 0")
@@ -445,7 +467,7 @@ def configuration_sig_gen_pullin(ramp_length=50, amplitude=1):  # 50µs ramp_len
     ramp_period = (4 * ramp_length * 10 ** (-6))
     print(ramp_period)
     try:
-        sig_gen.write('MMEM:LOAD:STAT "STATE_4.sta"')  # Load STATE_4
+        sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))
         sig_gen.write('SOURce1:FUNCtion RAMP')  # selecting pulse function
         sig_gen.write('FUNCtion:RAMP:SYMMetry 50')
@@ -503,22 +525,58 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
         print_error_log()
 
 
+# def print_error_log():
+#     # Requête des erreurs
+#     error_log_sig_gen = sig_gen.query('SYSTem:ERRor?')
+#     error_log_sig_zva = zva.query_str('SYSTem:ERRor?')
+#     error_string_sig_gen = error_log_sig_gen.split(",")[1]
+#     error_string_zva = error_log_sig_zva.split(",")[1]
+#     print('SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen, end='\n')
+#     print('ZVA ERROR LOG:\n' + error_string_zva, end='\n')
+#     a = 'SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen
+#     b = 'ZVA ERROR LOG:\n' + error_string_zva
+#     return (a + '\n' + b)
 def print_error_log():
-    # Requête des erreurs
-    error_log_sig_gen = sig_gen.query('SYSTem:ERRor?')
-    error_log_sig_zva = zva.query_str('SYSTem:ERRor?')
-    error_string_sig_gen = error_log_sig_gen.split(",")[1]
-    error_string_zva = error_log_sig_zva.split(",")[1]
-    print('SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen, end='\n')
-    print('ZVA ERROR LOG:\n' + error_string_zva, end='\n')
+    error_log_sig_gen = ""
+    error_log_sig_zva = ""
+    error_string_sig_gen = ""
+    error_string_zva = ""
+
+    # Check if 'sig_gen' is defined
+    if 'sig_gen' in globals():
+        try:
+            error_log_sig_gen = sig_gen.query('SYSTem:ERRor?')
+            error_string_sig_gen = error_log_sig_gen.split(",")[1]
+            print('SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen, end='\n')
+        except Exception as e:
+            print(f"Failed to query SIGNAL GENERATOR: {str(e)}")
+
+    # Check if 'zva' is defined
+    if 'zva' in globals():
+        try:
+            error_log_sig_zva = zva.query_str('SYSTem:ERRor?')
+            error_string_zva = error_log_sig_zva.split(",")[1]
+            print('ZVA ERROR LOG:\n' + error_string_zva, end='\n')
+        except Exception as e:
+            print(f"Failed to query ZVA: {str(e)}")
+
+    # Combine the error logs
     a = 'SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen
     b = 'ZVA ERROR LOG:\n' + error_string_zva
-    return (a + '\n' + b)
+    return a + '\n' + b
 
 
-def setup_osc():
+# Example usage
+# Assuming `sig_gen` and `zva` are defined elsewhere in your code
+# try:
+#     print(print_error_log())
+# except NameError:
+#     print("One or more instruments are not defined.")
+
+
+def setup_osc_cycling():
     osc.write("*RST")
-    osc.write('RECALL:SETUP "C:/Users/Tek_Local_Admin/Desktop/fiab/setup-pullin-AN.set"')
+    osc.write('RECALL:SETUP "{}"'.format(dir_and_var_declaration.cycling_setup_oscilloscope))
     acquisition_length = osc.query("HORizontal:ACQLENGTH?")
     record_length = osc.query("HORizontal:MODE:RECOrdlength?")
     x_unit = osc.query("HORizontal:MAIn:UNIts:STRing?")
@@ -569,7 +627,7 @@ def get_curve(channel=4):
     curve_data = np.empty(shape=1)
     try:
         acquisition_length = int(osc.query("HORizontal:ACQLENGTH?"))  # get number of samples
-        print("acquisition_length in get curve function = {} samples\n".format(acquisition_length))
+        # print("acquisition_length in get curve function = {} samples\n".format(acquisition_length))
         trigger_ref = float(osc.query(
             'HORizontal:MAIn:DELay:POSition?')) / 100  # get trigger position in percentage of samples (default is 10%)
         ref_index = trigger_ref * acquisition_length  # get the 1st index of the ramp using trigger ref position and
@@ -579,12 +637,12 @@ def get_curve(channel=4):
         # Determine the length of the triangle and the number of samples in the triangle
         ramp_length = 1 / (4 * ramp_frequency)
         ramp_period = 1 / (ramp_frequency)
-        print("ramp periode is = {}".format(ramp_period), end='\n')
+        # print("ramp periode is = {}".format(ramp_period), end='\n')
         # rf_gen.write("SOURce:PULM:WIDTh {}".format(ramp_period * 2))
         sample_rate = float(osc.query('HORizontal:MODE:SAMPLERate?'))
         number_of_samples = sample_rate * ramp_period  # Number of samples in the triangles
-        print("number of samples in the triangle is {}".format(number_of_samples))
-        print("ref_index is {}".format(ref_index))
+        # print("number of samples in the triangle is {}".format(number_of_samples))
+        # print("ref_index is {}".format(ref_index))
         # data_truncated is the truncated data. This data  is cropped from ref index to 1500 samples after the end of
         # the triangle
         data_truncated = np.zeros((acquisition_length, 2))[int(ref_index):int(ref_index) + int(
@@ -599,13 +657,13 @@ def get_curve(channel=4):
         y_offset = info['y_offset'][0]
         y_scale = info['y_scale'][0]
         time_base = info['sweep_duration'] / acquisition_length
-        print(time_base)
+        # print(time_base)
         time = np.arange(0, info['sweep_duration'], time_base)[
                int(ref_index):int(ref_index) + int(number_of_samples) + 1500]
-        print("duration of sweep = {} s\n".format(info['sweep_duration']))
+        # print("duration of sweep = {} s\n".format(info['sweep_duration']))
         curve_data[:, 0] = (curve - y_offset) * y_scale
         curve_data[:, 1] = time[:]
-        print("get_curve function ended")
+        # print("get_curve function ended")
     except:
         print("Unable to acquire Data")
     return curve_data
@@ -627,13 +685,13 @@ def measure_pull_down_voltage(filename=r'default'):
     #     print("Unable to acquire Data")
 
 
-def power_test_sequence(start=-30, stop=-20, step=1, sleep_duration=1):
+def power_test_sequence(filename=r'test', start=-30, stop=-20, step=1, sleep_duration=1):
     power_input_amp = list(np.arange(int(start), int(stop), float(step)))
     power_input_dut_avg = []
     power_output_dut_avg = []
 
     rf_gen.write('OUTP OFF')
-    rf_gen.write('SOUR:POW:LEVEL:IMM:AMPL -60')
+    # rf_gen.write('SOUR:POW:LEVEL:IMM:AMPL -30')
     rf_gen.write('OUTP ON')
     powermeter.write('TRIG1:SOUR EXT')
     powermeter.write('TRIG2:SOUR EXT')
@@ -649,27 +707,142 @@ def power_test_sequence(start=-30, stop=-20, step=1, sleep_duration=1):
 
     rf_gen.write('OUTP OFF')
     print("Sweep ended")
+    print(power_input_dut_avg)
+    print(power_output_dut_avg)
+
+    file_array = np.vstack((power_input_dut_avg, power_output_dut_avg))
+    print(file_array[:, 0], end='\n')
+    np.savetxt('{}.txt'.format(filename), file_array, delimiter=',', newline='\n',
+               header='#V_bias(V),rf_detector (V), time (s)')
+    return power_input_dut_avg, power_output_dut_avg
+
+
+def power_test_smf(
+    filename: str = 'test',
+    start: float = -30.0,
+    stop: float = -20.0,
+    step: float = 1.0,
+    sleep_duration: float = 1.0
+) -> tuple[list[float], list[float]]:
+    """
+    Conducts a power sweep test and records the average input and output power levels.
+
+    Args:
+        filename (str): The name of the file to save results. Defaults to 'test'.
+        start (float): The starting power level in dBm. Defaults to -30.0.
+        stop (float): The stopping power level in dBm. Defaults to -20.0.
+        step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
+        sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
+
+    Returns:
+        tuple: Two lists containing the average input power levels and the average output power levels.
+    """
+    # Generate the power levels to sweep
+    power_input_amp = list(np.arange(start, stop, step))
+    power_input_dut_avg = []
+    power_output_dut_avg = []
+
+    # Set the power limit on the RF generator
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LIMit:AMPLitude {stop + 2}')
+    sig_gen.write('OUTP ON')
+
+    # Initialize the RF generator output and set the starting power level
+    rf_gen.write_str_with_opc('OUTP OFF')
+    time.sleep(0.5)
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LEVel:IMMediate:AMPLitude {start}')
+    time.sleep(0.5)
+    rf_gen.write('OUTPut 1')
+
+    # Configure the power meter for external triggering and continuous measurement
+    powermeter.write('TRIG1:SOUR EXT')
+    powermeter.write('TRIG2:SOUR EXT')
+    powermeter.write('INIT:CONT:ALL 1')
+    powermeter.write('AVER:STAT OFF')
+
+    # Sweep through the power levels and record measurements
+    for power_level in power_input_amp:
+        rf_gen.write(f'SOUR:POW:LEVEL:IMM:AMPL {power_level}')
+        sig_gen.write('TRIG')
+        time.sleep(sleep_duration)
+        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')), ndigits=2))
+        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')), ndigits=2))
+
+    # Turn off the signal generator and RF generator outputs
+    sig_gen.write('OUTP OFF')
+    rf_gen.write('OUTP OFF')
+    print("Sweep ended")
+
     return power_input_dut_avg, power_output_dut_avg
 
 
 def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
     # Configuration sig_gen
     sig_gen.write('*RST')
-    sig_gen.write("MMEM:LOAD:STATe '100_us_PULSE.sta'")  # 100_us_PULSE.sta
+    sig_gen.write("MMEM:LOAD:STATe '{}'".format(dir_and_var_declaration.power_test_setup_sig_gen))  # 100_us_PULSE.sta
     # Configuration rf_gen
     rf_gen.write('*RST')
+    rf_gen.write(
+        "MMEMory:LOAD:STATe 4, '{}'".format(dir_and_var_declaration.power_test_setup_rf_gen))  # 100_us_PULSE.sta
     rf_gen.write("*RCL 4")  # 100_us_PULSE.sta
     # Configuration powermeter
     powermeter.write('*RST')
-    powermeter.write('*RCL 1')
-    rf_gen.write("SOURCe1:PULM:WIDTh {}".format(float(pulse_width) * 10 ** (-6)))
-    rf_gen.write("SOURCe1:PULM:DELay {}".format(float(delay) * 10 ** (-6)))
+    powermeter.write(f'{dir_and_var_declaration.power_test_setup_powermeter}')
+    # rf_gen.write("SOURCe1:PULM:WIDTh {}".format(float(pulse_width) * 10 ** (-6)))
+    # rf_gen.write("SOURCe1:PULM:DELay {}".format(float(delay) * 10 ** (-6)))
 
-    delay_pulse_rf_gen = float(rf_gen.query("SOURCe1:PULM:DELay?"))
-    width_pulse_rf_gen = float(rf_gen.query("SOURCe1:PULM:WIDTh?"))
+    # delay_pulse_rf_gen = float(rf_gen.query("SOURCe1:PULM:DELay?"))
+    # width_pulse_rf_gen = float(rf_gen.query("SOURCe1:PULM:WIDTh?"))
 
-    print(delay_pulse_rf_gen)
-    print(width_pulse_rf_gen)
+    # print(delay_pulse_rf_gen)
+    # print(width_pulse_rf_gen)
+
+
+@powermeter_opc_control
+def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple[float, float]:
+    """
+    Queries the power meter values for channels A1 and B1, applies the given offsets, and returns the results.
+
+    Args:
+        offset_a1 (float): The offset to apply to the power value of channel A1. Defaults to 0.0.
+        offset_b1 (float): The offset to apply to the power value of channel B1. Defaults to 0.0.
+
+    Returns:
+        tuple: A tuple containing the power values for channel A1 and channel B1, respectively, after applying the offsets.
+    """
+    # Initialize the power meter for continuous measurements
+    powermeter.write('INIT:CONT:ALL 1')
+    # Query power value for channel A1 and apply offset
+    power_value_a1 = round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=3)
+    # Query power value for channel B1 and apply offset
+    power_value_b1 = round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=3)
+    # Print the queried power values
+    print(f"Power value for channel A1: {power_value_a1}")
+    print(f"Power value for channel B1: {power_value_b1}")
+    return power_value_a1, power_value_b1
+
+
+# @powermeter_opc_control
+def set_channel_attenuation(atts: dict[str, float]) -> None:
+    """
+    Sets the attenuation for specified channels on the power meter.
+
+    Args:
+        atts (dict[int, float]): A dictionary where keys are sensor numbers (1-2)
+                                 and values are the attenuation values to set.
+    """
+    powermeter.write('SENSe1:CORRection:GAIN2:STATe 1')
+    powermeter.write('SENSe2:CORRection:GAIN2:STATe 1')
+
+    for channel, attenuation in atts.items():
+        if channel == "A":
+            sensor = 1
+        elif channel == "B":
+            sensor = 2
+        command = f'SENSe{sensor}:CORRection:GAIN2:MAGNitude {attenuation}'
+        print(command)
+        powermeter.write(command)
+
+        print(f"Set attenuation for channel {channel} to {attenuation} dB")
 
 
 def connect():
@@ -877,76 +1050,6 @@ def format_duration(seconds):
     return formatted_time
 
 
-# def cycling_sequence(number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000, filename: str = "test",
-#                      wf_duration: float = 0.205, events: float = 100,
-#                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
-#                      figure: plt.Figure = None):
-#     """
-#     Cycling test sequence outputs MEMS characteristics during the tested duration, results are
-#     :param figure: Figure to plot the dataframe data into
-#     :param df_path: File path
-#     :param number_of_cycles: Total number of cycles in sequence duration
-#     :param number_of_pulses_in_wf: Number of pulses in waveform
-#     :param filename: Test sequence output filename
-#     :param wf_duration: Total duration of the waveform in the sequence
-#     :param events: Number of trigger events before oscilloscope performs an acquisition
-#     :return: File containing a dataframe
-#     """
-#     number_of_triggers_before_acq = events  # number of  B trigger events in A -> B sequence
-#     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
-#     cycles = pd.Series(
-#         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
-#         name="cycles")
-#     print(cycles)
-#     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
-#     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#     print(f"Number of triggers required :{number_of_triggered_acquisitions}")
-#     print("Starting number of triggers = {}\n".format(starting_number_of_acq))
-#     print("Number of remaining cycles = {}\n".format(number_of_cycles))
-#     print(f"Estimated test duration: {format_duration(test_duration)}")
-#
-#     file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
-#                                     "iso_ascent", "iso_descent_minus", "switching_time",
-#                                     "amplitude_variation", "release_time"], index=None)
-#     for column in file_df.columns:
-#         file_df[column] = 0
-#
-#     count = starting_number_of_acq
-#     sig_gen.write("OUTput 1")
-#     # file_df["cycle count"] = cycles
-#
-#     while count < number_of_triggered_acquisitions + starting_number_of_acq:
-#         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#         remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
-#         print(f"Remaining cycle count = {remaining_count}")
-#         if count == new_value:
-#             time.sleep(1)
-#             print("Waiting for trigger...", end='\n')
-#         else:
-#             count = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#             ch_4_detector = get_curve_cycling(channel=4)
-#             ch_2_bias = get_curve_cycling(channel=2)
-#             data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
-#             file_df = pd.concat([file_df, data], join="outer")
-#             print(file_df)
-#             if figure is not None:
-#                 for series, axes in zip(file_df.columns, figure.axes):
-#                     # figure.clear()
-#                     # axes.figure(cycles, series)
-#                     figure.axes[0].plot(cycles[:len(file_df["vpullin_plus"])], file_df["vpullin_plus"])
-#                     figure.axes[1].plot(cycles[:len(file_df["vpullin_plus"])], file_df["vpullout_plus"])
-#                     figure.axes[2].plot(cycles[:len(file_df["vpullin_plus"])], file_df["iso_ascent"])
-#                     figure.axes[3].plot(cycles[:len(file_df["vpullin_plus"])], file_df["amplitude_variation"])
-#                     figure.axes[4].plot(cycles[:len(file_df["vpullin_plus"])], file_df["switching_time"])
-#                     figure.axes[5].plot(cycles[:len(file_df["vpullin_plus"])], file_df["release_time"])
-#                     plt.show()
-#     file_df["cycle count"] = cycles
-#
-#     sig_gen.write("OUTput 0")
-#     file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv")
-#     print("Test complete!")
-#     return file_df
-
 def detect_sticking_events(df, thresholds):
     """
     Detect sticking events based on thresholds and append a 'sticking events' column to the dataframe.
@@ -960,7 +1063,7 @@ def detect_sticking_events(df, thresholds):
     for i in range(len(df)):
         event_detected = False
         for col, threshold in thresholds.items():
-            if df.at[i, col] > threshold:
+            if df.at[i, col] > threshold or df.at[i, col] < 0:
                 event_detected = True
                 break
         sticking_events.append(1 if event_detected else 0)
@@ -1044,11 +1147,13 @@ def detect_sticking_events(df, thresholds):
 
 def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000,
                      filename: str = "test",
-                     wf_duration: float = 0.205, events: float = 100,
-                     df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling"):
+                     wf_duration: float = 0.205, events: float = 100, header: str = "",
+                     df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
+                     conversion_coeff: float = 0.040):
     """
     Cycling test sequence outputs MEMS characteristics during the tested duration.
 
+    :param conversion_coeff: Conversion coefficient from DC to RF
     :param app: Reference to the Tkinter application instance to update the plot.
     :param new_data_event: Event to signal new data is available.
     :param df_path: File path.
@@ -1057,6 +1162,7 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
     :param filename: Test sequence output filename.
     :param wf_duration: Total duration of the waveform in the sequence.
     :param events: Number of trigger events before oscilloscope performs an acquisition.
+    :param header: Header string to be written at the top of the CSV file.
     :return: File containing a dataframe.
     """
     number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
@@ -1078,35 +1184,40 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
 
     app.is_cycling = True
     while count < number_of_triggered_acquisitions + starting_number_of_acq:
-        new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-        remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
-        print(f"Remaining cycle count: {remaining_count}")
+        try:
+            new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+            remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
+            print(f"Remaining cycle count: {remaining_count}")
 
-        if count == new_value:
-
-            print("Waiting for trigger...", end='\n')
-
-            time.sleep(1)
-        else:
-            count = new_value
-            ch_4_detector = get_curve_cycling(channel=4)
-            ch_2_bias = get_curve_cycling(channel=2)
-            data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
-            data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
-            app.file_df = pd.concat([app.file_df, data], ignore_index=True)
-            new_data_event.set()  # Signal that new data is available
-            print(app.file_df)
-
+            if count == new_value:
+                print("Waiting for trigger...", end='\n')
+                time.sleep(1)
+            else:
+                count = new_value
+                ch_4_detector = get_curve_cycling(channel=4)
+                ch_2_bias = get_curve_cycling(channel=2)
+                data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias,
+                                       conversion_coeff=conversion_coeff)
+                data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
+                app.file_df = pd.concat([app.file_df, data], ignore_index=True)
+                new_data_event.set()  # Signal that new data is available
+                print(app.file_df)
+        except KeyboardInterrupt:
+            break
     # Define thresholds for detecting sticking events
     thresholds = {
-        "amplitude_variation": 1,  # Example threshold, adjust as needed
+        "amplitude_variation": 2,  # Example threshold, adjust as needed
         "switching_time": 50e-6,  # Example threshold, adjust as needed
         "release_time": 50e-6  # Example threshold, adjust as needed
     }
     app.file_df = detect_sticking_events(app.file_df, thresholds)
-
     sig_gen.write("OUTput 0")
-    app.file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv", index=False)
+
+    # Write header and DataFrame to CSV
+    with open(f"{df_path}\\{filename}.csv", 'w') as f:
+        f.write(header + '\n')
+        app.file_df.to_csv(f, index=False, header=True, sep=",")
+
     app.is_cycling = False
     new_data_event.set()  # Signal that final data is available
     print("Test complete!")
@@ -1209,8 +1320,11 @@ def calculate_pull_in_out_voltage_measurement(v_bias,
     tenpercent_iso = round(0.1 * iso_min_descent, ndigits=2)
     ninetypercent_iso = round(0.9 * iso_max_ascent, ndigits=2)
 
-    pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-    Vpullout = round(positive_bias[max_positive_bias_index + pullout_index_pos], ndigits=2)
+    try:
+        pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
+        Vpullout = round(positive_bias[max_positive_bias_index + pullout_index_pos], ndigits=2)
+    except:
+        Vpullout = round(positive_bias[len(positive_bias) - 1], ndigits=2)
 
     # ==============================================================================
     # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
@@ -1231,14 +1345,20 @@ def calculate_pull_in_out_voltage_measurement(v_bias,
 
     # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
     # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
-    pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
-    Vpullin_minus = round(negative_bias[pullin_index_minus], ndigits=2)
+    try:
+        pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
+        Vpullin_minus = round(negative_bias[pullin_index_minus], ndigits=2)
+    except:
+        Vpullin_minus = round(negative_bias[len(negative_bias) - 1], ndigits=2)
 
     tenpercent_iso_ascent = round(0.1 * iso_min_ascent, ndigits=2)
     ninetypercent_iso_descent = round(0.9 * iso_min_descent, ndigits=2)
+    try:
+        pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
+        Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
+    except:
+        Vpullout_minus = round(negative_bias[len(negative_bias) - 1], ndigits=2)
 
-    pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
-    Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
     print(
         """Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | 
         Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n"""
@@ -1290,7 +1410,9 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
         switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
         release_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
         amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
-        relative_amplitude = amplitude_t0 - float(osc.query('MEASUrement:MEAS4:VALue?'))
+        a1, b1 = get_powermeter_channels()
+        # relative_amplitude = amplitude_t0 - float(osc.query('MEASUrement:MEAS4:VALue?'))
+        relative_amplitude = b1 - a1
 
         # Insert the get curve data with ramp position to calculate pull_in, pull_out and insertion loss + isolation
         t = rf_detector_channel[:, 1] + delay
@@ -1393,26 +1515,44 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
 def sig_gen_cycling_config():
     sig_gen.write("*RST")
     time.sleep(1)
-    sig_gen.write('MMEM:LOAD:STAT "CYCLE_2kHz.sta"')
+    sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.cycling_setup_sig_gen))
     time.sleep(1)
     sig_gen.write("*OPC?")
     print("Signal Generator cycling config")
 
 
 def osc_cycling_config():
-    osc.write('RECALL:SETUP "C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set"')
+    osc.write(f'RECALL:SETUP {dir_and_var_declaration.cycling_setup_oscilloscope}')
     print("Oscilloscope cycling config")
     sig_gen.write("*OPC?")
 
-# try:
-#     test_fig, ax = plt.subplots(nrows=2, ncols=3)
-#
-#     os.chdir(r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling")
-#     cycling_sequence(number_of_cycles=2e5, number_of_pulses_in_wf=1000, filename=r"test", figure=test_fig)
-#     plt.show()
-# except KeyboardInterrupt:
-#     sig_gen.write("OUTput 0")
-# finally:
-#     sig_gen.write("OUTput 0")
-#
-#
+
+def osc_pullin_config():
+    osc.write(f'RECALL:SETUP {dir_and_var_declaration.pullin_setup_oscilloscope}')
+    print("Oscilloscope pullin config")
+    sig_gen.write("*OPC?")
+
+
+def rf_gen_cycling_setup(frequency=10, power=-10,
+                         power_lim=5):
+    rf_gen.write_str_with_opc("*RST")
+    rf_gen.write_str_with_opc(r"MMEMory:LOAD:STATe 1, '{}'".format(dir_and_var_declaration.cycling_setup_rf_gen))
+    rf_gen.write_str_with_opc('SOUR:POW:LIM:AMPL {}'.format(power_lim))
+    rf_gen.write_str_with_opc('OUTP ON')
+    rf_gen.write_str_with_opc('SOUR:POW:IMM:AMPL {}'.format(power))
+    rf_gen.write_str_with_opc('SOUR:FREQ {} GHz; LEV {}'.format(frequency, power))
+    rf_gen.write_str_with_opc('OUTP ON')
+
+
+def set_osc_event_count(nth_trigger=10):
+    osc.write("TRIGger:B:EVENTS:COUNt {}".format(nth_trigger))
+    print("Trigger on {}th trigger".format(nth_trigger))
+
+
+def rf_gen_power_lim():
+    pass
+
+
+if __name__ == "__main__":
+    power_ = power_test_smf(start=0, stop=5, step=1, sleep_duration=1)
+    print(power_)

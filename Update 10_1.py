@@ -103,7 +103,12 @@ def add_button(tab: ttk.LabelFrame | ttk.Frame, button_name: str, command, col: 
         command()
 
         # Schedule the color to revert back to the original after 500 milliseconds.
-        action.after(ms=500, func=lambda: action.configure(style='TButton'))
+        action.after(ms=500, func=lambda: action.configure(style='Centered.TButton'))
+
+    # Create a style for the centered button text.
+    style = ttk.Style()
+    style.configure('Centered.TButton', anchor='center', padding=1, justify='center')
+    style.configure('Pressed.TButton', background='blue', anchor='center', padding=1, justify='center')
 
     # Create a Button widget with the specified text and additional configurations.
     action = ttk.Button(
@@ -111,18 +116,11 @@ def add_button(tab: ttk.LabelFrame | ttk.Frame, button_name: str, command, col: 
         text=button_name,  # The text displayed on the button.
         command=on_press,  # The function to be executed on button press.
         width=len(button_name),  # Set the button width to the length of the button name.
-        padding=1  # Set padding around the button.
+        style='Centered.TButton'  # Set the initial style.
     )
-
-    # Enable the button.
-    action.configure(state='enabled')
 
     # Place the Button widget at the specified column and row in the LabelFrame.
     action.grid(column=col, row=row)
-
-    # Define a new style for the pressed button.
-    style = ttk.Style()
-    style.configure(style='Pressed.TButton', background='blue')  # Change 'blue' to any color you prefer.
 
     # Return the created Button widget.
     return action
@@ -892,7 +890,7 @@ class Window(tk.Tk):
             add_button(frame_v_pull_in_dir, button_name='Plot', command=lambda: [self.plot_vpull_in(),
                                                                                  self.calculate_pull_in_out_voltage()],
                        col=3, row=3)
-            add_button(frame_v_pull_in_dir, button_name='Delete Graphs', command=self.delete_axs_vpullin(), col=3,
+            add_button(frame_v_pull_in_dir, button_name='Delete Graphs', command=self.delete_axs_vpullin, col=3,
                        row=2)
             add_button(frame_v_pull_in_dir, button_name='Calculate Pull-in and Pull-out voltages',
                        command=None, col=2, row=3).configure(width=40)
@@ -923,12 +921,12 @@ class Window(tk.Tk):
                                                               col=2,
                                                               row=0)
             frame_osc_tecktro_pull_in_test = add_label_frame(tab=tab_pull_in_meas, frame_name='Oscilloscope Tecktronix',
-                                                             col=1, row=0, row_span=2)
+                                                             col=1, row=0, row_span=3)
             frame_test_pull_in_measurement = add_label_frame(tab=tab_pull_in_meas, frame_name='Measurement', col=2,
                                                              row=1,
                                                              row_span=2)
             frame_test_measurement = ttk.Frame(frame_test_pull_in_measurement)
-            frame_oscilloscope = add_label_frame(tab_pull_in_meas, frame_name='oscilloscope', col=0, row=2, row_span=1)
+            frame_oscilloscope = add_label_frame(tab_pull_in_meas, frame_name='Ocilloscope', col=0, row=2, row_span=1)
 
             # Adding labels to component info labelframe
             add_label(frame_test_pull_in_comp_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
@@ -1005,7 +1003,7 @@ class Window(tk.Tk):
                        col=3, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
             # Oscilloscope
             add_button(tab=frame_oscilloscope, button_name='Setup Oscilloscope',
-                       command=lambda: scripts_and_functions.setup_osc(),
+                       command=lambda: scripts_and_functions.osc_pullin_config(),
                        col=3, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
             # General controls labelframe
@@ -1282,11 +1280,13 @@ class Window(tk.Tk):
                                                      row=0)  # power sweep frame
             frame_power_meas = add_label_frame(tab=tab_power_meas, frame_name='General controls', col=2, row=0)
             frame_power_meas_graph = add_label_frame(tab=tab_power_meas, frame_name='Power test Graph', col=1, row=0,
-                                                     row_span=2)
+                                                     row_span=3)
             frame_power_meas_sig_gen = add_label_frame(tab=tab_power_meas, frame_name='Signal Generator', col=0, row=1,
                                                        row_span=1)
             frame_power_meas_rf_gen = add_label_frame(tab=tab_power_meas, frame_name='RF Generator', col=2, row=1,
-                                                      row_span=1)
+                                                      row_span=2)
+            frame_power_meas_powermeter = add_label_frame(tab=tab_power_meas, frame_name='Powermeter', col=0, row=2,
+                                                          row_span=1)
             frame_test_power_measurement = ttk.Frame(frame_power_meas_graph)
             frame_test_power_measurement.pack(anchor='nw')
 
@@ -1305,6 +1305,15 @@ class Window(tk.Tk):
             add_label(frame_power_compo_info, label_name='Bias Voltage', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x,
                                                                                             ipady=tab_pad_x)
 
+            add_label(frame_power_meas_powermeter, label_name='Input Attenuation (A)', col=0, row=0).grid(
+                sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_power_meas_powermeter, label_name='Output Attenuation (B)', col=0, row=1).grid(
+                sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_power_meas_powermeter, label_name='(dB)', col=2, row=0).grid(
+                sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_power_meas_powermeter, label_name='(dB)', col=2, row=1).grid(
+                sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+
             self.test_pow_dir = tk.StringVar(
                 value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Power handling')
             self.test_pow_project = tk.StringVar(value=r'Project_Name')
@@ -1313,8 +1322,9 @@ class Window(tk.Tk):
             self.test_pow_device = tk.StringVar(value=r'Device_name')
             self.test_pow_file_created = tk.StringVar(value=r'EMPTY')
             self.test_pow_state = tk.StringVar(value=r'EMPTY')
-
             self.bias_voltage_pow = tk.StringVar(value=r'Bias_Voltage')
+            self.test_pow_input_atten = tk.DoubleVar(value=0)
+            self.test_pow_output_atten = tk.DoubleVar(value=0)
 
             self.chosen_component_state_pow = add_combobox(frame_power_compo_info, text=self.test_pow_state, col=1,
                                                            row=5,
@@ -1328,6 +1338,9 @@ class Window(tk.Tk):
             add_entry(tab=frame_power_compo_info, text_var=self.test_pow_reticule, width=20, col=1, row=3)
             add_entry(tab=frame_power_compo_info, text_var=self.test_pow_device, width=20, col=1, row=4)
             add_entry(tab=frame_power_compo_info, text_var=self.bias_voltage_pow, width=20, col=1, row=6)
+
+            add_entry(tab=frame_power_meas_powermeter, text_var=self.test_pow_input_atten, width=20, col=1, row=0)
+            add_entry(tab=frame_power_meas_powermeter, text_var=self.test_pow_output_atten, width=20, col=1, row=1)
 
             self.power_test_file_name = [self.test_pow_project.get(), self.test_pow_cell.get(),
                                          self.test_pow_reticule.get(),
@@ -1355,7 +1368,7 @@ class Window(tk.Tk):
             add_label(tab=frame_power_meas_rf_gen, label_name="Max Power", col=0, row=1)
             add_label(tab=frame_power_meas_rf_gen, label_name="Step Power", col=0, row=2)
             add_button(tab=frame_power_meas_rf_gen, button_name='Set RF Gen\nParameters',
-                       command=NotImplemented, col=0, row=4).grid()
+                       command=lambda: scripts_and_functions.rf_gen_power_lim(), col=0, row=4).grid()
 
             self.text_power_file_name = tk.Text(frame_power_meas, width=40, height=1, wrap=tk.WORD, border=4,
                                                 borderwidth=2, relief=tk.SUNKEN,
@@ -1367,17 +1380,32 @@ class Window(tk.Tk):
                                             font=('Bahnschrift Light', 10))  # Debug text_file_name_s3p_test display
             self.text_power_debug.grid(column=0, row=3, sticky='n', columnspan=4)
 
-            add_button(tab=frame_power_meas_sig_gen, button_name='        Reset\nSignal Generator',
+            add_button(tab=frame_power_meas_sig_gen, button_name='Reset\nSignal Generator',
                        command=self.set_pulse_gen_pulse_mode, col=0,
                        row=0).grid()
             add_button(tab=frame_power_meas, button_name='Exit', command=lambda: [self._quit(), close_resources()],
                        col=1,
                        row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_power_meas, button_name='Launch Test',
-                       command=lambda: scripts_and_functions.power_test_sequence(), col=1, row=5).grid(ipadx=tab_pad_x,
-                                                                                                       ipady=tab_pad_x)
-            add_button(tab=frame_power_meas_sig_gen, button_name='Power Handling\n   Test setup',
-                       command=NotImplemented, col=1, row=0).grid()
+                       command=lambda: [os.chdir(self.test_pow_dir.get()), scripts_and_functions.power_test_sequence(
+                           filename=file_name_creation(data_list=[self.test_pow_project.get(),
+                                                                  self.test_pow_cell.get(),
+                                                                  self.test_pow_reticule.get(),
+                                                                  self.test_pow_device.get()],
+                                                       text=self.text_power_file_name),
+                           start=rf_gen_min_power.get(),
+                           stop=rf_gen_max_power.get(),
+                           step=rf_gen_step.get()
+                       )],
+                       col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_power_meas_sig_gen,
+                       button_name='Power Handling\nTest setup'.format(align="=", fill=' '),
+                       command=lambda: [scripts_and_functions.setup_power_test_sequence()], col=0, row=1).grid()
+
+            add_button(tab=frame_power_meas_powermeter, button_name='Attenuation\nConfig',
+                       command=lambda: [scripts_and_functions.set_channel_attenuation(
+                           atts={"A": self.test_pow_input_atten.get(), "B": self.test_pow_output_atten.get()})],
+                       col=0, row=2).grid()
 
             create_canvas(figure=self.fig_power_meas, frame=frame_power_meas_graph,
                           toolbar_frame=frame_test_power_measurement, toolbar=True)
@@ -1388,7 +1416,9 @@ class Window(tk.Tk):
             frame_oscilloscope = add_label_frame(tab=tab_cycling, frame_name='Oscilloscope', col=0, row=2)
             frame_sig_gen = add_label_frame(tab=tab_cycling, frame_name='Signal Generator', col=0, row=1)
             frame_cycling_monitor = add_label_frame(tab=tab_cycling, frame_name='Cycling monitor', col=1, row=0,
-                                                    row_span=3)
+                                                    row_span=4)
+            frame_rf_gen = add_label_frame(tab=tab_cycling, frame_name='RF generator', col=0, row=3)
+
             frame_osc_toolbar = ttk.Frame(frame_cycling_monitor)
             frame_osc_toolbar.pack(anchor='nw')
 
@@ -1407,7 +1437,7 @@ class Window(tk.Tk):
             add_label(frame_cycling_comp_info,
                       label_name='Events', col=0, row=6).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
             add_label(frame_cycling_comp_info,
-                      label_name='File name', col=0, row=7).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+                      label_name='Header info', col=0, row=7).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
             add_label(frame_cycling_comp_info,
                       label_name='x10^5', col=2, row=5).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
 
@@ -1415,6 +1445,9 @@ class Window(tk.Tk):
                        col=0, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_cycling_comp_info, button_name="Start Cycling", command=self.cycling_test,
                        col=1, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_oscilloscope, button_name="Set event count",
+                       command=lambda: [scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())],
+                       col=1, row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
             self.test_cycling_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement '
                                                        r'Data\Mechanical cycling')
@@ -1424,8 +1457,11 @@ class Window(tk.Tk):
             self.test_cycling_device = tk.StringVar(value='Device_Name')
             self.test_cycling_var_bias = tk.StringVar(value='Bias_voltage')
             self.test_cycling_var_nb_cycles = tk.DoubleVar(value=1)
-            self.test_cycling_file_name = tk.StringVar(value='new_file')
+            self.test_cycling_file_comment = tk.StringVar(value='')
             self.test_cycling_events = tk.DoubleVar(value=100)
+            self.test_cycling_gen_power = tk.DoubleVar(value=0)
+            self.test_cycling_gen_frequency = tk.DoubleVar(value=10)
+            self.test_cycling_detector_conversion = tk.DoubleVar(value=0.040)
 
             self.entered_cycling_dir = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_dir, width=20, col=1, row=0)
@@ -1440,7 +1476,7 @@ class Window(tk.Tk):
             self.entered_cycling_var_bias = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_var_nb_cycles, width=20, col=1, row=5)
             self.entered_file_name = add_entry(
-                frame_cycling_comp_info, text_var=self.test_cycling_file_name, width=20, col=1, row=7)
+                frame_cycling_comp_info, text_var=self.test_cycling_file_comment, width=20, col=1, row=7)
             self.entered_test_cycling_events = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_events, width=20, col=1, row=6)
 
@@ -1460,21 +1496,49 @@ class Window(tk.Tk):
             self.entered_var_cycling_nb_cycles = add_entry(frame_sig_gen, text_var=self.test_cycling_var_nb_cycles,
                                                            width=15, col=1, row=1)
 
-            add_button(tab=frame_sig_gen, button_name='Cycling config', command=self.sig_gen_cycling_config, col=0,
+            add_button(tab=frame_sig_gen, button_name='Cycling config',
+                       command=lambda: [scripts_and_functions.sig_gen_cycling_config()], col=0,
                        row=2).grid(
                 ipadx=tab_pad_x, ipady=tab_pad_x)
 
-            add_button(tab=frame_sig_gen, button_name='Set Bias voltage',
+            add_button(tab=frame_sig_gen, button_name='Set Bias Voltage',
                        command=lambda: self.set_symmetrical_voltage_bias(voltage=self.test_cycling_var_bias.get()),
-                       col=3,
-                       row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+                       col=1,
+                       row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
+            add_label(frame_oscilloscope,
+                      label_name='Detector conversion\n coefficient', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+                                                                                         ipady=tab_pad_x)
+            self.entered_var_cycling_detector = add_entry(frame_oscilloscope,
+                                                          text_var=self.test_cycling_detector_conversion,
+                                                          width=15, col=1, row=0)
+            add_label(frame_oscilloscope,
+                      label_name='V', col=2, row=0).grid(sticky='e', ipadx=tab_pad_x,
+                                                         ipady=tab_pad_x)
             add_button(tab=frame_oscilloscope, button_name='Cycling config',
                        command=scripts_and_functions.osc_cycling_config, col=0,
-                       row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+                       row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
+            add_label(frame_rf_gen,
+                      label_name='RF Power', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_rf_gen,
+                      label_name='dBm', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_rf_gen,
+                      label_name='Frequency', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_label(frame_rf_gen,
+                      label_name='GHz', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_rf_gen, button_name='Gen config',
+                       command=lambda: scripts_and_functions.rf_gen_cycling_setup(
+                           power=self.test_cycling_gen_power.get(),
+                           frequency=self.test_cycling_gen_frequency.get()), col=0,
+                       row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            self.entered_gen_power = add_entry(
+                frame_rf_gen, text_var=self.test_cycling_gen_power, width=20, col=1, row=0)
+            self.entered_gen_power = add_entry(
+                frame_rf_gen, text_var=self.test_cycling_gen_frequency, width=20, col=1, row=1)
 
             self.canvas_cycling = create_canvas(figure=self.fig_cycling, frame=frame_cycling_monitor,
-                          toolbar_frame=frame_osc_toolbar, toolbar=True)
+                                                toolbar_frame=frame_osc_toolbar, toolbar=True)
 
         def setup_scpi_configuration():
             frame_resources = add_label_frame(tab_resources, frame_name='Ressouce Configuration', col=0, row=0)
@@ -1677,13 +1741,16 @@ class Window(tk.Tk):
         self.text_gen_controls_pull_in_debug.insert(index="%d.%d" % (0, 0),
                                                     chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
-    def set_pulse_gen_pulse_mode(
-            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an
+    def set_pulse_gen_pulse_mode(self):
+        # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an
         # error log (used
         # in TAB7)
-        scripts_and_functions.configuration_sig_gen()
+        scripts_and_functions.configuration_sig_gen_power()
         self.text_power_debug.delete("1.0", "end")
         self.text_power_debug.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_log())
+
+    def set_power_test_mode(self):
+        pass
 
     def set_bias_voltage(self):
         # Calls scripts_and_functions modules's bias_voltage_s3p() function using the voltage provided by
@@ -1735,7 +1802,10 @@ class Window(tk.Tk):
         measurement_values = scripts_and_functions.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
         plt.figure(num=4)
         number_of_graphs = len(self.ax_pull_in_meas.get_lines()[0:])
-        self.ax_pull_in_meas.plot(v_bias, rf_detector, label='figure n°{}'.format(number_of_graphs))
+        for axes in self.ax_pull_in_meas.get_lines():
+            axes.remove()
+        self.ax_pull_in_meas.plot(v_bias, rf_detector, label='Cell {}'.format(self.test_pull_in_cell.get()),
+                                  color='#1f77b4')
         self.ax_pull_in_meas.set(xlabel='Bias voltage (V)')
         self.ax_pull_in_meas.set(ylabel='Isolation (dB)')
         self.ax_pull_in_meas.grid(visible=True)
@@ -2158,18 +2228,9 @@ class Window(tk.Tk):
         time.sleep(3)
         self.error_log(scripts_and_functions.sig_gen)
 
-    # def cycling_test(self):
-    #     print("Started cycling")
-    #     self.is_cycling = True
-    #     self.update_plot()
-    #     self.after(ms=1000, func=lambda: scripts_and_functions.cycling_sequence(self, number_of_cycles=(self.test_cycling_var_nb_cycles.get()) * 1e5,
-    #                                            number_of_pulses_in_wf=1000, filename=r'{}-{}-{}-{}-{}'.format(
-    #             self.test_cycling_project.get(), self.test_cycling_ret.get(), self.test_cycling_cell.get(),
-    #             self.test_cycling_device.get(), self.test_cycling_var_nb_cycles.get(), self.test_cycling_var_bias.get()
-    #         ), events=self.test_cycling_events.get(), df_path=self.test_cycling_dir.get()))
-    #
     def cycling_test(self):
         print("Started cycling")
+        scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())
         self.is_cycling = True
 
         # Clear previous data and plots
@@ -2177,8 +2238,9 @@ class Window(tk.Tk):
                                              "iso_ascent", "iso_descent_minus", "switching_time",
                                              "amplitude_variation", "release_time", "cycles"])
 
-
         self.update_plot()
+        scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())
+
         def run_cycling_sequence():
             scripts_and_functions.cycling_sequence(
                 self,
@@ -2194,9 +2256,14 @@ class Window(tk.Tk):
                     self.test_cycling_var_bias.get()
                 ),
                 events=self.test_cycling_events.get(),
-                df_path=self.test_cycling_dir.get()
+                df_path=self.test_cycling_dir.get(),
+                header=r"Comment:{},frequency:10GHz,Convertion coeff volts/dB:3*V/{}".format(
+                    self.test_cycling_file_comment.get(), self.test_cycling_detector_conversion.get()),
+                conversion_coeff=self.test_cycling_detector_conversion.get()
             )
+
         threading.Thread(target=run_cycling_sequence, daemon=True).start()
+
 
 if __name__ == "__main__":
     # root = tk.Tk()

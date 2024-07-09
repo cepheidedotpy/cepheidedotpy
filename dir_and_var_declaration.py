@@ -6,7 +6,7 @@ from RsInstrument import RsInstrument
 zva_s1p_config = 's1p_setup.znxml'
 zva_s2p_config = 's2p_setup.znxml'
 zva_s3p_config = 's3p_setup.znxml'
-
+zva_spst_config = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\SPST.znxml'
 # PC File Path on our PC
 pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config)
 pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config)
@@ -105,10 +105,13 @@ def osc_init(tcpip_address: str = r'TCPIP0::DPO5054-C011738::inst0::INSTR') -> p
         return osc
 
 
-def rf_gen_init(tcpip_address: str = r'TCPIP0::rssmb100a179766::inst0::INSTR') -> RsInstrument | None:
+def rf_gen_init(tcpip_address: str = r'TCPIP0::rssmb100a179766::inst0::INSTR',
+                rf_gen_type: str = 'smf') -> RsInstrument | None:
     _id = "RF Generator"
     error = False
     rf_gen = None
+    if rf_gen_type == 'smf':
+        tcpip_address = r'TCPIP0::rssmf100a105220::inst0::INSTR'
     try:
         rf_gen = RsInstrument(tcpip_address, id_query=False, reset=False)
     except TimeoutException as e:
@@ -134,7 +137,7 @@ def rf_gen_init(tcpip_address: str = r'TCPIP0::rssmb100a179766::inst0::INSTR') -
         return rf_gen
 
 
-def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
+def powermeter_init(tcpip_address=r'TCPIP0::A-N1912A-00589::inst0::INSTR'):
     _id = "Powermeter"
     error = False
     powermeter = None
@@ -157,6 +160,19 @@ def powermeter_init(tcpip_address=r'TCPIP0::192.168.0.83::inst0::INSTR'):
     else:
         print("Powermeter Connected")
         return powermeter
+
+
+cycling_setup_oscilloscope = r"C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set"
+pullin_setup_oscilloscope = r"C:/Users/Tek_Local_Admin/Desktop/fiab/setup-pullin-AN.set"
+cycling_setup_sig_gen = "CYCLE_2kHz.sta"
+cycling_setup_rf_gen = "setup-cycling.savrcltxt"
+pullin_setup_sig_gen = "ramp.sta"
+snp_meas_setup_sig_gen = "STATE_pulse.sta"
+power_test_setup_sig_gen = "power.sta"
+# power_test_setup_rf_gen = "*RCL 4"
+power_test_setup_rf_gen = "/var/user/power.savrcltxt"
+power_test_setup_powermeter = "*RCL 3"
+
 
 # zva_init()
 # sig_gen_init()
