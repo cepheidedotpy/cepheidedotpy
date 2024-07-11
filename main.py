@@ -627,10 +627,13 @@ class Window(tk.Tk):
         self.file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
                                              "iso_ascent", "iso_descent_minus", "switching_time",
                                              "amplitude_variation", "release_time", "cycles", "sticking events"])
+
+        self.file_power_sweep = pd.DataFrame(columns=['Power Input DUT Avg (dBm)', 'Power Output DUT Avg (dBm)'])
+
         self.update_interval = 5000  # Update interval in milliseconds
 
         self.is_cycling = False
-
+        self.is_power_sweeping = False
         # Configure styles
         self.zva_inst = None
         self.configure_window()
@@ -649,6 +652,10 @@ class Window(tk.Tk):
 
         # Create an event to signal new data availability
         self.new_data_event = threading.Event()
+        self.new_data_event_power_sweep = threading.Event()
+        self.data_thread = threading.Thread(target=self.run_new_data_event)
+        self.data_thread.daemon = True  # Ensures the thread will close when the main program exits
+        self.data_thread.start()
 
     def configure_window(self):
         s = ttk.Style()
@@ -673,8 +680,15 @@ class Window(tk.Tk):
         self.fig_pull_in_meas, self.ax_pull_in_meas = create_figure_with_axes(num=4, figsize=(6.5, 6))
         self.fig_snp_meas, self.ax_snp_meas = create_figure_with_axes(num=5, figsize=(6.5, 6))
         self.fig_cycling = create_figure(num=6, figsize=(10, 6))
+        self.fig_power_meas = create_figure(num=7, figsize=(6.5, 6))
+
         self.create_cycling_axes()
-        self.fig_power_meas, self.ax_power_meas = create_figure_with_axes(num=7, figsize=(6.5, 6))
+        self.create_power_sweeping_axes()
+
+    def create_power_sweeping_axes(self):
+        self.ax_power_meas = self.fig_power_meas.add_subplot(1, 1, 1)
+        self.ax_power_meas.set(xlabel="Pin (dBm)", ylabel="Pin (dBm)", title="Pout vs Pin")
+        self.ax_power_meas.set_xscale('linear')
 
     def create_cycling_axes(self):
         """Create and configure axes for the cycling figure."""
@@ -1356,8 +1370,8 @@ class Window(tk.Tk):
                        col=2, row=1)
             # General controls---------------------------------------------------------------
 
-            rf_gen_min_power = tk.DoubleVar(value=-40)
-            rf_gen_max_power = tk.DoubleVar(value=-20)
+            rf_gen_min_power = tk.DoubleVar(value=-20)
+            rf_gen_max_power = tk.DoubleVar(value=-10)
             rf_gen_step = tk.DoubleVar(value=1)
 
             add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_min_power, width=20, col=1, row=0)
@@ -1386,18 +1400,35 @@ class Window(tk.Tk):
             add_button(tab=frame_power_meas, button_name='Exit', command=lambda: [self._quit(), close_resources()],
                        col=1,
                        row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            # add_button(tab=frame_power_meas, button_name='Launch Test',
+            #            command=lambda: [os.chdir(self.test_pow_dir.get()), scripts_and_functions.power_test_sequence(
+            #                filename=file_name_creation(data_list=[self.test_pow_project.get(),
+            #                                                       self.test_pow_cell.get(),
+            #                                                       self.test_pow_reticule.get(),
+            #                                                       self.test_pow_device.get()],
+            #                                            text=self.text_power_file_name),
+            #                start=rf_gen_min_power.get(),
+            #                stop=rf_gen_max_power.get(),
+            #                step=rf_gen_step.get(),
+            #                offset_b1=self.test_pow_output_atten.get(),
+            #                offset_a1=self.test_pow_input_atten.get(),
+            #            )],
+            #            col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_power_meas, button_name='Launch Test',
-                       command=lambda: [os.chdir(self.test_pow_dir.get()), scripts_and_functions.power_test_sequence(
-                           filename=file_name_creation(data_list=[self.test_pow_project.get(),
-                                                                  self.test_pow_cell.get(),
-                                                                  self.test_pow_reticule.get(),
-                                                                  self.test_pow_device.get()],
-                                                       text=self.text_power_file_name),
+                       command=lambda: [os.chdir(self.test_pow_dir.get()), self.start_power_test_sequence(
+                           self, filename=file_name_creation(data_list=[self.test_pow_project.get(),
+                                                                        self.test_pow_cell.get(),
+                                                                        self.test_pow_reticule.get(),
+                                                                        self.test_pow_device.get()],
+                                                             text=self.text_power_file_name),
                            start=rf_gen_min_power.get(),
                            stop=rf_gen_max_power.get(),
-                           step=rf_gen_step.get()
-                       )],
-                       col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+                           step=rf_gen_step.get(),
+                           sleep_duration=1,
+                           offset_b1=self.test_pow_output_atten.get(),
+                           offset_a1=self.test_pow_input_atten.get(),
+                       )], col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
             add_button(tab=frame_power_meas_sig_gen,
                        button_name='Power Handling\nTest setup'.format(align="=", fill=' '),
                        command=lambda: [scripts_and_functions.setup_power_test_sequence()], col=0, row=1).grid()
@@ -1586,6 +1617,49 @@ class Window(tk.Tk):
     # Methods
     # ==============================================================================
     # General APP functions -------------------------------------------------------
+    def start_power_test_sequence(
+            self,
+            new_data_event,
+            filename,
+            start,
+            stop,
+            step,
+            sleep_duration,
+            offset_a1,
+            offset_b1):
+        """
+        Starts the power test sequence in a separate thread.
+        """
+        test_thread = threading.Thread(
+            target=scripts_and_functions.power_test_sequence_v2,
+            args=(self, new_data_event, filename, start, stop, step, sleep_duration, offset_a1, offset_b1)
+        )
+        test_thread.start()
+
+    def update_plot_power_sweep(self):
+        """
+        Updates the power sweep plot with the latest data in self.file_power_sweep.
+        """
+        # Clear the previous plot
+        self.ax_power_meas.clear()
+
+        # Plot the new data
+        if not self.file_power_sweep.empty:
+            self.ax_power_meas.plot(
+                self.file_power_sweep['Power Input DUT Avg (dBm)'],
+                self.file_power_sweep['Power Output DUT Avg (dBm)'],
+                marker='o', linestyle='-', label=self.test_pow_cell.get()
+            )
+
+        # Set plot labels and title
+        self.ax_power_meas.set_xlabel('Power Input DUT Avg (dBm)')
+        self.ax_power_meas.set_ylabel('Power Output DUT Avg (dBm)')
+        self.ax_power_meas.set_title('Power Sweep Test')
+        self.ax_power_meas.grid('both')
+        self.ax_power_meas.legend()
+
+        # Redraw the plot
+        self.fig_power_meas.canvas.draw()
 
     def update_plot(self):
         """Update the plot with new data from the dataframe."""
@@ -2263,6 +2337,16 @@ class Window(tk.Tk):
             )
 
         threading.Thread(target=run_cycling_sequence, daemon=True).start()
+
+    def run_new_data_event(self):
+        """
+        Continuously checks for new data and updates the plot when new data is available.
+        """
+        while True:
+            self.new_data_event_power_sweep.wait()  # Wait until the event is set
+            if self.is_power_sweeping:
+                self.update_plot_power_sweep()
+            self.new_data_event_power_sweep.clear()  # Clear the event after updating the plot
 
 
 if __name__ == "__main__":

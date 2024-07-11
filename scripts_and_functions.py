@@ -685,54 +685,30 @@ def measure_pull_down_voltage(filename=r'default'):
     #     print("Unable to acquire Data")
 
 
-def power_test_sequence(filename=r'test', start=-30, stop=-20, step=1, sleep_duration=1):
-    power_input_amp = list(np.arange(int(start), int(stop), float(step)))
-    power_input_dut_avg = []
-    power_output_dut_avg = []
-
-    rf_gen.write('OUTP OFF')
-    # rf_gen.write('SOUR:POW:LEVEL:IMM:AMPL -30')
-    rf_gen.write('OUTP ON')
-    powermeter.write('TRIG1:SOUR EXT')
-    powermeter.write('TRIG2:SOUR EXT')
-    powermeter.write('INIT:CONT:ALL 1')
-    powermeter.write('AVER:STAT OFF')
-
-    for power_level in power_input_amp:
-        rf_gen.write('SOUR:POW:LEVEL:IMM:AMPL {}'.format(power_level))
-        time.sleep(sleep_duration)
-        sig_gen.write('TRIG')
-        power_input_dut_avg.append(float(powermeter.query('FETC2?')))
-        power_output_dut_avg.append(float(powermeter.query('FETC1?')))
-
-    rf_gen.write('OUTP OFF')
-    print("Sweep ended")
-    print(power_input_dut_avg)
-    print(power_output_dut_avg)
-
-    file_array = np.vstack((power_input_dut_avg, power_output_dut_avg))
-    print(file_array[:, 0], end='\n')
-    np.savetxt('{}.txt'.format(filename), file_array, delimiter=',', newline='\n',
-               header='#V_bias(V),rf_detector (V), time (s)')
-    return power_input_dut_avg, power_output_dut_avg
-
-
-def power_test_smf(
+def power_test_sequence_v2(
+    app,
+    new_data_event,
     filename: str = 'test',
     start: float = -30.0,
     stop: float = -20.0,
     step: float = 1.0,
-    sleep_duration: float = 1.0
+    sleep_duration: float = 1.0,
+    offset_a1: float = 0.0,
+    offset_b1: float = 0.0,
 ) -> tuple[list[float], list[float]]:
     """
-    Conducts a power sweep test and records the average input and output power levels.
+    Conducts a power sweep test and records the average input and output power levels for a DUT (Device Under Test).
 
     Args:
-        filename (str): The name of the file to save results. Defaults to 'test'.
-        start (float): The starting power level in dBm. Defaults to -30.0.
-        stop (float): The stopping power level in dBm. Defaults to -20.0.
-        step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
-        sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
+        app: Reference to the main application instance to update the plot.
+        :param new_data_event: Event to signal new data is available.
+        :param filename (str): The name of the file to save results. Defaults to 'test'.
+        :param start (float): The starting power level in dBm. Defaults to -30.0.
+        :param stop (float): The stopping power level in dBm. Defaults to -20.0.
+        :param step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
+        :param sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
+        :param offset_b1: (float): Offset to apply to channel A1 measurements. Defaults to 0.0.
+        :param offset_b1 (float): Offset to apply to channel B1 measurements. Defaults to 0.0.
 
     Returns:
         tuple: Two lists containing the average input power levels and the average output power levels.
@@ -759,18 +735,168 @@ def power_test_smf(
     powermeter.write('INIT:CONT:ALL 1')
     powermeter.write('AVER:STAT OFF')
 
-    # Sweep through the power levels and record measurements
+    app.is_power_sweeping = True
     for power_level in power_input_amp:
+        if not app.is_power_sweeping:
+            break
         rf_gen.write(f'SOUR:POW:LEVEL:IMM:AMPL {power_level}')
         sig_gen.write('TRIG')
         time.sleep(sleep_duration)
-        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')), ndigits=2))
-        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')), ndigits=2))
+        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=2))
+        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=2))
+        app.new_data_event_power_sweep.set()
+        # Update the dataframe with the new measurements
+        app.file_power_sweep = pd.DataFrame({
+            'Power Input DUT Avg (dBm)': power_input_dut_avg[1:],
+            'Power Output DUT Avg (dBm)': power_output_dut_avg[1:]
+        })
+        # new_data_event.set()  # Signal that new data is available
 
     # Turn off the signal generator and RF generator outputs
     sig_gen.write('OUTP OFF')
     rf_gen.write('OUTP OFF')
     print("Sweep ended")
+    # Save the DataFrame to a CSV file
+    app.file_power_sweep.to_csv(f'{filename}.csv', index=False)
+    app.is_power_sweeping = False
+    return power_input_dut_avg, power_output_dut_avg
+
+
+def power_test_sequence(
+        filename: str = 'test',
+        start: float = -30.0,
+        stop: float = -20.0,
+        step: float = 1.0,
+        sleep_duration: float = 1.0,
+        offset_a1: float = 0.0,
+        offset_b1: float = 0.0,
+) -> tuple[list[float], list[float]]:
+    """
+    Conducts a power sweep test and records the average input and output power levels for a DUT (Device Under Test).
+
+    Args:
+        filename (str): The name of the file to save results. Defaults to 'test'.
+        start (float): The starting power level in dBm. Defaults to -30.0.
+        stop (float): The stopping power level in dBm. Defaults to -20.0.
+        step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
+        sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
+        offset_a1 (float): Offset to apply to channel A1 measurements. Defaults to 0.0.
+        offset_b1 (float): Offset to apply to channel B1 measurements. Defaults to 0.0.
+
+    Returns:
+        tuple: Two lists containing the average input power levels and the average output power levels.
+    """
+    # Generate the power levels to sweep
+    power_input_amp = list(np.arange(start, stop, step))
+    power_input_dut_avg = []
+    power_output_dut_avg = []
+
+    # Set the power limit on the RF generator
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LEVel:IMMediate:AMPLitude -29')
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LIMit:AMPLitude {stop + 2}')
+    sig_gen.write('OUTP ON')
+
+    # Initialize the RF generator output and set the starting power level
+    rf_gen.write_str_with_opc('OUTP OFF')
+    time.sleep(0.5)
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LEVel:IMMediate:AMPLitude {start}')
+    time.sleep(0.5)
+    rf_gen.write('OUTPut 1')
+
+    # Configure the power meter for external triggering and continuous measurement
+    powermeter.write('TRIG1:SOUR EXT')
+    powermeter.write('TRIG2:SOUR EXT')
+    powermeter.write('INIT:CONT:ALL 1')
+    powermeter.write('AVER:STAT OFF')
+
+    # Sweep through the power levels and record measurements
+    for power_level in power_input_amp:
+        rf_gen.write(f'SOUR:POW:LEVEL:IMM:AMPL {power_level}')
+        sig_gen.write('TRIG')
+        time.sleep(sleep_duration)
+        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=2))
+        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=2))
+
+    # Turn off the signal generator and RF generator outputs
+    power_input_dut_avg.pop(0)
+    power_output_dut_avg.pop(0)
+    sig_gen.write('OUTP OFF')
+    rf_gen.write('OUTP OFF')
+    print("Sweep ended")
+
+    # Save results to file
+    file_array = np.vstack((power_input_dut_avg, power_output_dut_avg))
+    np.savetxt(f'{filename}.txt', file_array, delimiter=',', newline='\n',
+               header='#P_in_DUT(dBm), P_out_DUT(dBm)')
+
+    return power_input_dut_avg, power_output_dut_avg
+
+
+def power_test_smf(
+        filename: str = 'test',
+        start: float = -30.0,
+        stop: float = -20.0,
+        step: float = 1.0,
+        sleep_duration: float = 1.0,
+        offset_a1: float = 0.0,
+        offset_b1: float = 0.0,
+) -> tuple[list[float], list[float]]:
+    """
+    Conducts a power sweep test and records the average input and output power levels for a DUT (Device Under Test).
+
+    Args:
+        filename (str): The name of the file to save results. Defaults to 'test'.
+        start (float): The starting power level in dBm. Defaults to -30.0.
+        stop (float): The stopping power level in dBm. Defaults to -20.0.
+        step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
+        sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
+        offset_a1 (float): Offset to apply to channel A1 measurements. Defaults to 0.0.
+        offset_b1 (float): Offset to apply to channel B1 measurements. Defaults to 0.0.
+
+    Returns:
+        tuple: Two lists containing the average input power levels and the average output power levels.
+    """
+    # Generate the power levels to sweep
+    power_input_amp = list(np.arange(start, stop, step))
+    power_input_dut_avg = []
+    power_output_dut_avg = []
+
+    # Set the power limit on the RF generator
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LIMit:AMPLitude {stop + 2}')
+
+    sig_gen.write('OUTP ON')
+
+    # Initialize the RF generator output and set the starting power level
+    rf_gen.write_str_with_opc('OUTP OFF')
+    time.sleep(0.5)
+    rf_gen.write_str_with_opc(f'SOURce:POWer:LEVel:IMMediate:AMPLitude {start}')
+    time.sleep(0.5)
+    # Configure the power meter for external triggering and continuous measurement
+    powermeter.write('TRIG1:SOUR EXT')
+    powermeter.write('TRIG2:SOUR EXT')
+    powermeter.write('INIT:CONT:ALL 1')
+    powermeter.write('AVER:STAT OFF')
+    rf_gen.write('OUTPut 1')
+    # Sweep through the power levels and record measurements
+    for power_level in power_input_amp:
+        rf_gen.write(f'SOUR:POW:LEVEL:IMM:AMPL {power_level}')
+        sig_gen.write('TRIG')
+        time.sleep(sleep_duration)
+        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=2))
+        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=2))
+
+    # Turn off the signal generator and RF generator outputs
+    power_input_dut_avg.pop(0)
+    power_output_dut_avg.pop(0)
+    sig_gen.write('OUTP OFF')
+    rf_gen.write('OUTP OFF')
+    print("Sweep ended")
+
+    # Save results to file
+    file_array = np.vstack((power_input_dut_avg, power_output_dut_avg))
+    # os.chdir(path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data")
+    np.savetxt(f'{filename}.txt', file_array, delimiter=',', newline='\n',
+               header='#P_in_DUT(dBm), P_out_DUT(dBm)')
 
     return power_input_dut_avg, power_output_dut_avg
 
@@ -1071,79 +1197,6 @@ def detect_sticking_events(df, thresholds):
     df['sticking events'] = sticking_events
     return df
 
-
-# def cycling_sequence(number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000, filename: str = "test",
-#                      wf_duration: float = 0.205, events: float = 100,
-#                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
-#                      figure: plt.Figure = None):
-#     """
-#     Cycling test sequence outputs MEMS characteristics during the tested duration.
-#
-#     :param figure: Figure to plot the dataframe data into.
-#     :param df_path: File path.
-#     :param number_of_cycles: Total number of cycles in sequence duration.
-#     :param number_of_pulses_in_wf: Number of pulses in waveform.
-#     :param filename: Test sequence output filename.
-#     :param wf_duration: Total duration of the waveform in the sequence.
-#     :param events: Number of trigger events before oscilloscope performs an acquisition.
-#     :return: File containing a dataframe.
-#     """
-#     number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
-#     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
-#     cycles = pd.Series(
-#         np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
-#         name="cycles")
-#
-#     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
-#     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#
-#     print(f"Number of triggers required: {number_of_triggered_acquisitions}")
-#     print(f"Starting number of triggers: {starting_number_of_acq}")
-#     print(f"Number of remaining cycles: {number_of_cycles}")
-#     print(f"Estimated test duration: {format_duration(test_duration)}")
-#
-#     file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
-#                                     "iso_ascent", "iso_descent_minus", "switching_time",
-#                                     "amplitude_variation", "release_time", "cycles"])
-#
-#     count = starting_number_of_acq
-#     sig_gen.write("OUTput 1")
-#
-#     while count < number_of_triggered_acquisitions + starting_number_of_acq:
-#         new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-#         remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
-#         print(f"Remaining cycle count: {remaining_count}")
-#
-#         if count == new_value:
-#             time.sleep(1)
-#             print("Waiting for trigger...", end='\n')
-#         else:
-#             count = new_value
-#             ch_4_detector = get_curve_cycling(channel=4)
-#             ch_2_bias = get_curve_cycling(channel=2)
-#             data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias)
-#             data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
-#             file_df = pd.concat([file_df, data], ignore_index=True)
-#             print(file_df)
-#
-#             if figure is not None:
-#                 for series, axes in zip(file_df.columns[:-1], figure.axes):
-#                     cycles_so_far = file_df["cycles"][:len(file_df[series])]
-#                     axes.plot(cycles_so_far, file_df[series])
-#
-#
-#     # Define thresholds for detecting sticking events
-#     thresholds = {
-#         "amplitude_variation": 3,  # Example threshold, adjust as needed
-#         "switching_time": 30e-6,  # Example threshold, adjust as needed
-#         "release_time": 30e-6  # Example threshold, adjust as needed
-#     }
-#     file_df = detect_sticking_events(file_df, thresholds)
-#
-#     sig_gen.write("OUTput 0")
-#     file_df.to_csv(path_or_buf=f"{df_path}\\{filename}.csv", index=False)
-#     print("Test complete!")
-#     return file_df
 
 def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000,
                      filename: str = "test",
@@ -1554,5 +1607,5 @@ def rf_gen_power_lim():
 
 
 if __name__ == "__main__":
-    power_ = power_test_smf(start=0, stop=5, step=1, sleep_duration=1)
+    power_ = power_test_smf(start=-5, stop=5, step=1, sleep_duration=1, offset_b1=15, offset_a1=10)
     print(power_)
