@@ -374,7 +374,7 @@ def call_s3p_config():
     # Call the load_config function with predefined file paths for the s3p configuration.
     scripts_and_functions.load_config(
         pc_file=dir_and_var_declaration.pc_file_s3p,  # Path to the s3p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        inst_file=dir_and_var_declaration.instrument_file_ZVA67  # Path to the instrument file location.
     )
 
 
@@ -386,7 +386,7 @@ def call_s2p_config():
     # Call the load_config function with predefined file paths for the s2p configuration.
     scripts_and_functions.load_config(
         pc_file=dir_and_var_declaration.pc_file_s2p,  # Path to the s2p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        inst_file=dir_and_var_declaration.instrument_file_ZVA67  # Path to the instrument file location.
     )
 
 
@@ -398,7 +398,7 @@ def call_s1p_config():
     # Call the load_config function with predefined file paths for the s1p configuration.
     scripts_and_functions.load_config(
         pc_file=dir_and_var_declaration.pc_file_s1p,  # Path to the s1p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        inst_file=dir_and_var_declaration.instrument_file_ZVA67  # Path to the instrument file location.
     )
 
 

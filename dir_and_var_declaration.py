@@ -1,35 +1,97 @@
+from typing import Tuple
+
 from RsInstrument import *
 import pyvisa
 from RsInstrument import RsInstrument
 
 # These are the file names of the different configurations of the ZVA67
-zva_s1p_config = 's1p_setup.znxml'
-zva_s2p_config = 's2p_setup.znxml'
-zva_s3p_config = 's3p_setup.znxml'
-zva_spst_config = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\SPST.znxml'
+zva_s1p_config_ZVA67 = 's1p_setup.znxml'
+zva_s2p_config_ZVA67 = 's2p_setup.znxml'
+zva_s3p_config_ZVA67 = 's3p_setup.znxml'
+zva_spst_config_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\SPST.znxml'
+
+zva_s1p_config_ZVA50 = 's1p-zva50.zvx'
+zva_s2p_config_ZVA50 = 's2p-zva50.zvx'
+zva_s3p_config_ZVA50 = 's3p-zva50.zvx'
+
 # PC File Path on our PC
-pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config)
-pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config)
-pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config)
+pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA67)
+pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA67)
+pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA67)
 
 # This is the placeholder file used in the instrument to copy the configuration of the ZVA from the PC
-instrument_file = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'
+instrument_file_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'
+instrument_file_ZVA50 = r'C:\Rohde&Schwarz\Nwa\RecallSets\placeholder.zvx'
+
+instrument_file = instrument_file_ZVA67
+
 PC_File_Dir = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
-ZVA_File_Dir = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+ZVA_File_Dir_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+ZVA_File_Dir_ZVA50 = r'C:\Rohde&Schwarz\Nwa\Traces'
+# Default trace directory
+zva_traces = ZVA_File_Dir_ZVA50
 
 rm = pyvisa.ResourceManager()
 
 signal_generator_ip = r'TCPIP0::A-33521B-00526::inst0::INSTR'
-zva_ip = r'TCPIP0::ZNA67-101810::inst0::INSTR'
+zva_ip_ZVA67 = r'TCPIP0::ZNA67-101810::inst0::INSTR'
+zva_ip_ZVA50 = r'TCPIP0::ZVx-000000::inst0::INSTR'
 rf_generator_ip = r'TCPIP0::rssmb100a179766::inst0::INSTR'
 powermeter_ip = r'TCPIP0::192.168.0.83::inst0::INSTR'
 oscilloscope_ip = r'TCPIP0::DPO5054-C011738::inst0::INSTR'
 
+ip_zva = zva_ip_ZVA67
 
-def zva_init(tcpip_address: str = r'TCPIP0::ZNA67-101810::inst0::INSTR') -> RsInstrument | None:
+zva_parameters: dict = {
+    'setup_s1p': pc_file_s1p, 'setup_s2p': pc_file_s2p, 'setup_s3p': pc_file_s3p, 'instrument_file': instrument_file,
+    'zva_traces': zva_traces, 'ip_zva': ip_zva
+}
+
+
+def zva_directories(zva: RsInstrument) -> tuple[str, str, str, str, str]:
+    global pc_file_s2p, pc_file_s3p, pc_file_s1p, instrument_file, zva_traces
+    model = zva.idn_string
+    if model == r"Rohde&Schwarz,ZVA50-4Port,1145111052100151,3.60":
+        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA50)
+        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA50)
+        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA50)
+        zva_parameters['instrument_file'] = r'C:\Rohde&Schwarz\Nwa\RecallSets\placeholder.zvx'
+        zva_parameters['zva_traces'] = ZVA_File_Dir_ZVA50
+        zva_parameters['ip_zva'] = zva_ip_ZVA50
+
+        pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA50)
+        pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA50)
+        pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA50)
+        instrument_file = ZVA_File_Dir_ZVA50
+        zva_traces = ZVA_File_Dir_ZVA50
+
+    elif model == r"Rohde-Schwarz,ZNA67-4Port,133250064101810,2.73":
+        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA67)
+        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA67)
+        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA67)
+        zva_parameters['instrument_file'] = instrument_file_ZVA67
+        zva_parameters['zva_traces'] = ZVA_File_Dir_ZVA67
+        zva_parameters['ip_zva'] = zva_ip_ZVA67
+
+        pc_file_s1p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA67)
+        pc_file_s2p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA67)
+        pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA67)
+        instrument_file = instrument_file_ZVA67
+        zva_traces = ZVA_File_Dir_ZVA67
+
+    return pc_file_s1p, pc_file_s2p, pc_file_s3p, instrument_file, zva_traces
+
+
+def zva_init(tcpip_address: str = r'TCPIP0::ZNA67-101810::inst0::INSTR', zva="ZVA67") -> RsInstrument | None:
     _id = r'Vector Network Analyser'
     error = False
-    zva = None
+    zva_name = zva
+    if zva_name == "ZVA50":
+        tcpip_address = zva_ip_ZVA50
+
+    elif zva_name == "ZVA67":
+        tcpip_address = zva_ip_ZVA67
+
     try:
         zva = RsInstrument(tcpip_address, id_query=False, reset=False)
     except TimeoutException as e:
@@ -162,20 +224,13 @@ def powermeter_init(tcpip_address=r'TCPIP0::A-N1912A-00589::inst0::INSTR'):
         return powermeter
 
 
-cycling_setup_oscilloscope = r"C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set"
-pullin_setup_oscilloscope = r"C:/Users/Tek_Local_Admin/Desktop/fiab/setup-pullin-AN.set"
+cycling_setup_oscilloscope = r'C:/Users/Tek_Local_Admin/Desktop/fiab/setup-cycling-AN3.set'
+pullin_setup_oscilloscope = r'C:/Users/Tek_Local_Admin/Desktop/fiab/setup-pullin-AN.set'
 cycling_setup_sig_gen = "CYCLE_2kHz.sta"
 cycling_setup_rf_gen = "setup-cycling.savrcltxt"
 pullin_setup_sig_gen = "ramp.sta"
+pullin_setup_rf_gen = "/var/user/pull-in.savrcltxt"
 snp_meas_setup_sig_gen = "STATE_pulse.sta"
 power_test_setup_sig_gen = "power.sta"
-# power_test_setup_rf_gen = "*RCL 4"
 power_test_setup_rf_gen = "/var/user/power.savrcltxt"
 power_test_setup_powermeter = "*RCL 3"
-
-
-# zva_init()
-# sig_gen_init()
-# osc_init()
-# powermeter_init()
-# rf_gen_init()

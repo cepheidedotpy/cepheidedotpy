@@ -27,9 +27,12 @@ os.chdir('{}'.format(path))
 rm = pyvisa.ResourceManager()
 sig_gen = sig_gen_init()
 osc = osc_init()
-# # zva = zva_init()
+zva = zva_init(zva="ZVA50")
 powermeter = powermeter_init()
 rf_gen = rf_gen_init()
+
+# VNA parameter definition
+dir_and_var_declaration.zva_directories(zva)
 
 
 def sig_gen_opc_control(function):
@@ -261,13 +264,14 @@ def close_all_resources():  # Close all ressources VISA Session
 
 
 def saves3p(filename):
-    # directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = dir_and_var_declaration.zva_parameters["zva_traces"]
+    print(directory)
     try:  # Setting directory to directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s3p' , LOGPhase, 1,2,3".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s3p' , LOGPhase, 1,2,3".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s3p'".format(filename))
         print(r"s3p file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -280,18 +284,19 @@ def saves3p(filename):
     except RsInstrException as e:
         print(e.args[0])
         print('Status Error \n')
-    finally:
+        # finally:
         zva.visa_timeout = 1000
 
 
 def saves2p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = dir_and_var_declaration.zva_parameters["zva_traces"]
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
-        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
+        zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory), timeout=1000)
         time.sleep(1)
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s2p' , LOGPhase, 1,2".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, 'test.s2p'")# , LOGPhase, 1,2".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s2p'".format(filename))
         print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -303,19 +308,20 @@ def saves2p(filename):
 
     except RsInstrException as e:
         print(e.args[0])
-        print('Status Error \n')
+        print('RsInstrException Error \n')
     finally:
         zva.visa_timeout = 1000
 
 
 def saves1p(filename):
     # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
-    directory = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
+    directory = dir_and_var_declaration.zva_parameters["zva_traces"]
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
-        time.sleep(1)
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
+        # time.sleep(1)
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s1p'".format(filename))
         print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -332,11 +338,12 @@ def saves1p(filename):
         zva.visa_timeout = 1000
 
 
-def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
+def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir_ZVA67,
              pc_file_dir=dir_and_var_declaration.PC_File_Dir,
              extension='s2p'):
-    print(r"ZVA File directory: {}\{}".format(zva_file_dir, filename), end='\n')
-    print(r"PC File Directory: {}\{}".format(pc_file_dir, filename), end='\n')
+    zva_file_dir=dir_and_var_declaration.zva_parameters["zva_traces"]
+    # print(r"ZVA File directory: {}\{}".format(zva_file_dir, filename), end='\n')
+    # print(r"PC File Directory: {}\{}".format(pc_file_dir, filename), end='\n')
     if extension == 's3p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s3p".format(zva_file_dir, filename),
@@ -388,10 +395,11 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir,
 
 
 def setup_zva_with_rst(ip):
-    # Resetting the ZNA67
+    # Resetting the ZNA67 or ZVA50
     zva = RsInstrument('{}'.format(ip), id_query=True, reset=True)
     zva.opc_query_after_write = True
-    zva.write_str_with_opc(r"MMEMory:LOAD:STATe 1, '{}'".format(dir_and_var_declaration.zva_spst_config))
+    zva.write_str_with_opc(
+        r"MMEMory:LOAD:STATe 1, '{}'".format(dir_and_var_declaration.zva_parameters["instrument_file"]))
     zva.write_str_with_opc("SYSTem:DISPlay:UPDate ON")
     print('ZVA Reset complete!', end='\n')
 
@@ -503,8 +511,6 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
     try:
         sweep_time: str = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
         print("Sweep time is set to {} s\n".format(sweep_time), end='\n')
-        # sig_gen.write("FUNC:PULSe:PER {}").format(float(10 * sweep_time))
-        # sig_gen.write("SOURce1:FUNCtion:PULSe:WIDTh {}".format(float(sweep_time * 2)))
         trigger_measurement_zva()
         time.sleep(1)
         if file_format == 's3p':
@@ -686,15 +692,15 @@ def measure_pull_down_voltage(filename=r'default'):
 
 
 def power_test_sequence_v2(
-    app,
-    new_data_event,
-    filename: str = 'test',
-    start: float = -30.0,
-    stop: float = -20.0,
-    step: float = 1.0,
-    sleep_duration: float = 1.0,
-    offset_a1: float = 0.0,
-    offset_b1: float = 0.0,
+        app,
+        new_data_event,
+        filename: str = 'test',
+        start: float = -30.0,
+        stop: float = -20.0,
+        step: float = 1.0,
+        sleep_duration: float = 1.0,
+        offset_a1: float = 0.0,
+        offset_b1: float = 0.0,
 ) -> tuple[list[float], list[float]]:
     """
     Conducts a power sweep test and records the average input and output power levels for a DUT (Device Under Test).
@@ -742,8 +748,10 @@ def power_test_sequence_v2(
         rf_gen.write(f'SOUR:POW:LEVEL:IMM:AMPL {power_level}')
         sig_gen.write('TRIG')
         time.sleep(sleep_duration)
-        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=2))
-        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=2))
+        # power_input_dut_avg.append(round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=2))
+        power_input_dut_avg.append(round(float(powermeter.query('FETC2?')), ndigits=2))
+        # power_output_dut_avg.append(round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=2))
+        power_output_dut_avg.append(round(float(powermeter.query('FETC1?')), ndigits=2))
         app.new_data_event_power_sweep.set()
         # Update the dataframe with the new measurements
         app.file_power_sweep = pd.DataFrame({
@@ -1307,8 +1315,8 @@ def online_mode():
         print("Connection error")
 
 
-def load_config(pc_file: str = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\s1p_setup.znxml',
-                inst_file: str = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'):
+def load_config(pc_file: str,
+                inst_file: str):
     """
     Loads a configuration file from the PC to the instrument and activates it.
 
@@ -1317,16 +1325,32 @@ def load_config(pc_file: str = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA confi
     inst_file (str): The file path on the instrument where the configuration will be loaded. Default is a specified file path.
     """
     # Reset the ZVA instrument to its default state.
+    model = zva.idn_string
+    print(f"Active VNA Model: {model}")
     zva.reset()
+    if model == r"Rohde&Schwarz,ZVA50-4Port,1145111052100151,3.60":
+        # Transfer the configuration file from the PC to the instrument.
+        zva.send_file_from_pc_to_instrument(pc_file, inst_file)
+        print("_______", end='\n')
+        print(pc_file, end='\n')
+        print("_______", end='\n')
+        # Load the transferred setup on the instrument.
+        zva.write_str_with_opc(f'MMEM:LOAD:STAT 1, "{inst_file}"')
+        # zva.write_str_with_opc(f'MMEMory:CDIRectory "{inst_file}"')
 
-    # Transfer the configuration file from the PC to the instrument.
-    zva.send_file_from_pc_to_instrument(pc_file, inst_file)
+        # Print a confirmation message indicating the configuration file has been loaded.
+        print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
+    elif model == r"Rohde-Schwarz,ZNA67-4Port,133250064101810,2.73":
+        # Transfer the configuration file from the PC to the instrument.
+        zva.send_file_from_pc_to_instrument(pc_file, inst_file)
 
-    # Load the transferred setup on the instrument.
-    zva.write_str_with_opc(f'MMEM:LOAD:STAT 1,"{inst_file}"')
+        # Load the transferred setup on the instrument.
+        zva.write_str_with_opc(f'MMEM:LOAD:STAT 1,"{inst_file}"')
 
-    # Print a confirmation message indicating the configuration file has been loaded.
-    print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
+        # Print a confirmation message indicating the configuration file has been loaded.
+        print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
+    else:
+        print(f"Instrument model not recognized, can't load config", end='\n')
 
 
 def calculate_pull_in_out_voltage_measurement(v_bias,
@@ -1344,7 +1368,7 @@ def calculate_pull_in_out_voltage_measurement(v_bias,
     first_index_neg = np.where(v_bias == negative_bias[0])[0]
     # Position of the last negative bias index along v_bias array
     last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-    # Calculating the max and min indexes in both casses
+    # Calculating the max and min indexes in both cases
     max_positive_bias_index = np.argmax(positive_bias)
     min_positive_bias_index = 0
     max_negative_bias_index = 0
@@ -1575,15 +1599,22 @@ def sig_gen_cycling_config():
 
 
 def osc_cycling_config():
-    osc.write(f'RECALL:SETUP {dir_and_var_declaration.cycling_setup_oscilloscope}')
+    osc.write(r'RECALL:SETUP "{}"'.format(dir_and_var_declaration.cycling_setup_oscilloscope))
     print("Oscilloscope cycling config")
-    sig_gen.write("*OPC?")
+    osc.write("*OPC?")
 
 
 def osc_pullin_config():
-    osc.write(f'RECALL:SETUP {dir_and_var_declaration.pullin_setup_oscilloscope}')
+    osc.write(r'RECALL:SETUP "{}"'.format(dir_and_var_declaration.pullin_setup_oscilloscope))
     print("Oscilloscope pullin config")
-    sig_gen.write("*OPC?")
+    osc.write("*OPC?")
+
+
+def rf_gen_pull_in_setup():
+    rf_gen.write_str_with_opc("*RST")
+    rf_gen.write_str_with_opc(r"MMEMory:LOAD:STATe 2, '{}'".format(dir_and_var_declaration.pullin_setup_rf_gen))
+    rf_gen.write_str_with_opc('OUTP ON')
+    rf_gen.write_str_with_opc('SOUR:FREQ {} GHz; LEV {}'.format(10, 0))
 
 
 def rf_gen_cycling_setup(frequency=10, power=-10,
@@ -1597,6 +1628,14 @@ def rf_gen_cycling_setup(frequency=10, power=-10,
     rf_gen.write_str_with_opc('OUTP ON')
 
 
+def rf_gen_power_setup(frequency=9.3, power=-25,
+                       power_lim=0):
+    rf_gen.write_str_with_opc("*RST")
+    rf_gen.write_str_with_opc(r"MMEMory:LOAD:STATe 4, '{}'".format(dir_and_var_declaration.power_test_setup_rf_gen))
+    rf_gen.write_str_with_opc('SOUR:FREQ {} GHz; LEV {}'.format(frequency, power))
+    rf_gen.write_str_with_opc('SOUR:POW:LIM:AMPL {}'.format(power_lim))
+
+
 def set_osc_event_count(nth_trigger=10):
     osc.write("TRIGger:B:EVENTS:COUNt {}".format(nth_trigger))
     print("Trigger on {}th trigger".format(nth_trigger))
@@ -1606,6 +1645,17 @@ def rf_gen_power_lim():
     pass
 
 
+def rf_gen_set_freq(frequency: float = 10) -> None:
+    rf_gen.write_str_with_opc(f'SOUR:FREQ {frequency} GHz')
+
+
 if __name__ == "__main__":
-    power_ = power_test_smf(start=-5, stop=5, step=1, sleep_duration=1, offset_b1=15, offset_a1=10)
-    print(power_)
+    # print(f"zva model: {zva.instrument_model_name}, {zva.idn_string}")
+    # dir_and_var_declaration.zva_directories(zva)
+    # load_config(pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],
+                # inst_file=dir_and_var_declaration.zva_parameters["instrument_file"])
+    # print({f"ZVA parameters set :\n {dir_and_var_declaration.zva_parameters.items()}"})
+    time.sleep(1)
+    sig_gen.write("TRIG")
+    saves2p("test")
+    file_get(filename="test", pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data", extension='s2p')

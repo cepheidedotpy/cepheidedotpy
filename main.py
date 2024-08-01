@@ -120,7 +120,7 @@ def add_button(tab: ttk.LabelFrame | ttk.Frame, button_name: str, command, col: 
     )
 
     # Place the Button widget at the specified column and row in the LabelFrame.
-    action.grid(column=col, row=row)
+    action.grid(column=col, row=row, sticky="nsew")
 
     # Return the created Button widget.
     return action
@@ -374,8 +374,8 @@ def call_s3p_config():
     """
     # Call the load_config function with predefined file paths for the s3p configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.pc_file_s3p,  # Path to the s3p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s3p"],  # Path to the s3p configuration file on the PC.
+        inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
 
@@ -386,8 +386,8 @@ def call_s2p_config():
     """
     # Call the load_config function with predefined file paths for the s2p configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.pc_file_s2p,  # Path to the s2p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],  # Path to the s2p configuration file on the PC.
+        inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
 
@@ -398,8 +398,8 @@ def call_s1p_config():
     """
     # Call the load_config function with predefined file paths for the s1p configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.pc_file_s1p,  # Path to the s1p configuration file on the PC.
-        inst_file=dir_and_var_declaration.instrument_file  # Path to the instrument file location.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s1p"],  # Path to the s1p configuration file on the PC.
+        inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
 
@@ -671,7 +671,9 @@ class Window(tk.Tk):
     def init_figures(self):
         """Initialize all the matplotlib figures and their respective axes."""
         self.fig_s3p, self.ax_s3p = create_figure_with_axes(num=1, figsize=(13, 4.1))
+        self.ax_s3p.set_title("|Sij| vs frequency")
         self.fig_s2p, self.ax_s2p = create_figure_with_axes(num=2, figsize=(13, 4.1))
+        self.ax_s2p.set_title("|Sij| vs frequency")
         self.fig_pull_in, self.ax_pull_in = create_figure_with_axes(num=3, figsize=(13, 3.5))
         self.ax_pull_in.set(xlabel="V_bias (V)", ylabel="Isolation (dB)", title="Isolation vs Bias voltage")
         self.ax_s2p.set(xlabel="Frequency (Hz)", ylabel="S Parameter (dB)", title="S Parameter vs Frequency")
@@ -687,8 +689,11 @@ class Window(tk.Tk):
 
     def create_power_sweeping_axes(self):
         self.ax_power_meas = self.fig_power_meas.add_subplot(1, 1, 1)
-        self.ax_power_meas.set(xlabel="Pin (dBm)", ylabel="Pin (dBm)", title="Pout vs Pin")
+        self.ax_power_meas.set(xlabel="Pin (dBm)", ylabel="Pout (dBm)", title="Pout vs Pin")
         self.ax_power_meas.set_xscale('linear')
+        self.ax_power_meas.grid("both")
+        self.ax_power_meas_secondary = self.ax_power_meas.twinx()
+        self.ax_power_meas_secondary.set_ylabel('Loss (dB)')
 
     def create_cycling_axes(self):
         """Create and configure axes for the cycling figure."""
@@ -791,10 +796,11 @@ class Window(tk.Tk):
                                                      update_button(self.button_file_update)], col=3,
                                                  row=1)
             # Adding buttons
-            add_button(tab=frame_s3p_directory, button_name='Exit', command=self._quit, col=5, row=1)
-            add_button(tab=frame_s3p_directory, button_name='Plot', command=self.plot_s3p, col=3, row=3)
-            add_button(tab=frame_s3p_directory, button_name='Delete graphs', command=self.delete_axs_s3p,
-                       col=3,
+            add_button(tab=frame_s3p_directory, button_name='Exit',
+                       command=self._quit, col=5, row=1)
+            add_button(tab=frame_s3p_directory, button_name='Plot', command=self.plot_s3p,
+                       col=3, row=3)
+            add_button(tab=frame_s3p_directory, button_name='Delete graphs', command=self.delete_axs_s3p, col=3,
                        row=2)
             # Canvas creation
             self.s3p_canvas = create_canvas(figure=self.fig_s3p, frame=frame_s3p_display,
@@ -845,9 +851,13 @@ class Window(tk.Tk):
                                                                                 combobox=self.s2p_file_name_combobox,
                                                                                 filetype='.s2p'),
                                                                  update_button(self.update_s2p_button)], col=3, row=1)
-            add_button(frame_s2p_dir, button_name='Exit', command=self._quit, col=5, row=1).grid_anchor('e')
-            add_button(frame_s2p_dir, button_name='Plot', command=self.plot_s2p, col=3, row=3)
-            add_button(frame_s2p_dir, button_name='Delete Graphs', command=self.delete_axs_s2p, col=3, row=2)
+            self.update_s2p_button
+            add_button(frame_s2p_dir, button_name='Exit',
+                       command=self._quit, col=5, row=1)
+            add_button(frame_s2p_dir, button_name='Plot',
+                       command=self.plot_s2p, col=3, row=3)
+            add_button(frame_s2p_dir, button_name='Delete Graphs',
+                       command=self.delete_axs_s2p, col=3, row=2)
 
             # Canvas creation
             self.s2p_canvas = create_canvas(figure=self.fig_s2p, frame=frame_s2p_display,
@@ -940,7 +950,8 @@ class Window(tk.Tk):
                                                              row=1,
                                                              row_span=2)
             frame_test_measurement = ttk.Frame(frame_test_pull_in_measurement)
-            frame_oscilloscope = add_label_frame(tab_pull_in_meas, frame_name='Ocilloscope', col=0, row=2, row_span=1)
+            frame_oscilloscope = add_label_frame(tab_pull_in_meas, frame_name='Ocilloscope & RF Gen', col=0, row=2,
+                                                 row_span=1)
 
             # Adding labels to component info labelframe
             add_label(frame_test_pull_in_comp_info, label_name='DIR', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
@@ -991,14 +1002,14 @@ class Window(tk.Tk):
             self.entered_ramp_volt = add_entry(frame_signal_gen_measurement, text_var=self.pull_in_v_bias, width=10,
                                                col=1,
                                                row=0)
-            self.txt_file_name_meas_combobox = [self.test_pull_in_project.get(),
-                                                self.test_pull_in_cell.get(),
-                                                self.test_pull_in_reticule.get(),
-                                                self.test_pull_in_device.get(),
-                                                self.entered_ramp_volt.get()]
+            self.txt_file_name_meas_combobox = tk.StringVar(value=r'test')
+
             add_button(tab=frame_test_pull_in_comp_info, button_name='Create-file',
-                       command=lambda: [self.txt_file_name_meas_combobox,
-                                        file_name_creation(data_list=self.txt_file_name_meas_combobox,
+                       command=lambda: [file_name_creation(data_list=[self.test_pull_in_project.get(),
+                                                                      self.test_pull_in_cell.get(),
+                                                                      self.test_pull_in_reticule.get(),
+                                                                      self.test_pull_in_device.get(),
+                                                                      self.entered_ramp_volt.get()],
                                                            text=self.text_file_name_pull_in_test, end_characters='V')],
                        col=2, row=0)
 
@@ -1018,8 +1029,10 @@ class Window(tk.Tk):
             # Oscilloscope
             add_button(tab=frame_oscilloscope, button_name='Setup Oscilloscope',
                        command=lambda: scripts_and_functions.osc_pullin_config(),
-                       col=3, row=3).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
-
+                       col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_oscilloscope, button_name='Setup RF Gen',
+                       command=lambda: scripts_and_functions.rf_gen_pull_in_setup(),
+                       col=0, row=1).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
             # General controls labelframe
             self.text_file_name_pull_in_test = tk.Text(frame_test_pull_in_gen_controls, width=40, height=1,
                                                        wrap=tk.WORD,
@@ -1040,7 +1053,8 @@ class Window(tk.Tk):
                        col=1,
                        row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_test_pull_in_gen_controls, button_name='Plot IsovsV',
-                       command=lambda: [self.trace_pull_down(), self.acquire_pull_down_data()], col=1, row=5).grid(
+                       command=lambda: [self.trace_pull_down(self.test_cycling_detector_conversion.get()),
+                                        self.acquire_pull_down_data()], col=1, row=5).grid(
                 ipadx=tab_pad_x, ipady=tab_pad_x)
             # -------------------------------------------------------------------------------------------------------------
 
@@ -1175,13 +1189,15 @@ class Window(tk.Tk):
             self.chosen_bias_voltage = add_entry(tab=frame_snp_compo_info, text_var=self.pull_in_v, width=20, col=1,
                                                  row=6)
 
-            self.file_s3p = [self.test_s3p_project.get(), self.test_s3p_cell.get(), self.test_s3p_reticule.get(),
-                             self.test_s3p_device.get(), self.chosen_component_state.get(),
-                             self.chosen_bias_voltage.get()]
+            self.file_s3p = tk.StringVar(value=r'test')
 
             add_button(tab=frame_snp_compo_info, button_name='Create-file',
-                       command=lambda: [self.file_s3p, file_name_creation(
-                           data_list=self.file_s3p, text=self.text_file_name_s3p_test, end_characters='V')], col=2,
+                       command=lambda: [file_name_creation(
+                           data_list=[self.test_s3p_project.get(), self.test_s3p_cell.get(),
+                                      self.test_s3p_reticule.get(),
+                                      self.test_s3p_device.get(), self.chosen_component_state.get(),
+                                      self.chosen_bias_voltage.get()], text=self.text_file_name_s3p_test,
+                           end_characters='V')], col=2,
                        row=0)
 
             add_label(frame_snp_sig_gen, label_name='Bias Voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
@@ -1219,8 +1235,6 @@ class Window(tk.Tk):
             # ------------------------------------------------------------------------------
 
             self.text_file_name_s3p_test.grid(column=0, row=0, sticky='n', columnspan=5)
-            # self.text_file_name_s3p_test.pack(column=0, row=0, sticky='n', columnspan=5)
-
             self.f_start = tk.DoubleVar(value=1)
             self.f_stop = tk.DoubleVar(value=10)
             self.nb_points = tk.DoubleVar(value=100)
@@ -1356,15 +1370,16 @@ class Window(tk.Tk):
             add_entry(tab=frame_power_meas_powermeter, text_var=self.test_pow_input_atten, width=20, col=1, row=0)
             add_entry(tab=frame_power_meas_powermeter, text_var=self.test_pow_output_atten, width=20, col=1, row=1)
 
-            self.power_test_file_name = [self.test_pow_project.get(), self.test_pow_cell.get(),
-                                         self.test_pow_reticule.get(),
-                                         self.test_pow_device.get(), self.chosen_component_state_pow.get(),
-                                         self.bias_voltage_pow.get()]
+            self.power_test_file_name = tk.StringVar(value=r'test')
 
             add_button(tab=frame_power_compo_info, button_name='Create-file',
-                       command=lambda: [self.power_test_file_name,
-                                        file_name_creation(data_list=self.power_test_file_name,
-                                                           text=self.text_power_file_name, end_characters='V')],
+                       command=lambda: [
+                           file_name_creation(data_list=[self.test_pow_project.get(), self.test_pow_cell.get(),
+                                                         self.test_pow_reticule.get(),
+                                                         self.test_pow_device.get(),
+                                                         self.chosen_component_state_pow.get(),
+                                                         self.bias_voltage_pow.get()],
+                                              text=self.text_power_file_name, end_characters='V')],
                        col=2, row=0)
             add_button(tab=frame_power_compo_info, button_name='Send trigger', command=scripts_and_functions.send_trig,
                        col=2, row=1)
@@ -1373,14 +1388,17 @@ class Window(tk.Tk):
             rf_gen_min_power = tk.DoubleVar(value=-20)
             rf_gen_max_power = tk.DoubleVar(value=-10)
             rf_gen_step = tk.DoubleVar(value=1)
-
+            rf_gen_frequency = tk.DoubleVar(value=10)
             add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_min_power, width=20, col=1, row=0)
             add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_max_power, width=20, col=1, row=1)
             add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_step, width=20, col=1, row=2)
+            add_entry(tab=frame_power_meas_rf_gen, text_var=rf_gen_frequency, width=20, col=1, row=3)
 
-            add_label(tab=frame_power_meas_rf_gen, label_name="Min Power", col=0, row=0)
-            add_label(tab=frame_power_meas_rf_gen, label_name="Max Power", col=0, row=1)
-            add_label(tab=frame_power_meas_rf_gen, label_name="Step Power", col=0, row=2)
+            add_label(tab=frame_power_meas_rf_gen, label_name="Min Power (dBm)", col=0, row=0)
+            add_label(tab=frame_power_meas_rf_gen, label_name="Max Power (dBm)", col=0, row=1)
+            add_label(tab=frame_power_meas_rf_gen, label_name="Step Power (dB)", col=0, row=2)
+            add_label(tab=frame_power_meas_rf_gen, label_name="Frequency (GHz)", col=0, row=3)
+
             add_button(tab=frame_power_meas_rf_gen, button_name='Set RF Gen\nParameters',
                        command=lambda: scripts_and_functions.rf_gen_power_lim(), col=0, row=4).grid()
 
@@ -1396,24 +1414,11 @@ class Window(tk.Tk):
 
             add_button(tab=frame_power_meas_sig_gen, button_name='Reset\nSignal Generator',
                        command=self.set_pulse_gen_pulse_mode, col=0,
-                       row=0).grid()
+                       row=0)
             add_button(tab=frame_power_meas, button_name='Exit', command=lambda: [self._quit(), close_resources()],
                        col=1,
                        row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-            # add_button(tab=frame_power_meas, button_name='Launch Test',
-            #            command=lambda: [os.chdir(self.test_pow_dir.get()), scripts_and_functions.power_test_sequence(
-            #                filename=file_name_creation(data_list=[self.test_pow_project.get(),
-            #                                                       self.test_pow_cell.get(),
-            #                                                       self.test_pow_reticule.get(),
-            #                                                       self.test_pow_device.get()],
-            #                                            text=self.text_power_file_name),
-            #                start=rf_gen_min_power.get(),
-            #                stop=rf_gen_max_power.get(),
-            #                step=rf_gen_step.get(),
-            #                offset_b1=self.test_pow_output_atten.get(),
-            #                offset_a1=self.test_pow_input_atten.get(),
-            #            )],
-            #            col=1, row=5).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
             add_button(tab=frame_power_meas, button_name='Launch Test',
                        command=lambda: [os.chdir(self.test_pow_dir.get()), self.start_power_test_sequence(
                            self, filename=file_name_creation(data_list=[self.test_pow_project.get(),
@@ -1438,6 +1443,12 @@ class Window(tk.Tk):
                            atts={"A": self.test_pow_input_atten.get(), "B": self.test_pow_output_atten.get()})],
                        col=0, row=2).grid()
 
+            add_button(tab=frame_power_meas_rf_gen, button_name="Reset RF gen",
+                       command=lambda: [scripts_and_functions.rf_gen_power_setup()], col=0, row=5)
+
+            add_button(tab=frame_power_meas_rf_gen, button_name="Set RF gen\nFrequency",
+                       command=lambda: [scripts_and_functions.rf_gen_set_freq(rf_gen_frequency.get())], col=0,
+                       row=6)
             create_canvas(figure=self.fig_power_meas, frame=frame_power_meas_graph,
                           toolbar_frame=frame_test_power_measurement, toolbar=True)
 
@@ -1642,18 +1653,25 @@ class Window(tk.Tk):
         """
         # Clear the previous plot
         self.ax_power_meas.clear()
+        self.ax_power_meas_secondary.clear()
 
         # Plot the new data
         if not self.file_power_sweep.empty:
+            self.ax_power_meas_secondary.plot(
+                self.file_power_sweep['Power Input DUT Avg (dBm)'],
+                (self.file_power_sweep['Power Output DUT Avg (dBm)'] - self.file_power_sweep[
+                    'Power Input DUT Avg (dBm)']),
+                marker='o', linestyle='-', label=self.test_pow_cell.get(), color='blue'
+            )
             self.ax_power_meas.plot(
                 self.file_power_sweep['Power Input DUT Avg (dBm)'],
-                self.file_power_sweep['Power Output DUT Avg (dBm)'],
-                marker='o', linestyle='-', label=self.test_pow_cell.get()
+                (self.file_power_sweep['Power Output DUT Avg (dBm)']),
+                marker='o', linestyle='-', label=self.test_pow_cell.get(), color='red'
             )
 
         # Set plot labels and title
         self.ax_power_meas.set_xlabel('Power Input DUT Avg (dBm)')
-        self.ax_power_meas.set_ylabel('Power Output DUT Avg (dBm)')
+        self.ax_power_meas.set_ylabel('Power Output DUT Avg (dBm)/ Losses (dB)')
         self.ax_power_meas.set_title('Power Sweep Test')
         self.ax_power_meas.grid('both')
         self.ax_power_meas.legend()
@@ -1716,8 +1734,7 @@ class Window(tk.Tk):
 
     # ZVA Functions ---------------------------------------------------------------
     def reset_zva(self):  # Reset zva using the IP address at Resource Page (used in TAB5)
-        ip = self.zva_inst.get()
-        scripts_and_functions.setup_zva_with_rst(ip)
+        scripts_and_functions.setup_zva_with_rst(dir_and_var_declaration.zva_parameters['ip_zva'])
 
     def set_f_start(self):  # Configure ZVA f_start (used in TAB5)
         fstart = self.f_start.get()
@@ -1748,8 +1765,7 @@ class Window(tk.Tk):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
-            zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA"
-                         r"\Traces",
+            zva_file_dir=dir_and_var_declaration.zva_parameters["zva_traces"],
             pc_file_dir=self.test_s3p_dir.get(),
             file_format='s3p')
         self.plot_snp_test(filetype='.s3p')
@@ -1761,8 +1777,7 @@ class Window(tk.Tk):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
-            zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA"
-                         r"\Traces",
+            zva_file_dir=dir_and_var_declaration.zva_parameters["zva_traces"],
             pc_file_dir=self.test_s3p_dir.get(),
             file_format='s2p')
         self.plot_snp_test(filetype='.s2p')
@@ -1774,8 +1789,7 @@ class Window(tk.Tk):
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
-            zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA"
-                         r"\Traces",
+            zva_file_dir=dir_and_var_declaration.zva_parameters["zva_traces"],
             pc_file_dir=self.test_s3p_dir.get(),
             file_format='s1p')
         self.plot_snp_test(filetype='.s1p')
@@ -1862,7 +1876,7 @@ class Window(tk.Tk):
         self.error_log(scripts_and_functions.sig_gen)
 
     # Plots functions -------------------------------------------------------------
-    def trace_pull_down(self):
+    def trace_pull_down(self, conversion_coeff=0.040):
         # Measurement function that calls scripts_and_functions Module to trigger sig_gen to figure pull in trace and
         # display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         # try:
@@ -1870,7 +1884,7 @@ class Window(tk.Tk):
         curve_det = scripts_and_functions.get_curve(channel=4)
         curve_bias = scripts_and_functions.get_curve(channel=2)
         t = curve_det[:, 1]
-        rf_detector = -max(3 * curve_det[:, 0] / 0.040) + 3 * curve_det[:, 0] / 0.040
+        rf_detector = -max(3 * curve_det[:, 0] / conversion_coeff) + 3 * curve_det[:, 0] / conversion_coeff
         v_bias = curve_bias[:, 0]
         # measurement_values = self.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
         measurement_values = scripts_and_functions.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
@@ -1952,14 +1966,18 @@ class Window(tk.Tk):
         # Display function that calls skrf Module to figure s1p files (used in SNP test TAB)
         entered_filename = self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c") + filetype
         print(entered_filename + '\n')
+        time.sleep(1)
         os.chdir('{}'.format(self.test_s3p_dir.get()))
-        s_par_network = rf.Network('{}'.format(entered_filename))
-        s_par_network.frequency.unit = 'GHz'
-        plt.figure(num=5, tight_layout=True)
-        s_par_network.plot_s_db()
-        self.ax_snp_meas.grid(visible=True)
-        self.ax_snp_meas.legend(fancybox=True, shadow=True)
-        self.canvas_snp_meas.draw()
+        try:
+            s_par_network = rf.Network('{}'.format(entered_filename))
+            s_par_network.frequency.unit = 'GHz'
+            plt.figure(num=5, tight_layout=True)
+            s_par_network.plot_s_db()
+            self.ax_snp_meas.grid(visible=True)
+            self.ax_snp_meas.legend(fancybox=True, shadow=True)
+            self.canvas_snp_meas.draw()
+        except Exception as e:
+            print(e)
 
     def plot_vpull_in(self):  # Display function to figure Isolation vs pull in voltage files (used in display TAB)
         f = self.txt_file_name_combobox.get()
