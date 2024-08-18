@@ -1,15 +1,32 @@
-from typing import Tuple
-
 from RsInstrument import *
 import pyvisa
 from RsInstrument import RsInstrument
 
+"""
+Developer : T0188303 - A.N.
+This file is used for directory and configuration file declaration. 2 VNAs are supported. ZVA67 and ZVA50.
+Switching between the two should be transparent for the Main program user. The IP addresses of the different apparatus 
+is also declared within this file. 
+
+zva_parameter: Dictionary handling the different zva parameters. This dictionary is configured after VNA connection.
+The different parameters handled are:
+- setup_s1p, setup_s2p setup_s3p: Setups for S1P, S2P and S3P measurement. These files are sent from the PC to a 
+"Placeholder" configuration file.
+This configuration file is called when a setup button is pressed. This allows for local storage of the ZVA configuration
+files.
+- instrument_file: This variable stores the placeholder file directory and file name in order to be accessed during
+ZVA configuration.
+- zva_traces: This variable stores the directory of the traces to be transferred from VNA to PC
+- ip_zva: This variable stores the ip address of the VNA
+
+"""
 # These are the file names of the different configurations of the ZVA67
 zva_s1p_config_ZVA67 = 's1p_setup.znxml'
 zva_s2p_config_ZVA67 = 's2p_setup.znxml'
 zva_s3p_config_ZVA67 = 's3p_setup.znxml'
 zva_spst_config_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\SPST.znxml'
 
+# These are the file names of the different configurations of the ZVA67
 zva_s1p_config_ZVA50 = 's1p-zva50.zvx'
 zva_s2p_config_ZVA50 = 's2p-zva50.zvx'
 zva_s3p_config_ZVA50 = 's3p-zva50.zvx'
@@ -23,26 +40,28 @@ pc_file_s3p = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_
 instrument_file_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\RecallSets\placeholder.znxml'
 instrument_file_ZVA50 = r'C:\Rohde&Schwarz\Nwa\RecallSets\placeholder.zvx'
 
+# Default placeholder file to be stored in the zva_parameter Dicitonnary
 instrument_file = instrument_file_ZVA67
 
-PC_File_Dir = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
-ZVA_File_Dir_ZVA67 = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'
-ZVA_File_Dir_ZVA50 = r'C:\Rohde&Schwarz\Nwa\Traces'
+PC_File_Dir: str = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'  # Default directory for measurement data
+ZVA_File_Dir_ZVA67: str = r'C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces'  # ZVA67 Trace file directory
+ZVA_File_Dir_ZVA50: str = r'C:\Rohde&Schwarz\Nwa\Traces'  # ZVA50 Trace file directory
+
 # Default trace directory
-zva_traces = ZVA_File_Dir_ZVA50
+zva_traces: str = ZVA_File_Dir_ZVA50
 
 rm = pyvisa.ResourceManager()
 
-signal_generator_ip = r'TCPIP0::A-33521B-00526::inst0::INSTR'
-zva_ip_ZVA67 = r'TCPIP0::ZNA67-101810::inst0::INSTR'
-zva_ip_ZVA50 = r'TCPIP0::ZVx-000000::inst0::INSTR'
-rf_generator_ip = r'TCPIP0::rssmb100a179766::inst0::INSTR'
-powermeter_ip = r'TCPIP0::192.168.0.83::inst0::INSTR'
-oscilloscope_ip = r'TCPIP0::DPO5054-C011738::inst0::INSTR'
+signal_generator_ip: str = r'TCPIP0::A-33521B-00526::inst0::INSTR'
+zva_ip_ZVA67: str = r'TCPIP0::ZNA67-101810::inst0::INSTR'
+zva_ip_ZVA50: str = r'TCPIP0::ZVx-000000::inst0::INSTR'
+rf_generator_ip: str = r'TCPIP0::rssmb100a179766::inst0::INSTR'
+powermeter_ip: str = r'TCPIP0::192.168.0.83::inst0::I=STR'
+oscilloscope_ip: str = r'TCPIP0::DPO5054-C011738::inst0::INSTR'
 
-ip_zva = zva_ip_ZVA67
+ip_zva: str = zva_ip_ZVA67  # ZVA IP variable
 
-zva_parameters: dict = {
+zva_parameters: dict[str: str] = {
     'setup_s1p': pc_file_s1p, 'setup_s2p': pc_file_s2p, 'setup_s3p': pc_file_s3p, 'instrument_file': instrument_file,
     'zva_traces': zva_traces, 'ip_zva': ip_zva
 }
@@ -52,9 +71,12 @@ def zva_directories(zva: RsInstrument) -> tuple[str, str, str, str, str]:
     global pc_file_s2p, pc_file_s3p, pc_file_s1p, instrument_file, zva_traces
     model = zva.idn_string
     if model == r"Rohde&Schwarz,ZVA50-4Port,1145111052100151,3.60":
-        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA50)
-        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA50)
-        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA50)
+        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s1p_config_ZVA50)
+        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s2p_config_ZVA50)
+        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s3p_config_ZVA50)
         zva_parameters['instrument_file'] = r'C:\Rohde&Schwarz\Nwa\RecallSets\placeholder.zvx'
         zva_parameters['zva_traces'] = ZVA_File_Dir_ZVA50
         zva_parameters['ip_zva'] = zva_ip_ZVA50
@@ -66,9 +88,12 @@ def zva_directories(zva: RsInstrument) -> tuple[str, str, str, str, str]:
         zva_traces = ZVA_File_Dir_ZVA50
 
     elif model == r"Rohde-Schwarz,ZNA67-4Port,133250064101810,2.73":
-        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s1p_config_ZVA67)
-        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s2p_config_ZVA67)
-        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(zva_s3p_config_ZVA67)
+        zva_parameters['setup_s1p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s1p_config_ZVA67)
+        zva_parameters['setup_s2p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s2p_config_ZVA67)
+        zva_parameters['setup_s3p'] = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\ZVA config\{}'.format(
+            zva_s3p_config_ZVA67)
         zva_parameters['instrument_file'] = instrument_file_ZVA67
         zva_parameters['zva_traces'] = ZVA_File_Dir_ZVA67
         zva_parameters['ip_zva'] = zva_ip_ZVA67
@@ -91,9 +116,9 @@ def zva_init(tcpip_address: str = r'TCPIP0::ZNA67-101810::inst0::INSTR', zva="ZV
 
     elif zva_name == "ZVA67":
         tcpip_address = zva_ip_ZVA67
-
     try:
         zva = RsInstrument(tcpip_address, id_query=False, reset=False)
+        zva.write_str_with_opc("SYSTem:DISPlay:UPDate ON")
     except TimeoutException as e:
         error = True
         print(e.args[0])
@@ -199,7 +224,7 @@ def rf_gen_init(tcpip_address: str = r'TCPIP0::rssmb100a179766::inst0::INSTR',
         return rf_gen
 
 
-def powermeter_init(tcpip_address=r'TCPIP0::A-N1912A-00589::inst0::INSTR'):
+def powermeter_init(tcpip_address: str = r'TCPIP0::A-N1912A-00589::inst0::INSTR') -> pyvisa.Resource | None:
     _id = "Powermeter"
     error = False
     powermeter = None

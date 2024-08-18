@@ -1406,7 +1406,7 @@ class Window(tk.Tk, Toplevel):
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_symmetrical_voltage_bias(self, voltage: str = '10'):
-        scripts_and_functions.bias_pullin(voltage)
+        scripts_and_functions.bias_pull_in_voltage(voltage)
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_bias_pull_in(
@@ -1414,7 +1414,7 @@ class Window(tk.Tk, Toplevel):
         # entry pull_in_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pull_in_v_bias.get()
-        scripts_and_functions.bias_pullin(bias)
+        scripts_and_functions.bias_pull_in_voltage(bias)
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_ramp_width(self):  # Calls scripts_and_functions module's ramp_width(width) to set ramp width

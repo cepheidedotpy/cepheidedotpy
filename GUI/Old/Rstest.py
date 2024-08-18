@@ -489,7 +489,7 @@ def configuration_sig_gen_pullin(ramp_length=50, amplitude=1):  # 50µs ramp_len
         print(error, error_log, sep='\n', end='\n')
         osc.write('HORizontal:MODE:SCAle {}'.format(ramp_period / 5))
         if int(error) != 0:
-            # frequence_gen = 1 / (10 * pulse_width)
+            # frequency_gen = 1 / (10 * pulse_width)
             print(error, error_log, sep='\n', end='\n')
             sig_gen.write('FREQuency {}'.format(ramp_frequency))
         time.sleep(1)

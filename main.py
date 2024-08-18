@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Nov 25 14:31:59 2022
-This Tkinter app can get S3P & S2P files in a directory and display them
-after selection
+Main GUI for MEMS Characterization
 @author: T0188303
 _version :10
 """
@@ -624,7 +623,7 @@ class Window(tk.Tk):
         self.text_file_name_s3p_test: tk.Text
         self.canvas_cycling: FigureCanvasTkAgg
 
-        self.file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
+        self.file_df: pd.DataFrame = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
                                              "iso_ascent", "iso_descent_minus", "switching_time",
                                              "amplitude_variation", "release_time", "cycles", "sticking events"])
 
@@ -1849,7 +1848,7 @@ class Window(tk.Tk):
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_symmetrical_voltage_bias(self, voltage: str = '10'):
-        scripts_and_functions.bias_pullin(voltage)
+        scripts_and_functions.bias_pull_in_voltage(voltage)
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_bias_pull_in(
@@ -1857,7 +1856,7 @@ class Window(tk.Tk):
         # entry pull_in_v as
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pull_in_v_bias.get()
-        scripts_and_functions.bias_pullin(bias)
+        scripts_and_functions.bias_pull_in_voltage(bias)
         self.error_log(scripts_and_functions.sig_gen)
 
     def set_ramp_width(self):  # Calls scripts_and_functions module's ramp_width(width) to set ramp width
@@ -1961,6 +1960,7 @@ class Window(tk.Tk):
         self.s2p_canvas.draw()
 
     def plot_snp_test(self, filetype='.s3p'):
+        s_par_network: rf.Network
         self.fig_snp_meas.clear()
         self.ax_snp_meas = self.fig_snp_meas.add_subplot(1, 1, 1)
         # Display function that calls skrf Module to figure s1p files (used in SNP test TAB)

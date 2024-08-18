@@ -10,32 +10,34 @@ import pyvisa
 import RsInstrument
 from RsInstrument import *
 from dir_and_var_declaration import zva_init, sig_gen_init, osc_init, rf_gen_init, powermeter_init
+from functools import wraps, partial
 
 matplotlib.ticker.ScalarFormatter(useOffset=True, useMathText=True)
 
-# import RsInstrument as rs
-
 # This code is dated to 15/02/24
-
+"""
+Developer : T0188303 - A.N.
+"""
 os.system('cls')
 
 path = r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data'
 
-global zva, sig_gen, osc, rf_gen
+# global zva, sig_gen, osc, rf_gen
 os.chdir('{}'.format(path))
 # Opening resource manager
 rm = pyvisa.ResourceManager()
-sig_gen = sig_gen_init()
-osc = osc_init()
-zva = zva_init(zva="ZVA50")
-powermeter = powermeter_init()
-rf_gen = rf_gen_init()
+sig_gen: pyvisa.Resource = sig_gen_init()
+osc: pyvisa.Resource = osc_init()
+zva: RsInstrument = zva_init(zva="ZVA50")
+powermeter: pyvisa.Resource = powermeter_init()
+rf_gen: RsInstrument = rf_gen_init()
 
 # VNA parameter definition
-dir_and_var_declaration.zva_directories(zva)
+# dir_and_var_declaration.zva_directories(zva)
 
 
 def sig_gen_opc_control(function):
+    @wraps(function)
     def wrapper(*args, **kwargs):
         result = function(*args, **kwargs)
         opc_test = '0'
@@ -52,6 +54,7 @@ def sig_gen_opc_control(function):
 
 
 def powermeter_opc_control(function):
+    @wraps(function)
     def wrapper(*args, **kwargs):
         result = function(*args, **kwargs)
         opc_test = '0'
@@ -68,7 +71,7 @@ def powermeter_opc_control(function):
 
 
 @sig_gen_opc_control
-def bias_voltage(voltage='10'):
+def bias_voltage(voltage: str = '10') -> float:
     """
      Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage = user_input/20]
      because of the voltage amplifier
@@ -90,7 +93,7 @@ def bias_voltage(voltage='10'):
 
 
 @sig_gen_opc_control
-def bias_pullin(voltage):
+def bias_pull_in_voltage(voltage: str = 1) -> float:
     # Set bias voltage from user input to correspond to signal generator input. [sig_gen_voltage = user_input/20]
     # because of the amplifier
     voltage_at_sig_gen = float(voltage) / 20
@@ -106,7 +109,7 @@ def bias_pullin(voltage):
 
 
 @sig_gen_opc_control
-def ramp_width(width=100):  # Set ramp length (µs) in pull down voltage test
+def ramp_width(width: float = 100) -> None:  # Set ramp length (µs) in pull down voltage test
     frequency_gen = 1 / (4 * float(width * 10 ** (-6)))
     print(f"Ramp frequency = {frequency_gen / 1e3} kHz")
     try:
@@ -123,26 +126,27 @@ def ramp_width(width=100):  # Set ramp length (µs) in pull down voltage test
         print('Signal Generator VisaIOError')
 
 
-def set_f_start(f_start=1):  # Set start frequency function
+def set_f_start(f_start: float = 1) -> None:  # Set start frequency function
     # f_converted = f_start+'E'+'9'
     f_converted = f_start * 10 ** 9  # float
     zva.write_str_with_opc("FREQ:STAR {}".format(f_converted, type='E'))
     print("F_start is set to {} GHz \n".format(f_start))
 
 
-def set_fstop(fstop=10):  # Set stop frequency function
+def set_fstop(fstop: float = 10) -> None:  # Set stop frequency function
     # f_converted = f_stop+'E'+'9' # string
     f_converted = fstop * 10 ** 9  # float
     zva.write_str_with_opc("FREQ:STOP {}".format(f_converted, type='E'))
     print("Fstop is set to {} GHz \n".format(fstop))
 
 
-def number_of_points(points=501):  # Set Number of points function
+def number_of_points(points: float = 501) -> None:  # Set Number of points function
     zva.write_str_with_opc("SWEep:POINts {}".format(points))
     print("Number of points set to {} points \n".format(points))
 
 
-def set_pulse_width(width=10):  # Set the pulse width as a function of the VNA sweep time in S parameter measurement
+def set_pulse_width(
+        width: float = 10) -> None:  # Set the pulse width as a function of the VNA sweep time in S parameter measurement
     try:
         width_converted = width  # float
         print("Pulse width: {} s".format(width_converted, type='E', precision=2), end='\n')
@@ -168,7 +172,8 @@ def sig_gen_set_output_log():  # Get error log of the signal generator
     return a + '\n' + b + '\n' + c
 
 
-def set_prf(prf):  # Set pulse repetition frequency
+@sig_gen_opc_control
+def set_prf(prf: float = 1e3) -> str:  # Set pulse repetition frequency
     pri = 1 / prf
     width = sig_gen.query("SOURce1:FUNCtion:PULSe:WIDTh?").split('\n')[0]
     print(f"Pulse width = {width} s")
@@ -181,7 +186,8 @@ def set_prf(prf):  # Set pulse repetition frequency
     return error_log
 
 
-def set_zva(start=1, stop=10, points=501):  # Configure the ZVA with all the input parameters entered in the GUI
+def set_zva(start: float = 1, stop: float = 10, points: float = 501) -> None:
+    # Configure the ZVA with all the input parameters entered the GUI
     set_f_start(start)
     print("Fstart is set to {} GHz \n".format(float(zva.query("FREQ:STARt?")) / (10 ** 9)))
     set_fstop(stop)
@@ -190,26 +196,25 @@ def set_zva(start=1, stop=10, points=501):  # Configure the ZVA with all the inp
     print("Number of points set to {} points \n".format(zva.query("SWEep:POINts?")))
 
 
-def sig_gen_set_output_ramp_log():  # Set the ramp parameters in pull down voltage test
+def sig_gen_set_output_ramp_log() -> str:  # Set the ramp parameters in pull down voltage test
     a = r"Ramp voltage is set to {} V".format(
         float(sig_gen.query("SOURce:VOLTage?")) * (20 / 2))  # Gain amplifier = 20, Vcc/2
     b = r"Ramp duration is set to {} µs".format(10 ** 6 * 1 / (4 * float(sig_gen.query("FREQuency?"))))
-    return a + '\n' + b
+    return f"{a}'\n'{b}"
 
 
-def zva_set_output_log():  # Get error log of the ZVA
+def zva_set_output_log() -> str:  # Get error log of the ZVA
     a = r"Fstart is set to {} GHz".format(float(zva.query("FREQ:STARt?")) / (10 ** 9))
     b = r"Fstop is set to {} GHz".format(float(zva.query("FREQ:STOP?")) / (10 ** 9))
     c = r"Number of points set to {} points".format(zva.query("SWEep:POINts?"))
-    return a + '\n' + b + '\n' + c
+    return f"{a}'\n'{b}'\n'{c}"
 
 
 def trigger_measurement_zva():  # Trigger the ZVA using the signal generator
-    # zva.write_str_with_opc('*TRG')
     zva.write_str_with_opc('TRIGger:SOURce EXTernal')
     sig_gen.write('TRIG')
     sig_gen.query('*OPC?')
-    time.sleep(2)
+    # time.sleep(2)
     print("Signal generator sent Trigger pulse \n")
 
 
@@ -221,57 +226,59 @@ def comprep_zva():  # Preparation of the communication
     print("Comms are ready")
 
 
-def close_zva():  # Close ZVA VISA Session
+def close_resource(resource: RsInstrument | pyvisa.Resource) -> None:
+    if resource == RsInstrument:
+        print(f"Closing {resource.__str__}")
+    elif resource == pyvisa.Resource:
+        print(f"Closing {resource.__repr__}")
+    resource.close()
+
+
+def close_zva() -> None:
     # Close VISA Session
     zva.close()
     print("ZVA session closed \n")
 
 
-def close_sig_gen():  # Close signal generator VISA Session
+def close_sig_gen() -> None:
+    # Close signal generator VISA Session
     sig_gen.close()
     print("Signal generator session closed \n")
 
 
-def close_osc():  # Close oscilloscope VISA Session
+def close_osc() -> None:
+    # Close oscilloscope VISA Session
     osc.close()
     print("Oscilloscope session closed \n")
 
 
-def close_rf_gen():  # Close rf generator VISA Session
+def close_rf_gen() -> None:  # Close rf generator VISA Session
     rf_gen.close()
     print("RF generator session closed \n")
 
 
-def close_powermeter():  # Close powermeter VISA Session
+def close_powermeter() -> None:  # Close powermeter VISA Session
     powermeter.close()
     print("Powermeter session closed \n")
 
 
-def close_all_resources():  # Close all ressources VISA Session
-    instr_list = rm.list_resources()
-    print(instr_list)
-    if instr_list == ():
-        pass
-    else:
-        # close_zva()
-        # close_sig_gen()
-        # close_osc()
-        # close_rf_gen()
-        # close_powermeter()
-        #
-
-        print("All ressources have been closed \n")
+def close_all_resources() -> None:  # Close all resources VISA Session
+    instrument_list: list[RsInstrument | pyvisa.Resource | None] = [sig_gen, zva, osc, rf_gen, powermeter]
+    for instrument in instrument_list:
+        if instrument is not None:
+            instrument.close()
+            print(f"{instrument} closed")
 
 
-def saves3p(filename):
+def saves3p(filename: str) -> None:
     directory = dir_and_var_declaration.zva_parameters["zva_traces"]
     print(directory)
     try:  # Setting directory to directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         time.sleep(1)
-        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s3p' , LOGPhase, 1,2,3".format(filename))
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s3p'".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORT 1, '{}.s3p' , LOGPhase, 1,2,3".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s3p'".format(filename))
         print(r"s3p file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -284,19 +291,17 @@ def saves3p(filename):
     except RsInstrException as e:
         print(e.args[0])
         print('Status Error \n')
-        # finally:
         zva.visa_timeout = 1000
 
 
-def saves2p(filename):
-    # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
+def saves2p(filename: str) -> None:
     directory = dir_and_var_declaration.zva_parameters["zva_traces"]
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory), timeout=1000)
         time.sleep(1)
-        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, 'test.s2p'")# , LOGPhase, 1,2".format(filename))
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s2p'".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORTs 1, '{}.s2p', LOGPhase, 1,2".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s2p'".format(filename))
         print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -313,15 +318,14 @@ def saves2p(filename):
         zva.visa_timeout = 1000
 
 
-def saves1p(filename):
-    # Directory = r"C:\Rohde&Schwarz\Nwa\Traces"
+def saves1p(filename: str) -> None:
     directory = dir_and_var_declaration.zva_parameters["zva_traces"]
     try:  # Setting directory to Directory variable then performing a file save without external trigger
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory))
         # time.sleep(1)
-        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s1p'".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe 'Trc1', '{}.s1p'".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s1p'".format(filename))
         print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -338,12 +342,10 @@ def saves1p(filename):
         zva.visa_timeout = 1000
 
 
-def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir_ZVA67,
-             pc_file_dir=dir_and_var_declaration.PC_File_Dir,
-             extension='s2p'):
-    zva_file_dir=dir_and_var_declaration.zva_parameters["zva_traces"]
-    # print(r"ZVA File directory: {}\{}".format(zva_file_dir, filename), end='\n')
-    # print(r"PC File Directory: {}\{}".format(pc_file_dir, filename), end='\n')
+def file_get(filename: str, zva_file_dir: str = dir_and_var_declaration.ZVA_File_Dir_ZVA67,
+             pc_file_dir: str = dir_and_var_declaration.PC_File_Dir,
+             extension: str = 's2p') -> None:
+    zva_file_dir = dir_and_var_declaration.zva_parameters["zva_traces"]
     if extension == 's3p':
         try:
             zva.read_file_from_instrument_to_pc(r"{}\{}.s3p".format(zva_file_dir, filename),
@@ -394,7 +396,7 @@ def file_get(filename, zva_file_dir=dir_and_var_declaration.ZVA_File_Dir_ZVA67,
             zva.visa_timeout = 1000
 
 
-def setup_zva_with_rst(ip):
+def setup_zva_with_rst(ip: str) -> None:
     # Resetting the ZNA67 or ZVA50
     zva = RsInstrument('{}'.format(ip), id_query=True, reset=True)
     zva.opc_query_after_write = True
@@ -404,18 +406,16 @@ def setup_zva_with_rst(ip):
     print('ZVA Reset complete!', end='\n')
 
 
-def setup_sig_gen_ramp_with_rst(ip):
+def setup_sig_gen_ramp_with_rst(ip: str) -> None:
     sig_gen = rm.open_resource('{}'.format(ip))
     sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
     error_log = sig_gen.query('SYSTem:ERRor?')
     print('Signal generator Reset complete!', end='\n')
 
 
-def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
+def configuration_sig_gen(frequency_gen: float = 150, amplitude: float = 1, pulse_width: float = 0.001333) -> None:
     try:
         sig_gen.write('*RST')
-        # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
-        # LOADING MEM state 4
         sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
         sig_gen.write('SOURce1:FUNCtion PULSe')  # selecting pulse function
@@ -430,24 +430,22 @@ def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
         error = error_log.split(sep=',')[0]
         print(error, error_log, sep='\n', end='\n')
         if int(error) != 0:
-            frequence_gen = 1 / (10 * pulse_width)
+            frequency_gen = 1 / (10 * pulse_width)
             print(error, error_log, sep='\n', end='\n')
-            sig_gen.write('FREQuency {}'.format(frequence_gen))
+            sig_gen.write('FREQuency {}'.format(frequency_gen))
         time.sleep(1)
     except:
         print('Signal Generator Configuration error')
 
 
-def configuration_sig_gen_power():
+def configuration_sig_gen_power() -> None:
     sig_gen.write('*RST')
     sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.power_test_setup_sig_gen))
 
 
-def configuration_sig_gen_snp(frequence_gen=150, amplitude=1, pulse_width=0.001333):
+def configuration_sig_gen_snp(frequency_gen: float = 150, amplitude: float = 1, pulse_width: float = 0.001333) -> None:
     try:
         sig_gen.write('*RST')
-        # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
-        # LOADING MEM state 4
         sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.snp_meas_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
         sig_gen.write('SOURce1:FUNCtion PULSe')  # selecting pulse function
@@ -462,18 +460,17 @@ def configuration_sig_gen_snp(frequence_gen=150, amplitude=1, pulse_width=0.0013
         error = error_log.split(sep=',')[0]
         print(error, error_log, sep='\n', end='\n')
         if int(error) != 0:
-            frequence_gen = 1 / (10 * pulse_width)
+            frequency_gen = 1 / (10 * pulse_width)
             print(error, error_log, sep='\n', end='\n')
-            sig_gen.write('FREQuency {}'.format(frequence_gen))
+            sig_gen.write('FREQuency {}'.format(frequency_gen))
         time.sleep(1)
     except:
         print('Signal Generator Configuration error')
 
 
-def configuration_sig_gen_pullin(ramp_length=50, amplitude=1):  # 50µs ramp_length
+def configuration_sig_gen_pull_in(ramp_length: float = 50, amplitude: float = 1) -> float:  # 50µs ramp_length
     ramp_frequency = 1 / (4 * ramp_length * 10 ** (-6))
     ramp_period = (4 * ramp_length * 10 ** (-6))
-    print(ramp_period)
     try:
         sig_gen.write('MMEM:LOAD:STAT "{}"'.format(dir_and_var_declaration.pullin_setup_sig_gen))  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))
@@ -491,23 +488,23 @@ def configuration_sig_gen_pullin(ramp_length=50, amplitude=1):  # 50µs ramp_len
         print(error, error_log, sep='\n', end='\n')
         osc.write('HORizontal:MODE:SCAle {}'.format(ramp_period / 5))
         if int(error) != 0:
-            # frequence_gen = 1 / (10 * pulse_width)
             print(error, error_log, sep='\n', end='\n')
             sig_gen.write('FREQuency {}'.format(ramp_frequency))
         time.sleep(1)
     except:
         print('Signal Generator Configuration error')
-    return (ramp_period)
+    return ramp_period
 
 
-def configuration_pullin(ramp_length=50, amplitude=1, rf_frequency=10):
-    configuration_sig_gen_pullin(ramp_length=50, amplitude=1)
+def configuration_pull_in(ramp_length: float = 50, amplitude: float = 1, rf_frequency: float = 10):
+    configuration_sig_gen_pull_in(ramp_length=50, amplitude=1)
     setup_rf_synth(frequency=rf_frequency, power=-10, power_lim=-6)
 
 
-def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
-                               pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S2P",
-                               file_format='s2p'):
+def triggered_data_acquisition(filename: str = r'default',
+                               zva_file_dir: str = r"C:\Users\Public\Documents\Rohde-Schwarz\ZNA\Traces",
+                               pc_file_dir: str = r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\S2P",
+                               file_format: str = 's2p') -> None:
     try:
         sweep_time: str = zva.query_str_with_opc('SENSe1:SWEep:TIME?')
         print("Sweep time is set to {} s\n".format(sweep_time), end='\n')
@@ -531,17 +528,6 @@ def triggered_data_acquisition(filename=r'default', zva_file_dir=r"C:\Users\Publ
         print_error_log()
 
 
-# def print_error_log():
-#     # Requête des erreurs
-#     error_log_sig_gen = sig_gen.query('SYSTem:ERRor?')
-#     error_log_sig_zva = zva.query_str('SYSTem:ERRor?')
-#     error_string_sig_gen = error_log_sig_gen.split(",")[1]
-#     error_string_zva = error_log_sig_zva.split(",")[1]
-#     print('SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen, end='\n')
-#     print('ZVA ERROR LOG:\n' + error_string_zva, end='\n')
-#     a = 'SIGNAL GENERATOR ERROR LOG:\n' + error_string_sig_gen
-#     b = 'ZVA ERROR LOG:\n' + error_string_zva
-#     return (a + '\n' + b)
 def print_error_log():
     error_log_sig_gen = ""
     error_log_sig_zva = ""
@@ -572,14 +558,6 @@ def print_error_log():
     return a + '\n' + b
 
 
-# Example usage
-# Assuming `sig_gen` and `zva` are defined elsewhere in your code
-# try:
-#     print(print_error_log())
-# except NameError:
-#     print("One or more instruments are not defined.")
-
-
 def setup_osc_cycling():
     osc.write("*RST")
     osc.write('RECALL:SETUP "{}"'.format(dir_and_var_declaration.cycling_setup_oscilloscope))
@@ -597,7 +575,8 @@ def setup_osc_cycling():
     return (setup_info)
 
 
-def setup_rf_synth(frequency=10, power=-10, power_lim=-6):  # GHz, 6 dBm is max linear input for a non distorted pulse
+def setup_rf_synth(frequency: float = 10, power: float = -10,
+                   power_lim: float = -6):  # GHz, 6 dBm is max linear input for a non distorted pulse
     rf_gen.write('SOUR:POW:LIM:AMPL -1'.format(power_lim))
     rf_gen.write('OUTP ON')
     rf_gen.write('SOUR:POW:IMM:AMPL {}'.format(power))
@@ -1653,9 +1632,10 @@ if __name__ == "__main__":
     # print(f"zva model: {zva.instrument_model_name}, {zva.idn_string}")
     # dir_and_var_declaration.zva_directories(zva)
     # load_config(pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],
-                # inst_file=dir_and_var_declaration.zva_parameters["instrument_file"])
+    # inst_file=dir_and_var_declaration.zva_parameters["instrument_file"])
     # print({f"ZVA parameters set :\n {dir_and_var_declaration.zva_parameters.items()}"})
-    time.sleep(1)
-    sig_gen.write("TRIG")
-    saves2p("test")
-    file_get(filename="test", pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data", extension='s2p')
+    # time.sleep(1)
+    # sig_gen.write("TRIG")
+    # saves2p("test")
+    # file_get(filename="test", pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data", extension='s2p')
+    zva.write_str_with_opc("DISPlay:WINDow:STATe ON)")
