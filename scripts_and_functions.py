@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import pandas as pd
 import time
@@ -11,6 +13,8 @@ import RsInstrument
 from RsInstrument import *
 from dir_and_var_declaration import zva_init, sig_gen_init, osc_init, rf_gen_init, powermeter_init
 from functools import wraps, partial
+from scipy.signal import savgol_filter, get_window, convolve
+from matplotlib.ticker import FuncFormatter
 
 matplotlib.ticker.ScalarFormatter(useOffset=True, useMathText=True)
 
@@ -30,7 +34,8 @@ sig_gen: pyvisa.Resource = sig_gen_init()
 osc: pyvisa.Resource = osc_init()
 zva: RsInstrument = zva_init(zva="ZVA50")
 powermeter: pyvisa.Resource = powermeter_init()
-rf_gen: RsInstrument = rf_gen_init()
+rf_gen: RsInstrument = rf_gen_init(rf_gen_type='smb')
+
 
 # VNA parameter definition
 # dir_and_var_declaration.zva_directories(zva)
@@ -146,7 +151,8 @@ def number_of_points(points: float = 501) -> None:  # Set Number of points funct
 
 
 def set_pulse_width(
-        width: float = 10) -> None:  # Set the pulse width as a function of the VNA sweep time in S parameter measurement
+        width: float = 10) -> None:  # Set the pulse width as a function of the VNA sweep time in S parameter
+    # measurement
     try:
         width_converted = width  # float
         print("Pulse width: {} s".format(width_converted, type='E', precision=2), end='\n')
@@ -165,7 +171,7 @@ def set_pulse_width(
         print_error_log()
 
 
-def sig_gen_set_output_log():  # Get error log of the signal generator
+def sig_gen_set_output_log() -> str:  # Get error log of the signal generator
     a = r"Bias voltage set to {} V".format(float(sig_gen.query("SOURce:VOLTage?")) * 20)
     b = r"Pulse width is set to {} s".format(float(sig_gen.query("SOURce1:FUNCtion:PULSe:WIDTh?")))
     c = r"prf set to {} Hz".format(1 / float(sig_gen.query("SOURce1:FUNCtion:PULSe:PERiod?")))
@@ -216,6 +222,12 @@ def trigger_measurement_zva():  # Trigger the ZVA using the signal generator
     sig_gen.query('*OPC?')
     # time.sleep(2)
     print("Signal generator sent Trigger pulse \n")
+
+
+@powermeter_opc_control
+def powermeter_config_power_bias() -> None:
+    powermeter.write('*RST')
+    powermeter.write(f'{dir_and_var_declaration.power_bias_test_setup_powermeter}')
 
 
 def comprep_zva():  # Preparation of the communication
@@ -300,8 +312,8 @@ def saves2p(filename: str) -> None:
         # print(zva.query_str_with_opc(r"MMEMory:CDIRectory?"), end='\n')
         zva.write_str_with_opc(r"MMEMory:CDIRectory '{}'".format(directory), timeout=1000)
         time.sleep(1)
-        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORTs 1, '{}.s2p', LOGPhase, 1,2".format(filename))
-        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s2p'".format(filename))
+        # zva.write_str_with_opc(r"MMEMory:STORe:TRACe:PORTs 1, '{}.s2p', LOGPhase, 1,2".format(filename))
+        zva.write_str_with_opc(r"MMEMory:STORe:TRACe:CHAN 1, '{}.s2p'".format(filename))
         print(r"sp file saved in ZVA at {}".format(directory), end='\n')
     except TimeoutException as e:
         print(e.args[0])
@@ -601,7 +613,7 @@ def get_channel_info(channel=4):
         channel_info = dict([('y_offset', y_offset), ('x_scale', x_scale), ('y_scale', y_scale),
                              ('x_divisions', x_divisions), ('sweep_duration', sweep_duration),
                              ('acquisition_length', acquisition_length)])
-        print("get_channel_info function ended")
+        # print("get_channel_info function ended")
     except:
         print("Unable to Get channel info")
     return channel_info
@@ -654,16 +666,43 @@ def get_curve(channel=4):
     return curve_data
 
 
+def get_curve_fft(channel: int = 4):
+    print(f"Acquiring curver {channel}")
+    try:
+        acquisition_length = int(osc.query("HORizontal:ACQLENGTH?"))  # get number of samples
+        curve_data = np.empty(shape=acquisition_length)
+        # print("acquisition_length in get curve function = {} samples\n".format(acquisition_length))
+        info = get_channel_info(channel=channel)
+        osc.write("DATa:STOP {}".format(acquisition_length))
+        # curve = np.array(osc.query('CURV?').split(','), dtype=float)
+        curve = np.array(osc.query('CURV?').split(','), dtype=float)
+
+        y_offset = info['y_offset'][0]
+        y_scale = info['y_scale'][0]
+        data_truncated = np.zeros((acquisition_length, 2))
+        curve_data = data_truncated
+        time_base = info['sweep_duration'] / acquisition_length
+        # print(time_base)
+        time = np.arange(0, info['sweep_duration'], time_base)
+        # print("duration of sweep = {} s\n".format(info['sweep_duration']))
+        curve_data[:, 0] = (curve - y_offset) * y_scale
+        curve_data[:, 1] = time[:]
+        # print(curve[:, 0])
+        # print(curve[:, 1])
+        # print("get_curve function ended")
+    except:
+        print("Unable to acquire Data")
+    return curve_data
+
+
 def measure_pull_down_voltage(filename=r'default'):
-    # try:
-    sig_gen.write('TRIG')
     curve_det = get_curve(channel=4)
     curve_bias = get_curve(channel=2)
     t = curve_det[:, 1]
     rf_detector = curve_det[:, 0]
     v_bias = curve_bias[:, 0]
     file_array = np.vstack((v_bias, rf_detector, t))
-    print(file_array[:, 0], end='\n')
+    # print(file_array[:, 0], end='\n')
     np.savetxt('{}.txt'.format(filename), file_array, delimiter=',', newline='\n',
                header='#V_bias(V),rf_detector (V), time (s)')
     # except:
@@ -692,7 +731,7 @@ def power_test_sequence_v2(
         :param stop (float): The stopping power level in dBm. Defaults to -20.0.
         :param step (float): The step size for the power level sweep in dBm. Defaults to 1.0.
         :param sleep_duration (float): The duration to sleep between steps in seconds. Defaults to 1.0.
-        :param offset_b1: (float): Offset to apply to channel A1 measurements. Defaults to 0.0.
+        :param offset_a1: (float): Offset to apply to channel A1 measurements. Defaults to 0.0.
         :param offset_b1 (float): Offset to apply to channel B1 measurements. Defaults to 0.0.
 
     Returns:
@@ -911,7 +950,7 @@ def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
 
 
 @powermeter_opc_control
-def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple[float, float]:
+def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple[float, float, float]:
     """
     Queries the power meter values for channels A1 and B1, applies the given offsets, and returns the results.
 
@@ -928,10 +967,12 @@ def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple
     power_value_a1 = round(float(powermeter.query('FETC1?')) + offset_a1, ndigits=3)
     # Query power value for channel B1 and apply offset
     power_value_b1 = round(float(powermeter.query('FETC2?')) + offset_b1, ndigits=3)
+    power_value_b2 = round(float(powermeter.query('FETC4?')) + offset_b1, ndigits=3)
+    powermeter.write('INIT:CONT:ALL 0')
     # Print the queried power values
     print(f"Power value for channel A1: {power_value_a1}")
     print(f"Power value for channel B1: {power_value_b1}")
-    return power_value_a1, power_value_b1
+    return power_value_a1, power_value_b1, power_value_b2
 
 
 # @powermeter_opc_control
@@ -981,7 +1022,7 @@ def send_trig():
     return print('trigger sent')
 
 
-def get_curve_cycling(channel=4):
+def get_curve_cycling(channel: int =4) -> np.array(float):
     """
     Acquire waveform data of set channel,
     functions returns an array  with the time base and values at the specified channel
@@ -1004,13 +1045,13 @@ def get_curve_cycling(channel=4):
         y_scale = info['y_scale'][0]
         time_base = info['sweep_duration'] / acquisition_length
         time = np.arange(0, info['sweep_duration'], time_base)
-        print(time_base)
+        # print(time_base)
         data = np.zeros((acquisition_length, 2))
         data[:, 0] = (curve - y_offset) * y_scale
         data[:, 1] = time
-        print("get_curve function ended")
+        # print("get_curve function ended")
     except:
-        print("Unable to acquire Data")
+        print("Unable to acquire Data : Error in get_curve_cycling function")
     return data
 
 
@@ -1176,7 +1217,7 @@ def detect_sticking_events(df, thresholds):
     for i in range(len(df)):
         event_detected = False
         for col, threshold in thresholds.items():
-            if df.at[i, col] > threshold or df.at[i, col] < 0:
+            if df.at[i, col] > abs(threshold) or df.at[i, col] < 0:
                 event_detected = True
                 break
         sticking_events.append(1 if event_detected else 0)
@@ -1189,7 +1230,7 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
                      filename: str = "test",
                      wf_duration: float = 0.205, events: float = 100, header: str = "",
                      df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
-                     conversion_coeff: float = 0.040):
+                     conversion_coeff: float = 0.046):
     """
     Cycling test sequence outputs MEMS characteristics during the tested duration.
 
@@ -1221,32 +1262,36 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
 
     count = starting_number_of_acq
     sig_gen.write("OUTput 1")
-
+    remaining_count = number_of_cycles
     app.is_cycling = True
     while count < number_of_triggered_acquisitions + starting_number_of_acq:
+        # Write header and DataFrame to CSV
+        with open(f"{df_path}\\{filename}.csv", 'w') as f:
+            f.write(header + '\n')
+            app.file_df.to_csv(f, index=False, header=True, sep=",")
+
         try:
             new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
-            remaining_count = number_of_cycles - (new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
-            print(f"Remaining cycle count: {remaining_count}")
-
+            remaining_count: float = number_of_cycles - (
+                    new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
             if count == new_value:
                 print("Waiting for trigger...", end='\n')
-                time.sleep(1)
+                # time.sleep(1)
             else:
                 count = new_value
                 ch_4_detector = get_curve_cycling(channel=4)
                 ch_2_bias = get_curve_cycling(channel=2)
-                data = extract_data_v2(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias,
+                data = extract_data_v3(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias,
                                        conversion_coeff=conversion_coeff)
                 data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
                 app.file_df = pd.concat([app.file_df, data], ignore_index=True)
                 new_data_event.set()  # Signal that new data is available
-                print(app.file_df)
+                os.system('cls')
         except KeyboardInterrupt:
             break
     # Define thresholds for detecting sticking events
     thresholds = {
-        "amplitude_variation": 2,  # Example threshold, adjust as needed
+        "amplitude_variation": -2,  # Example threshold, adjust as needed
         "switching_time": 50e-6,  # Example threshold, adjust as needed
         "release_time": 50e-6  # Example threshold, adjust as needed
     }
@@ -1263,6 +1308,97 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
     print("Test complete!")
     return app.file_df
 
+
+def cycling_sequence_no_processing(app, new_data_event, number_of_cycles: float = 1e9,
+                                   number_of_pulses_in_wf: float = 1000,
+                                   filename: str = "test",
+                                   wf_duration: float = 0.205, events: float = 100, header: str = "",
+                                   df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
+                                   conversion_coeff: float = 0.046):
+    """
+       Cycling test sequence outputs MEMS characteristics during the tested duration.
+
+       :param conversion_coeff: Conversion coefficient from DC to RF
+       :param app: Reference to the Tkinter application instance to update the plot.
+       :param new_data_event: Event to signal new data is available.
+       :param df_path: File path.
+       :param number_of_cycles: Total number of cycles in sequence duration.
+       :param number_of_pulses_in_wf: Number of pulses in waveform.
+       :param filename: Test sequence output filename.
+       :param wf_duration: Total duration of the waveform in the sequence.
+       :param events: Number of trigger events before oscilloscope performs an acquisition.
+       :param header: Header string to be written at the top of the CSV file.
+       :return: File containing a dataframe.
+       """
+    number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
+    number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
+    cycles = pd.Series(
+        np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
+        name="cycles")
+
+    test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
+    starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+
+    print(f"Number of triggers required: {number_of_triggered_acquisitions}")
+    print(f"Starting number of triggers: {starting_number_of_acq}")
+    print(f"Number of remaining cycles: {number_of_cycles}")
+    print(f"Estimated test duration: {format_duration(test_duration)}")
+
+    count = starting_number_of_acq
+    sig_gen.write("OUTput 1")
+    remaining_count = number_of_cycles
+    app.is_cycling = True
+    while count < number_of_triggered_acquisitions + starting_number_of_acq:
+        # Write header and DataFrame to CSV
+        with open(f"{df_path}\\{filename}.csv", 'w') as f:
+            f.write(header + '\n')
+            app.file_df.to_csv(f, index=False, header=True, sep=",")
+
+        try:
+            new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+            remaining_count: float = number_of_cycles - (
+                    new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
+            if count == new_value:
+                print("Waiting for trigger...", end='\n')
+                os.system('cls')
+            else:
+                count = new_value
+                ch_4_detector = get_curve_cycling(channel=4)
+                ch_2_bias = get_curve_cycling(channel=2)
+                data = extract_data_v3(rf_detector_channel=ch_4_detector, v_bias_channel=ch_2_bias,
+                                       conversion_coeff=conversion_coeff)
+                data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
+                app.file_df = pd.concat([app.file_df, data], ignore_index=True)
+                new_data_event.set()  # Signal that new data is available
+                os.system('cls')
+        except KeyboardInterrupt:
+            break
+    # Define thresholds for detecting sticking events
+    thresholds = {
+        "amplitude_variation": -2,  # Example threshold, adjust as needed
+        "switching_time": 50e-6,  # Example threshold, adjust as needed
+        "release_time": 50e-6  # Example threshold, adjust as needed
+    }
+    app.file_df = detect_sticking_events(app.file_df, thresholds)
+    sig_gen.write("OUTput 0")
+
+    # Write header and DataFrame to CSV
+    with open(f"{df_path}\\{filename}.csv", 'w') as f:
+        f.write(header + '\n')
+        app.file_df.to_csv(f, index=False, header=True, sep=",")
+
+    app.is_cycling = False
+    new_data_event.set()  # Signal that final data is available
+    print("Test complete!")
+    return app.file_df
+
+
+def save_waveform(waveform_ch4: np.array(float), waveform_ch2 : np.array(float), filename:str) -> None :
+    data = np.zeros(1)
+    data[:, 0] = waveform_ch4
+    data[:, 1] = waveform_ch2
+
+    data.tofile()
 
 def online_mode():
     try:
@@ -1319,7 +1455,7 @@ def load_config(pc_file: str,
 
         # Print a confirmation message indicating the configuration file has been loaded.
         print(f"{pc_file} configuration loaded to:\n{inst_file}", end='\n')
-    elif model == r"Rohde-Schwarz,ZNA67-4Port,133250064101810,2.73":
+    elif model == r"Rohde-Schwarz,ZNA67-4Port,1332450064101810,2.73":
         # Transfer the configuration file from the PC to the instrument.
         zva.send_file_from_pc_to_instrument(pc_file, inst_file)
 
@@ -1332,121 +1468,255 @@ def load_config(pc_file: str,
         print(f"Instrument model not recognized, can't load config", end='\n')
 
 
-def calculate_pull_in_out_voltage_measurement(v_bias,
-                                              v_log_amp):  # same function as in display implemented in measurement
+def calculate_actuation_and_release_voltages(v_bias, v_logamp, detector_coefficient=1, step=20):
+    """
+    Calculates pull-in and pull-out voltages, as well as isolations for both the positive
+    and negative bias cycles of a MEMS device based on the second derivative of the log amp voltage.
 
-    # Acquiring the indexes that correspond to both positive and negative bias triangles
-    # the indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
+    Parameters
+    ----------
+    v_bias : numpy.ndarray
+        Numpy array of floats representing the bias voltage applied to the MEMS.
+
+    v_logamp : numpy.ndarray
+        Numpy array of floats representing the output of the logarithmic amplifier detector.
+
+    detector_coefficient : float, optional (default=1)
+        The coefficient that relates the detector's RF to voltage characteristic, converting the voltage to dB.
+
+    Returns
+    -------
+    calculations : dict
+        A dictionary containing the calculated pull-in and pull-out voltages for both positive and
+        negative bias, along with the ascent and descent isolations.
+        Structure:
+        {
+            'vpullin_plus': float,
+            'vpullout_plus': float,
+            'vpullin_minus': float,
+            'vpullout_minus': float,
+            'ninetypercent_iso_ascent': float,
+            'ninetypercent_iso_descent': float
+        }
+        :param step:
+    """
+    # Set the parameters for the Savitzky-Golay filter
+    window_length = 15  # Length of the filter window (must be odd)
+    polyorder = 4  # Order of the polynomial to fit within each window
+
+    # Compute the first finite difference over the step size
+    # This approximates the first derivative of log amp voltage spaced `step` points apart
+    v_logamp_t = v_logamp[:-step * 2]
+    v_bias_t = v_bias[:-step * 2]
+    diff_logamp = (v_logamp_t[step:] - v_logamp_t[:-step])
+
+    # Compute the second finite difference, which approximates the second derivative
+    diff_logamp_2 = (diff_logamp[step:] - diff_logamp[:-step])
+
+    # Smooth the original log amplifier voltage data using the Savitzky-Golay filter
+    smoothed_v_logamp_pre = savgol_filter(v_logamp_t, window_length, polyorder)
+    min_smoothed_v_logamp = np.max(smoothed_v_logamp_pre)
+    smoothed_v_logamp = smoothed_v_logamp_pre - min_smoothed_v_logamp
+
+    # Smooth the second derivative (diff_logamp_2) using the same Savitzky-Golay filter
+    smoothed_diff_logamp_2 = savgol_filter(diff_logamp_2, window_length, polyorder)
+
+    # Extracting positive bias values (> 2V) and negative bias values (< -2V)
     positive_bias = np.extract((v_bias > 2), v_bias)
     negative_bias = np.extract((v_bias < -2), v_bias)
 
-    # Position of the first positive bias index along v_bias array
+    # Finding the first index of positive bias in v_bias array
     first_index_pos = np.where(v_bias == positive_bias[0])[0]
 
-    # Position of the first negative bias index along v_bias array
+    # Finding the first and last indexes of negative bias in v_bias array
     first_index_neg = np.where(v_bias == negative_bias[0])[0]
-    # Position of the last negative bias index along v_bias array
     last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-    # Calculating the max and min indexes in both cases
+
+    # Finding the index of the maximum positive bias (top of the triangle waveform)
     max_positive_bias_index = np.argmax(positive_bias)
-    min_positive_bias_index = 0
-    max_negative_bias_index = 0
+
+    # Finding the index of the minimum negative bias (bottom of the negative triangle waveform)
     min_negative_bias_index = np.argmin(negative_bias)
 
-    # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-    positive_ascent = positive_bias[0:max_positive_bias_index]
-    positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
+    # Normalizing the log amplifier voltage over the ascent (positive bias portion)
+    normalize_iso = np.max(v_logamp[first_index_pos[0]: max_positive_bias_index] / detector_coefficient)
 
-    # Calculating normalized isolation factor
-    normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
+    # Calculate isolation during the positive ascent and descent by normalizing the log amp voltage
+    iso_ascent = v_logamp[
+                 first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / detector_coefficient - normalize_iso
+    iso_descent = v_logamp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
+        positive_bias)] / detector_coefficient - normalize_iso
 
-    iso_ascent = 3 * v_log_amp[
-                     first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
-    iso_max_ascent = np.min(iso_ascent)
+    # =========================================================================
+    # Positive Bias: Calculate pull-in and pull-out voltages using second derivative method
+    # =========================================================================
 
-    iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
-        positive_bias)] / 0.040 - normalize_iso
-    iso_min_descent = np.min(iso_descent)
-    # ==============================================================================
-    # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
-    # Calculation Vpull out as isolation passing above 90% max isolation in dB mark
-    pullin_index_pos = int(np.where(iso_ascent <= 0.9 * iso_max_ascent)[0][0])
-    Vpullin = round(positive_bias[pullin_index_pos], ndigits=2)
+    # Find the maximum and minimum of the second derivative in the positive bias cycle
+    max_smoothed_diff_logamp_2 = np.max(
+        smoothed_diff_logamp_2[first_index_pos[0]:first_index_pos[0] + max_positive_bias_index])
+    min_smoothed_diff_logamp_2 = np.min(
+        smoothed_diff_logamp_2[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(positive_bias)])
 
-    tenpercent_iso = round(0.1 * iso_min_descent, ndigits=2)
-    ninetypercent_iso = round(0.9 * iso_max_ascent, ndigits=2)
-
+    # Pull-in voltage: Find the index where the second derivative reaches its maximum
     try:
-        pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-        Vpullout = round(positive_bias[max_positive_bias_index + pullout_index_pos], ndigits=2)
-    except:
-        Vpullout = round(positive_bias[len(positive_bias) - 1], ndigits=2)
+        pullin_index_pos = int(np.where(smoothed_diff_logamp_2[first_index_pos[0]:first_index_pos[
+                                                                                      0] + max_positive_bias_index] >= max_smoothed_diff_logamp_2)[
+                                   0][0])
+        vpullin = positive_bias[pullin_index_pos]
+        iso_ascent = v_logamp[pullin_index_pos]  # Isolation at pull-in
+    except IndexError as e:
+        print('Did not find an index for pull-in voltage using differentiation method')
+        print({e.args})
+        vpullin = 0  # Fallback value
 
-    # ==============================================================================
-    # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized isolation
-    negative_descent = negative_bias[0:min_negative_bias_index]
-    negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
-
-    # Calculating normalized isolation factor
-    normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                       0] + min_negative_bias_index] / 0.040)  # This is extracted from the detector V/dB characteristics
-
-    iso_descent_minus = 3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                             0] + min_negative_bias_index] / 0.040 - normalized_iso_minus
-    iso_min_descent_minus = np.min(iso_descent_minus)
-
-    iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
-        0]] / 0.040 - normalized_iso_minus
-    iso_min_ascent = np.min(iso_ascent_minus)
-
-    # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
-    # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
+    # Pull-out voltage: Find the index where the second derivative reaches its minimum
     try:
-        pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
-        Vpullin_minus = round(negative_bias[pullin_index_minus], ndigits=2)
-    except:
-        Vpullin_minus = round(negative_bias[len(negative_bias) - 1], ndigits=2)
+        pullout_index_pos = int(np.where(smoothed_diff_logamp_2[
+                                         first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
+                                             positive_bias)] == min_smoothed_diff_logamp_2)[0][0])
+        vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
+    except IndexError as e:
+        print('Did not find an index for pull-out voltage using differentiation method')
+        print({e.args})
+        vpullout = 0  # Fallback value
 
-    tenpercent_iso_ascent = round(0.1 * iso_min_ascent, ndigits=2)
-    ninetypercent_iso_descent = round(0.9 * iso_min_descent, ndigits=2)
+    # =========================================================================
+    # Negative Bias: Calculate pull-in and pull-out voltages using second derivative method
+    # =========================================================================
+
+    # Find the maximum and minimum of the second derivative in the negative bias cycle
+    max_smoothed_diff_logamp_2_neg = np.max(
+        smoothed_diff_logamp_2[first_index_neg[0]:first_index_neg[0] + min_negative_bias_index])
+    min_smoothed_diff_logamp_2_neg = np.min(smoothed_diff_logamp_2[
+                                            min_negative_bias_index + min_negative_bias_index:first_index_neg[0] + len(
+                                                negative_bias)])
+
+    # Pull-in voltage (negative bias): Find the index where the second derivative reaches its maximum
     try:
-        pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
-        Vpullout_minus = round(negative_bias[min_negative_bias_index + pullout_index_minus], ndigits=2)
-    except:
-        Vpullout_minus = round(negative_bias[len(negative_bias) - 1], ndigits=2)
+        pullin_index_neg = int(
+            np.where(smoothed_diff_logamp_2[
+                     first_index_neg[0]:first_index_neg[
+                                            0] + min_negative_bias_index] == max_smoothed_diff_logamp_2_neg)[0][0])
+        vpullin_neg = negative_bias[pullin_index_neg]
+        iso_descent = v_logamp[pullin_index_neg]  # Isolation at pull-in (negative cycle)
+    except IndexError as e:
+        print('Did not find an index for pull-in voltage (negative) using differentiation method')
+        print({e.args})
+        vpullin_neg = 0  # Fallback value
 
-    print(
-        """Vpullin = {} | Isolation measured = {}\nVpullout = {} | Isolation measured = {} \nVpullin_minus = {} | 
-        Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n"""
-        .format(Vpullin, ninetypercent_iso, Vpullout, tenpercent_iso, Vpullin_minus, ninetypercent_iso_descent,
-                Vpullout_minus, tenpercent_iso_ascent))
-    pull_dict = {'Vpullin_plus': Vpullin, 'Vpullout_plus': Vpullout, 'Isolation_at_pullin_plus': ninetypercent_iso,
-                 'Isolation_at_pullout_plus': tenpercent_iso,
-                 'Vpullin_minus': Vpullin_minus, 'Vpullout_minus': Vpullout_minus,
-                 'Isolation_at_pullin_minus': ninetypercent_iso_descent,
-                 'Isolation_at_pullout_minus': tenpercent_iso_ascent}
-    return pull_dict
+    # Pull-out voltage (negative bias): Find the index where the second derivative reaches its minimum
+    try:
+        pullout_index_neg = int(np.where(
+            smoothed_diff_logamp_2[
+            first_index_neg[0] + min_negative_bias_index:last_index_neg[0]] <= min_smoothed_diff_logamp_2_neg)[0][0])
+        vpullout_neg = negative_bias[pullout_index_neg]
+    except IndexError as e:
+        print('Did not find an index for pull-out voltage (negative) using differentiation method')
+        print({e.args})
+        vpullout_neg = 0  # Fallback value
+
+    # =========================================================================
+    # Store the results in a dictionary for both positive and negative bias cycles
+    # =========================================================================
+    calculations = {
+        'vpullin_plus': round(vpullin, 2),  # Pull-in voltage (positive)
+        'vpullout_plus': round(vpullout, 2),  # Pull-out voltage (positive)
+        'vpullin_minus': round(vpullin_neg, 2),  # Pull-in voltage (negative)
+        'vpullout_minus': round(vpullout_neg, 2),  # Pull-out voltage (negative)
+        'ninetypercent_iso_ascent': round(iso_ascent, 2),  # Isolation at 90% ascent (positive cycle)
+        'ninetypercent_iso_descent': round(iso_descent, 2)  # Isolation at 90% descent (negative cycle)
+    }
+    return calculations
 
 
-def plot_function(list_x, list_y):
-    for x, y in zip(list_x, list_y):
-        plt.plot(x, y, label=f'{y}')
-        plt.legend()
-        plt.show()
+def extract_pull_down_voltage_and_iso(file, directory, detector_coefficient=1, step=20):
+    """
+    Extracts the pull-down voltage and second derivative of the log amplifier signal from a CSV file.
+
+    This function reads a CSV file containing bias voltage, log amplifier voltage, and time data,
+    smooths the log amplifier signal and its second derivative using the Savitzky-Golay filter,
+    and returns the processed data.
+
+    :param file: str
+        The name of the CSV file containing the data.
+
+    :param directory: str
+        The directory where the data file is located.
+
+    :param detector_coefficient: float, optional (default is 1)
+        A coefficient that could be used for detector calibration or scaling (not used in current version).
+
+    :param step: int, optional (default is 20)
+        The step size used for finite difference calculations to approximate the first and second derivatives
+        of the log amplifier voltage.
+
+    :return: tuple
+        A tuple containing the following elements:
+        - v_bias (np.ndarray): The truncated bias voltage array after finite difference.
+        - smoothed_v_logamp (np.ndarray): The smoothed log amplifier voltage array.
+        - smoothed_diff_logamp_2 (np.ndarray): The smoothed second derivative of the log amplifier voltage.
+        - time_step (float): The time step between consecutive measurements.
+        - time (np.ndarray): The truncated time array corresponding to the truncated v_bias.
+    """
+
+    # Change the working directory to the specified directory
+    os.chdir(path=directory)
+
+    # Open the file and load the data into a NumPy array
+    # Data is assumed to be in CSV format, with the first row containing headers, and columns:
+    #   1st column: Bias voltage
+    #   2nd column: Logarithmic amplifier voltage
+    #   3rd column: Time data
+    with open(file, newline=''):
+        data = np.loadtxt(fname=file, delimiter=',', unpack=True, skiprows=1)
+
+        # Set the parameters for the Savitzky-Golay filter
+        window_length = 15  # Length of the filter window (must be odd)
+        polyorder = 4  # Order of the polynomial to fit within each window
+
+        # Extract columns from the data
+        v_bias = data[:, 0].copy()  # Bias voltage (first column)
+        v_logamp = data[:, 1].copy()  # Logarithmic amplifier voltage (second column)
+        time = data[:, 2].copy()  # Time data (third column)
+
+        # Compute the time step between consecutive measurements
+        time_step = time[1] - time[0]
+
+        # Compute the first finite difference over the step size
+        # This approximates the first derivative of log amp voltage spaced `step` points apart
+        diff_logamp = (v_logamp[step:] - v_logamp[:-step])
+
+        # Compute the second finite difference, which approximates the second derivative
+        diff_logamp_2 = (diff_logamp[step:] - diff_logamp[:-step])
+
+        # Smooth the original log amplifier voltage data using the Savitzky-Golay filter
+        smoothed_v_logamp_pre = savgol_filter(v_logamp, window_length, polyorder)
+        min_smoothed_v_logamp = np.max(smoothed_v_logamp_pre)
+        smoothed_v_logamp = smoothed_v_logamp_pre - min_smoothed_v_logamp
+        # Smooth the second derivative (diff_logamp_2) using the same Savitzky-Golay filter
+        smoothed_diff_logamp_2 = savgol_filter(diff_logamp_2, window_length, polyorder)
+
+        # Print out the time step difference multiplied by the step size (for reference)
+        print(f"difference timestep {time_step * step}")
+
+    # Return the truncated bias voltage, smoothed log amp voltage, smoothed second derivative,
+    # the time step between measurements, and the truncated time array.
+    return v_bias[:-step * 2], smoothed_v_logamp[:-step * 2], smoothed_diff_logamp_2, time_step, time[:-step * 2]
 
 
-def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ramp_stop=0.20437, ramp_start_minus=0.2046,
-                    ramp_stop_minus=0.20519, delay=0.2, conversion_coeff=0.047):
+def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ramp_stop=0.206,
+                    ramp_start_minus=0.20632,
+                    ramp_stop_minus=0.20679, delay=0.2, conversion_coeff=1):
     """
     Returns the MEMS Characteristics including Positive & Negative Pull-in voltages,
     Positive & Negative Pull-out voltages, Switching time, isolation and insertion loss variation during
     cycling sequence.
     :param rf_detector_channel: Detector channel array
     :param v_bias_channel: Bias channel array
-    :param ramp_start: Starting time of the positive ramp
-    :param ramp_stop: End time of the positive ramp
-    :param ramp_start_minus: Starting time of the negative ramp
-    :param ramp_stop_minus: End time of the negative ramp
+    :param ramp_start: Starting time of the positive ramp (0.20383)
+    :param ramp_stop: End time of the positive ramp (0.20437)
+    :param ramp_start_minus: Starting time of the negative ramp (0.2046)
+    :param ramp_stop_minus: End time of the negative ramp (0.20519)
     :param delay: Input delay of the oscilloscope to position at the end of the cycling waveform
     :param conversion_coeff: Conversion coefficient from power to voltage of the detector
     :return: DataFrame containing all the MEMS characteristics
@@ -1568,6 +1838,263 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20383, ram
     return mems_characteristics
 
 
+def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ramp_stop=0.206,
+                    ramp_start_minus=0.2064,
+                    ramp_stop_minus=0.20682, delay=0.2, conversion_coeff=0.046):
+    """
+        Returns the MEMS Characteristics including Positive & Negative Pull-in voltages,
+        Positive & Negative Pull-out voltages, Switching time, isolation and insertion loss variation during
+        cycling sequence.
+        :param rf_detector_channel: Detector channel array
+        :param v_bias_channel: Bias channel array
+        :param ramp_start: Starting time of the positive ramp (0.20383)
+        :param ramp_stop: End time of the positive ramp (0.20437)
+        :param ramp_start_minus: Starting time of the negative ramp (0.2046)
+        :param ramp_stop_minus: End time of the negative ramp (0.20519)
+        :param delay: Input delay of the oscilloscope to position at the end of the cycling waveform
+        :return: DataFrame containing all the MEMS characteristics
+        """
+    # Ensure the input arrays are numpy arrays
+    rf_detector_channel = np.array(rf_detector_channel)
+    v_bias_channel = np.array(v_bias_channel)
+
+    # Extracting values using oscilloscope commands
+    delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
+    switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
+    release_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
+    amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
+    a1, b1, b2 = get_powermeter_channels()
+
+    relative_amplitude = b2 - a1
+    isolation = b1 - a1
+    sample_rate = osc.query("HORIZONTAL:MODE:SAMPLERATE?")
+    duration = osc.query("HORizontal:ACQDURATION?")
+
+    # Insert the get curve data with ramp position to calculate pull_in, pull_out and insertion loss + isolation
+    t = rf_detector_channel[:, 1] + delay
+    rf_detector_curve = rf_detector_channel[:, 0]
+    v_bias_curve = v_bias_channel[:, 0]
+
+    trigger_offset = int(t.size / (float(osc.query('HORIZONTAL:POSITION?'))))
+
+    # Define a ramp voltage curve to calculate pull in and pull out curve.
+    if t.size == 0:
+        raise ValueError("Time array 't' is empty.")
+
+    t0_ramp_indices = np.where(t > ramp_start)[0]
+    if t0_ramp_indices.size == 0:
+        raise ValueError("No elements found in 't' greater than ramp_start.")
+    else:
+        t0_ramp = t0_ramp_indices[0]
+
+    t0_plus_rampwidth_indices = np.where(t < ramp_stop)[0]
+    if t0_plus_rampwidth_indices.size == 0:
+        raise ValueError("No elements found in 't' less than ramp_stop.")
+    else:
+        t0_plus_rampwidth = t0_plus_rampwidth_indices[-1]
+
+    # Define a ramp voltage curve to calculate pull in and pull out curve of negative ramp.
+    t0_ramp_minus_indices = np.where(t > ramp_start_minus)[0]
+    if t0_ramp_minus_indices.size == 0:
+        raise ValueError("No elements found in 't' greater than ramp_start_minus.")
+    else:
+        t0_ramp_minus = t0_ramp_minus_indices[0]
+
+    t0_plus_rampwidth_minus_indices = np.where(t < ramp_stop_minus)[0]
+    if t0_plus_rampwidth_minus_indices.size == 0:
+        raise ValueError("No elements found in 't' less than ramp_stop_minus.")
+    else:
+        t0_plus_rampwidth_minus = t0_plus_rampwidth_minus_indices[-1]
+
+    # Calculate the index corresponding to the Max voltage of our ramp
+    max_positive_bias_index = np.argmax(v_bias_curve)
+    min_negative_bias_index = np.argmin(v_bias_curve)
+
+    step = 10
+    # Set the parameters for the Savitzky-Golay filter
+    window_length = 9  # Length of the filter window (must be odd)
+    polyorder = 4  # Order of the polynomial to fit within each window
+    detector_coefficient = 1
+
+    # Compute the first finite difference over the step size
+    # This approximates the first derivative of log amp voltage spaced `step` points apart
+    v_logamp_t = rf_detector_curve[:-step * 2]
+    v_bias_t = v_bias_curve[:-step * 2]
+    diff_logamp = (v_logamp_t[step:] - v_logamp_t[:-step])
+
+    # Compute the second finite difference, which approximates the second derivative
+    diff_logamp_2 = (diff_logamp[step:] - diff_logamp[:-step])
+
+    # Smooth the original log amplifier voltage data using the Savitzky-Golay filter
+    smoothed_v_logamp_pre = savgol_filter(v_logamp_t, window_length, polyorder)
+    min_smoothed_v_logamp = np.max(smoothed_v_logamp_pre)
+    smoothed_v_logamp = smoothed_v_logamp_pre - min_smoothed_v_logamp
+
+    # Smooth the second derivative (diff_logamp_2) using the same Savitzky-Golay filter
+    smoothed_diff_logamp_2 = savgol_filter(diff_logamp_2, window_length, polyorder)
+
+    # fig, ax = plt.subplots(1, 1)
+    positive_bias = v_bias_t[t0_ramp + trigger_offset: t0_plus_rampwidth + trigger_offset]
+    negative_bias = v_bias_t[t0_ramp_minus + trigger_offset: t0_plus_rampwidth_minus + trigger_offset]
+
+    # ax.plot(smoothed_diff_logamp_2, label='smoothed_diff_logamp_2')
+    # ax.plot(v_logamp_t[2*window_length:], label='v_logamp_t')
+    # ax.plot(v_bias_t[2*window_length:]/800, label='v_bias_t')
+
+    # ax.plot(positive_bias)
+    # ax.plot(negative_bias)
+    # plt.show()
+
+    # Finding the first index of positive bias in v_bias array
+    first_index_pos = t0_ramp  # ========> Defined by the cursor on the oscilloscope
+    print(f'first_index_pos = {first_index_pos}')
+
+    # Finding the last index of positive bias in v_bias array
+    last_index_pos = t0_plus_rampwidth  # ========> Defined by the cursor on the oscilloscope
+    print(f'last_index_pos = {last_index_pos}')
+
+    # Finding the first index of negative bias in v_bias array
+    first_index_neg = t0_ramp_minus  # ========> Defined by the cursor on the oscilloscope
+    print(f'first_index_neg = {first_index_neg}')
+
+    # Finding the last index of negative bias in v_bias array
+    last_index_neg = t0_plus_rampwidth_minus  # ========> Defined by the cursor on the oscilloscope
+    print(f'last_index_neg = {last_index_neg}')
+
+    # Finding the index of the maximum positive bias (top of the triangle waveform)
+    max_positive_bias_index = np.argmax(v_bias_t[t0_ramp + trigger_offset: t0_plus_rampwidth + trigger_offset])
+    print(f'max_positive_bias_index = {max_positive_bias_index} \n')
+
+    # Finding the index of the minimum negative bias (bottom of the negative triangle waveform)
+    min_negative_bias_index = np.argmin(
+        v_bias_t[t0_ramp_minus + trigger_offset: t0_plus_rampwidth_minus + trigger_offset])
+
+    # =========================================================================
+    # Positive Bias: Calculate pull-in and pull-out voltages using second derivative method
+    # =========================================================================
+
+    # Find the maximum and minimum of the second derivative in the positive bias cycle
+    # Using the maximum index -> Input this index to the v bias array to determine pull-in voltage
+    try:
+        max_smoothed_diff_logamp_2 = int(np.argmax(smoothed_diff_logamp_2[
+                                                   first_index_pos:last_index_pos]))
+        print(f'max_smoothed_diff_logamp_2 = {max_smoothed_diff_logamp_2} \n')
+        print("Max was found in positive ramp")
+
+        pullin_index_pos = int(np.argmax(smoothed_diff_logamp_2[
+                                         first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]))
+        vpullin = v_bias_t[first_index_pos + trigger_offset + pullin_index_pos]
+    except:
+        print("Max was not found")
+        print('Did not find an index for pull-in voltage using differentiation method')
+        vpullin = 0
+
+        # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='smoothed_diff_logamp_2')
+        # ax.plot(v_logamp_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='v_logamp_t')
+        # ax.plot(v_bias_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]/3000, label='v_bias_t')
+        # ax.plot(positive_bias/3000, label='positive_bias')
+        # ax.plot(negative_bias/3000, label='negative_bias')
+        # plt.legend()
+        # plt.grid()
+        # plt.show()
+
+    # Using the minimum index -> Input this index to the v bias array to determine pull-out voltage
+    try:
+        min_smoothed_diff_logamp_2 = int(np.argmin(smoothed_diff_logamp_2[
+                                                   first_index_pos + trigger_offset + max_positive_bias_index:last_index_pos + trigger_offset]))
+        print(f'min_smoothed_diff_logamp_2 = {min_smoothed_diff_logamp_2} \n')
+        print('Min was found in negative ramp')
+        pullout_index_pos = int(np.argmin(smoothed_diff_logamp_2[
+                                          first_index_pos + trigger_offset + max_positive_bias_index:last_index_pos + trigger_offset]))
+        vpullout = v_bias_t[first_index_pos + max_positive_bias_index + trigger_offset + pullout_index_pos]
+        print(f'vpullout = {vpullout}')
+    except:
+        print('Did not find an index for pull-out voltage using differentiation method')
+        print('Min was not found in negative ramp')
+        vpullout = 0  # Fallback value
+
+    # fig, ax = plt.subplots(1, 1)
+    # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='smoothed_diff_logamp_2_start')
+    # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset + max_positive_bias_index :last_index_pos + trigger_offset], label='smoothed_diff_logamp_2_finish')
+    # ax.plot(v_logamp_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='v_logamp_t_start')
+    # ax.plot(v_bias_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]/3000, label='v_bias_t')
+    # ax.plot(v_logamp_t[first_index_pos + trigger_offset + max_positive_bias_index:trigger_offset + last_index_pos], label='v_logamp_t_finish')
+    # ax.plot(positive_bias/3000, label='positive_bias')
+    # ax.plot(negative_bias/3000, label='negative_bias')
+    # plt.legend()
+    # plt.grid()
+    # plt.show()
+    # =========================================================================
+    # Negative Bias: Calculate pull-in and pull-out voltages using second derivative method
+    # =========================================================================
+
+    # Find the maximum and minimum of the second derivative in the negative bias cycle
+    # Using the maximum index -> Input this index to the v bias array to determine pull-in voltage
+    try:
+        max_smoothed_diff_logamp_2_neg = np.argmax(
+            smoothed_diff_logamp_2[
+            first_index_neg + trigger_offset:first_index_neg + min_negative_bias_index + trigger_offset])
+        print(f'max_smoothed_diff_logamp_2_neg = {max_smoothed_diff_logamp_2_neg} \n')
+        print("Max was found in negative ramp")
+
+        pullin_index_neg = int(
+            np.argmin(smoothed_diff_logamp_2[
+                      first_index_neg + trigger_offset:first_index_neg + min_negative_bias_index + trigger_offset]))
+        vpullin_neg = v_bias_t[first_index_neg + trigger_offset + pullin_index_neg]
+
+        print(f'vpullin_neg = {vpullin_neg}')
+        min_smoothed_diff_logamp_2 = int(np.argmin(smoothed_diff_logamp_2[
+                                                   first_index_neg:last_index_neg]))
+
+    except:
+        print("Max was not found")
+        print('Did not find an index for negative pull-in(-) voltage using differentiation method')
+        vpullin_neg = 0  # Fallback value
+
+    # Pull-out voltage (negative bias): Find the index where the second derivative reaches its minimum
+    # Using the maximum index -> Input this index to the v bias array to determine pull-in voltage
+
+    try:
+        min_smoothed_diff_logamp_2_neg = np.argmin(smoothed_diff_logamp_2[
+                                                   first_index_neg + trigger_offset + min_negative_bias_index:last_index_neg + trigger_offset])
+        print(f'min_smoothed_diff_logamp_2_neg = {min_smoothed_diff_logamp_2_neg} \n')
+        print("Min was found in negative ramp")
+
+        pullout_index_neg = int(np.argmin(smoothed_diff_logamp_2[
+                                          first_index_neg + trigger_offset + min_negative_bias_index:last_index_neg + trigger_offset]))
+        vpullout_neg = v_bias_t[first_index_neg + min_negative_bias_index + trigger_offset + pullout_index_neg]
+        print(f'vpullout_neg = {vpullout_neg}')
+
+    except:
+        print("Min was not found")
+        print('Did not find an index for negative pull-out(-) voltage using differentiation method')
+        vpullout_neg = 0  # Fallback value
+
+    # Creating the dictionary for DataFrame
+    data = {
+        'vpullin_plus': [vpullin], 'vpullin_minus': [vpullin_neg], 'vpullout_plus': [vpullout],
+        'vpullout_minus': [vpullout_neg], 'switching_time': [switching_time],
+        'amplitude_variation': [relative_amplitude], 'release_time': [release_time], 'absolute_isolation': [isolation]
+    }
+    # Creating the DataFrame
+    mems_characteristics = pd.DataFrame(data)
+
+    return mems_characteristics
+
+    # print(f"t0_ramp = {t0_ramp}\n"
+    #       f"t0_plus_rampwidth = {t0_plus_rampwidth}\n"
+    #       f"t0_ramp_minus = {t0_ramp_minus}\n"
+    #       f"t0_plus_rampwidth_minus = {t0_plus_rampwidth_minus}\n"
+    #       f"delay = {delay}\n"
+    #       f"sample rate = {sample_rate}\n"
+    #       f"duration = {duration}"
+    #       f'sample spacing = {1 / float(sample_rate)}\n')
+    # print(f"(+) ramp starts at = {t0_ramp / float(sample_rate) + delay}\n"
+    #       f"(+) ramp stops at = {t0_plus_rampwidth / float(sample_rate) + delay}\n")
+    # print(f"(-) ramp starts at = {t0_ramp_minus / float(sample_rate) + delay}\n"
+    #       f"(-) ramp stops at = {t0_plus_rampwidth_minus / float(sample_rate) + delay}\n")
+
+
 def sig_gen_cycling_config():
     sig_gen.write("*RST")
     time.sleep(1)
@@ -1628,14 +2155,265 @@ def rf_gen_set_freq(frequency: float = 10) -> None:
     rf_gen.write_str_with_opc(f'SOUR:FREQ {frequency} GHz')
 
 
+def apply_threshold_filter(fft_result, magnitudes, threshold_percent):
+    """
+    Apply threshold-based noise filtering.
+
+    Parameters:
+    fft_result: numpy array
+        Complex FFT result
+    magnitudes: numpy array
+        FFT magnitudes
+    threshold_percent: float
+        Percentage of maximum magnitude to use as threshold (0-100)
+
+    Returns:
+    numpy array: Filtered FFT result
+    """
+    threshold = np.max(magnitudes) * (threshold_percent / 100)
+    filtered_fft = fft_result.copy()
+    filtered_fft[magnitudes < threshold] = 0
+    return filtered_fft
+
+
+def plot_signal_fft(data, filter_type='none', threshold_percent=5, sg_window=51, sg_order=3, window_type='rectangular'):
+    """
+    Plot the original signal and its FFT with optional noise filtering, log y-scale, and windowing.
+
+    Parameters:
+    data: numpy array of shape (N, 2)
+        data[:,0] contains voltage values in volts
+        data[:,1] contains time values in seconds
+    filter_type: str
+        'none': No filtering
+        'threshold': Simple threshold-based noise filtering
+        'savgol': Savitzky-Golay filtering
+        'both': Apply both filters
+    threshold_percent: float
+        Percentage of maximum magnitude to use as threshold (0-100)
+    sg_window: int
+        Window length for Savitzky-Golay filter (must be odd)
+    sg_order: int
+        Polynomial order for Savitzky-Golay filter
+    window_type: str
+        'rectangular', 'hamming', 'hann', 'blackman'
+    """
+    # Extract voltage and time data
+    voltage = data[:, 0]
+    time = data[:, 1]
+
+    # Apply window function
+    window = get_window(window_type, len(voltage))
+    voltage_windowed = voltage * window
+
+    # Apply Savitzky-Golay filter to time domain if requested
+    if filter_type in ['savgol', 'both']:
+        voltage_filtered = savgol_filter(voltage_windowed, sg_window, sg_order)
+    else:
+        voltage_filtered = voltage_windowed
+
+    # Calculate sampling parameters
+    sampling_period = time[1] - time[0]
+    sampling_frequency = 1.0 / sampling_period
+    n_samples = len(voltage)
+
+    # Compute FFT
+    fft_result = np.fft.fft(voltage_filtered)
+    fft_freq = np.fft.fftfreq(n_samples, sampling_period)
+
+    # Calculate magnitude spectrum
+    magnitude = 2.0 * np.abs(fft_result) / n_samples
+
+    # Apply threshold filter if requested
+    if filter_type in ['threshold', 'both']:
+        fft_result_filtered = apply_threshold_filter(fft_result, magnitude, threshold_percent)
+        magnitude_filtered = 2.0 * np.abs(fft_result_filtered) / n_samples
+    else:
+        magnitude_filtered = magnitude
+
+    # Create subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
+
+    # Plot original signal
+    ax1.plot(time * 1000, voltage, 'b-', label='Original Signal')
+    ax1.plot(time * 1000, voltage_windowed, 'g-', label='Windowed Signal')
+    if filter_type in ['savgol', 'both']:
+        ax1.plot(time * 1000, voltage_filtered, 'r-', label='Filtered Signal')
+    ax1.set_xlabel('Time (ms)')
+    ax1.set_ylabel('Voltage (V)')
+    ax1.set_title('Time Domain Signal')
+    ax1.grid(True)
+    ax1.legend()
+
+    # Plot full FFT magnitude spectrum
+    positive_freq_mask = fft_freq >= 0
+    ax2.semilogy(fft_freq[positive_freq_mask], magnitude[positive_freq_mask], 'b-', label='Original FFT')
+    ax2.set_xscale('log')
+    ax2.set_xlabel('Frequency (Hz)')
+    ax2.set_ylabel('Magnitude (log scale)')
+    ax2.set_title('Full Frequency Spectrum')
+    ax2.grid(True)
+    ax2.legend()
+
+    # Plot filtered FFT magnitude spectrum
+    if filter_type in ['threshold', 'both']:
+        ax3.semilogy(fft_freq[positive_freq_mask], magnitude_filtered[positive_freq_mask], 'r-',
+                     label=f'Filtered FFT (threshold: {threshold_percent}%)')
+    else:
+        ax3.semilogy(fft_freq[positive_freq_mask], magnitude_filtered[positive_freq_mask], 'r-',
+                     label='Filtered FFT')
+    ax3.set_xscale('log')
+    # ax3.set(xlim=[1e3, 1e6])
+    ax3.set(ylim=[1e-7, 1e-2])
+    ax3.set(xlim=[1e3, 200000])
+    ax3.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.0e}'))
+
+    ax3.set_xlabel('Frequency (Hz)')
+    ax3.set_ylabel('Magnitude (log scale)')
+    ax3.set_title('Filtered Frequency Spectrum')
+    ax3.grid(True)
+    ax3.legend()
+
+    # Make layout tight and display plot
+    plt.tight_layout()
+    plt.show()
+
+    return fft_freq[positive_freq_mask], magnitude_filtered[positive_freq_mask]
+
+
+def plot_signal_fft_noise_removal(current_data, previous_data, filter_type='none', threshold_percent=5, sg_window=51,
+                                  sg_order=3,
+                                  window_type='rectangular'):
+    """
+    Plot the original signal and its FFT with optional noise filtering, log y-scale, windowing, and inter-acquisition convolution.
+
+    Parameters:
+    current_data: numpy array of shape (N, 2)
+        current_data[:,0] contains voltage values in volts
+        current_data[:,1] contains time values in seconds
+    previous_data: numpy array of shape (N, 2)
+        previous_data[:,0] contains previous voltage values in volts
+        previous_data[:,1] contains previous time values in seconds
+    filter_type: str
+        'none': No filtering
+        'threshold': Simple threshold-based noise filtering
+        'savgol': Savitzky-Golay filtering
+        'convolve': Inter-acquisition convolution-based filtering
+        'both': Apply both threshold and convolution filters
+    threshold_percent: float
+        Percentage of maximum magnitude to use as threshold (0-100)
+    sg_window: int
+        Window length for Savitzky-Golay filter (must be odd)
+    sg_order: int
+        Polynomial order for Savitzky-Golay filter
+    window_type: str
+        'rectangular', 'hamming', 'hann', 'blackman'
+    """
+    # Extract voltage and time data
+    current_voltage = current_data[:, 0]
+    current_time = current_data[:, 1]
+    previous_voltage = previous_data[:, 0]
+    previous_time = previous_data[:, 1]
+
+    # Apply window function
+    current_window = get_window(window_type, len(current_voltage))
+    current_voltage_windowed = current_voltage * current_window
+
+    # Apply inter-acquisition convolution-based filtering if requested
+    if filter_type in ['convolve', 'both']:
+        current_voltage_filtered = convolve(current_voltage_windowed, previous_voltage, mode='same')
+    elif filter_type in ['savgol']:
+        current_voltage_filtered = savgol_filter(current_voltage_windowed, sg_window, sg_order)
+    else:
+        current_voltage_filtered = current_voltage_windowed
+
+    # Calculate sampling parameters
+    current_sampling_period = current_time[1] - current_time[0]
+    current_sampling_frequency = 1.0 / current_sampling_period
+    current_n_samples = len(current_voltage)
+
+    # Compute FFT
+    current_fft_result = np.fft.fft(current_voltage_filtered)
+    current_fft_freq = np.fft.fftfreq(current_n_samples, current_sampling_period)
+
+    # Calculate magnitude spectrum
+    current_magnitude = 2.0 * np.abs(current_fft_result) / current_n_samples
+
+    # Apply threshold filter if requested
+    if filter_type in ['threshold', 'both']:
+        current_fft_result_filtered = apply_threshold_filter(current_fft_result, current_magnitude, threshold_percent)
+        current_magnitude_filtered = 2.0 * np.abs(current_fft_result_filtered) / current_n_samples
+    else:
+        current_magnitude_filtered = current_magnitude
+
+    # Create subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
+
+    # Plot original signal
+    ax1.plot(current_time * 1000, current_voltage, 'b-', label='Original Signal')
+    ax1.plot(current_time * 1000, current_voltage_windowed, 'g-', label='Windowed Signal')
+    ax1.plot(current_time * 1000, current_voltage_filtered, 'r-', label='Filtered Signal')
+    ax1.set_xlabel('Time (ms)')
+    ax1.set_ylabel('Voltage (V)')
+    ax1.set_title('Time Domain Signal')
+    ax1.grid(True)
+    ax1.legend()
+
+    # Plot full FFT magnitude spectrum
+    positive_freq_mask = current_fft_freq >= 0
+    ax2.semilogy(current_fft_freq[positive_freq_mask], current_magnitude[positive_freq_mask], 'b-',
+                 label='Original FFT')
+    ax2.set_xlabel('Frequency (Hz)')
+    ax2.set_ylabel('Magnitude (log scale)')
+    ax2.set_title('Full Frequency Spectrum')
+    ax2.set_xscale('log')
+    ax2.set(xlim=[1e4, 1.5e5])
+    ax2.set(ylim=[1e-4, 1e-2])
+    # ax2.set(xlim=[1e3, 200000])
+
+    ax2.grid(True)
+    ax2.legend()
+
+    # Plot filtered FFT magnitude spectrum
+    if filter_type in ['threshold', 'both']:
+        ax3.plot(current_fft_freq[positive_freq_mask], 10 * np.log10(current_magnitude_filtered[positive_freq_mask]),
+                 'r-',
+                 label=f'Filtered FFT (threshold: {threshold_percent}%)')
+    else:
+        ax3.plot(current_fft_freq[positive_freq_mask], 10 * np.log10(current_magnitude_filtered[positive_freq_mask]),
+                 'r-',
+                 label='Filtered FFT')
+    ax3.set_xlabel('Frequency (Hz)')
+    ax3.set_ylabel('Magnitude (log scale)')
+    ax3.set_title('Filtered Frequency Spectrum')
+    ax3.grid(True)
+    # ax3.set_xscale('log')
+    # ax3.set(xlim=[1e3, 1e6])
+    # ax3.set(ylim=[2e-4, 1e-2])
+    ax3.set(ylim=[-40, -25])
+    ax3.set(xlim=[1e3, 150000])
+    ax3.legend()
+
+    # Make layout tight and display plot
+    plt.tight_layout()
+    plt.show()
+
+    return current_fft_freq[positive_freq_mask], current_magnitude_filtered[positive_freq_mask]
+
+
 if __name__ == "__main__":
-    # print(f"zva model: {zva.instrument_model_name}, {zva.idn_string}")
-    # dir_and_var_declaration.zva_directories(zva)
-    # load_config(pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],
-    # inst_file=dir_and_var_declaration.zva_parameters["instrument_file"])
-    # print({f"ZVA parameters set :\n {dir_and_var_declaration.zva_parameters.items()}"})
-    # time.sleep(1)
-    # sig_gen.write("TRIG")
-    # saves2p("test")
-    # file_get(filename="test", pc_file_dir=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data", extension='s2p')
-    zva.write_str_with_opc("DISPlay:WINDow:STATe ON)")
+    try:
+        sig_gen.write("OUTput 1")
+        # time.sleep(10)
+        ch4 = get_curve_cycling(channel=4)
+        ch2 = get_curve_cycling(channel=2)
+        mems_characteristics = extract_data_v3(rf_detector_channel=ch4, v_bias_channel=ch2)
+        # sig_gen.write("OUTput 1")
+        # print(mems_characteristics)
+        # for keys, values in mems_characteristics.items():
+        #     print(f'{keys} = {values} \n')
+        sig_gen.write("OUTput 0")
+        # mems_characteristics.clear()
+
+    except IndexError:
+        sig_gen.write("OUTput 0")

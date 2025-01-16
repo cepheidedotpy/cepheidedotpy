@@ -623,9 +623,9 @@ class Window(tk.Tk):
         self.text_file_name_s3p_test: tk.Text
         self.canvas_cycling: FigureCanvasTkAgg
 
-        self.file_df: pd.DataFrame = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
-                                             "iso_ascent", "iso_descent_minus", "switching_time",
-                                             "amplitude_variation", "release_time", "cycles", "sticking events"])
+        self.file_df: pd.DataFrame = pd.DataFrame(
+            columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus", "switching_time",
+                     "amplitude_variation", "release_time", "absolute_isolation", "cycles", "sticking events"])
 
         self.file_power_sweep = pd.DataFrame(columns=['Power Input DUT Avg (dBm)', 'Power Output DUT Avg (dBm)'])
 
@@ -674,7 +674,7 @@ class Window(tk.Tk):
         self.fig_s2p, self.ax_s2p = create_figure_with_axes(num=2, figsize=(13, 4.1))
         self.ax_s2p.set_title("|Sij| vs frequency")
         self.fig_pull_in, self.ax_pull_in = create_figure_with_axes(num=3, figsize=(13, 3.5))
-        self.ax_pull_in.set(xlabel="V_bias (V)", ylabel="Isolation (dB)", title="Isolation vs Bias voltage")
+        self.ax_pull_in.set(xlabel="V_bias (V)", ylabel="Detector voltage (V)", title="Isolation vs Bias voltage")
         self.ax_s2p.set(xlabel="Frequency (Hz)", ylabel="S Parameter (dB)", title="S Parameter vs Frequency")
         self.ax_s3p.set(xlabel="Frequency (Hz)", ylabel="S Parameter (dB)", title="S Parameter vs Frequency")
 
@@ -736,8 +736,8 @@ class Window(tk.Tk):
         self.s_parameter_s2p = tk.StringVar(value='S11')
 
         self.scale_amplitude_value = tk.DoubleVar(value=-20)
-        self.scale_voltage_value = tk.DoubleVar(value=40)
-        self.scale_isolation_value = tk.DoubleVar(value=-20)
+        self.scale_voltage_value = tk.DoubleVar(value=50)
+        self.scale_isolation_value = tk.DoubleVar(value=-1)
         self.scale_frequency_upper_value = tk.DoubleVar(value=2 * 10e9)
         self.scale_frequency_lower_value = tk.DoubleVar(value=0.1 * 10e9)
 
@@ -863,7 +863,7 @@ class Window(tk.Tk):
                                             toolbar_frame=frame_s2p_sliders)
 
             # Sliders creation
-            self.slider_amplitude_s2p = add_slider(frame=frame_s2p_display, _from=0, to=-40,
+            self.slider_amplitude_s2p = add_slider(frame=frame_s2p_display, _from=0, to=-60,
                                                    name="Amplitude (dB)",
                                                    variable=self.scale_amplitude_value, step=5,
                                                    orientation=tk.VERTICAL)
@@ -915,8 +915,6 @@ class Window(tk.Tk):
                        col=3, row=3)
             add_button(frame_v_pull_in_dir, button_name='Delete Graphs', command=self.delete_axs_vpullin, col=3,
                        row=2)
-            add_button(frame_v_pull_in_dir, button_name='Calculate Pull-in and Pull-out voltages',
-                       command=None, col=2, row=3).configure(width=40)
             # Scrolled text creation
             self.text_scroll = add_scrolled_text(tab=frame_v_pull_in_display, scrolled_width=100,
                                                  scrolled_height=3)
@@ -925,8 +923,8 @@ class Window(tk.Tk):
                                                           toolbar_frame=frame_v_pull_in_sliders)
 
             # Sliders creation
-            self.slider_isolation = add_slider(frame=frame_v_pull_in_graph, _from=0, to=-40,
-                                               name="Isolation (dB)", variable=self.scale_isolation_value, step=5,
+            self.slider_isolation = add_slider(frame=frame_v_pull_in_graph, _from=0, to=-2,
+                                               name="Detector voltage (dB)", variable=self.scale_isolation_value, step=0.1,
                                                orientation=tk.VERTICAL)
             self.slider_voltage = add_slider(frame=frame_v_pull_in_sliders, _from=0, to=50,
                                              name="Voltage upper limit (V)", variable=self.scale_voltage_value, step=5)
@@ -1052,8 +1050,8 @@ class Window(tk.Tk):
                        col=1,
                        row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_test_pull_in_gen_controls, button_name='Plot IsovsV',
-                       command=lambda: [self.trace_pull_down(self.test_cycling_detector_conversion.get()),
-                                        self.acquire_pull_down_data()], col=1, row=5).grid(
+                       command=lambda: [self.acquire_pull_down_data()
+                           , self.trace_pull_down(self.test_cycling_detector_conversion.get())], col=1, row=5).grid(
                 ipadx=tab_pad_x, ipady=tab_pad_x)
             # -------------------------------------------------------------------------------------------------------------
 
@@ -1102,15 +1100,6 @@ class Window(tk.Tk):
                                                       font=('Bahnschrift Light', 10))  # Isolation at PI (+)
             self.text_iso_pull_in_plus_test.grid(column=1, row=4, sticky='n', columnspan=5)
 
-            add_label(frame_test_measurement, label_name='Isolation at PO (+)', col=0, row=5).grid(sticky='e',
-                                                                                                   ipadx=tab_pad_x,
-                                                                                                   ipady=tab_pad_x)
-            self.text_iso_pull_out_plus_test = tk.Text(frame_test_measurement, width=15, height=1, wrap=tk.WORD,
-                                                       border=4,
-                                                       borderwidth=2, relief=tk.SUNKEN,
-                                                       font=('Bahnschrift Light', 10))  # Isolation at PO (+)
-            self.text_iso_pull_out_plus_test.grid(column=1, row=5, sticky='n', columnspan=5)
-
             add_label(frame_test_measurement, label_name='Isolation at PI (-)', col=0, row=6).grid(sticky='e',
                                                                                                    ipadx=tab_pad_x,
                                                                                                    ipady=tab_pad_x)
@@ -1120,14 +1109,6 @@ class Window(tk.Tk):
                                                        font=('Bahnschrift Light', 10))  # Isolation at PI (-)
             self.text_iso_pull_in_minus_test.grid(column=1, row=6, sticky='n', columnspan=5)
 
-            add_label(frame_test_measurement, label_name='Isolation at PO (-)', col=0, row=7).grid(sticky='e',
-                                                                                                   ipadx=tab_pad_x,
-                                                                                                   ipady=tab_pad_x)
-            self.text_iso_pull_out_minus_test = tk.Text(frame_test_measurement, width=15, height=1, wrap=tk.WORD,
-                                                        border=4,
-                                                        borderwidth=2, relief=tk.SUNKEN,
-                                                        font=('Bahnschrift Light', 10))  # Isolation at PO (-)
-            self.text_iso_pull_out_minus_test.grid(column=1, row=7, sticky='n', columnspan=5)
             frame_test_measurement.pack(fill='both')
 
         def setup_snp_measurement():
@@ -1448,6 +1429,10 @@ class Window(tk.Tk):
             add_button(tab=frame_power_meas_rf_gen, button_name="Set RF gen\nFrequency",
                        command=lambda: [scripts_and_functions.rf_gen_set_freq(rf_gen_frequency.get())], col=0,
                        row=6)
+            add_button(tab=frame_power_meas_powermeter, button_name='Biased Power\nConfig',
+                       command=lambda: [scripts_and_functions.powermeter_config_power_bias()],
+                       col=0, row=3).grid()
+
             create_canvas(figure=self.fig_power_meas, frame=frame_power_meas_graph,
                           toolbar_frame=frame_test_power_measurement, toolbar=True)
 
@@ -1695,7 +1680,7 @@ class Window(tk.Tk):
                 self.ax_cycling_pull_out.plot(cycles_so_far, self.file_df["vpullout_plus"])
                 self.ax_cycling_pull_out.grid("both")
 
-                self.ax_cycling_isolation.plot(cycles_so_far, self.file_df["iso_ascent"])
+                self.ax_cycling_isolation.plot(cycles_so_far, self.file_df["absolute_isolation"])
                 self.ax_cycling_isolation.grid("both")
 
                 self.ax_cycling_insertion_loss.plot(cycles_so_far, self.file_df["amplitude_variation"])
@@ -1885,8 +1870,8 @@ class Window(tk.Tk):
         t = curve_det[:, 1]
         rf_detector = -max(3 * curve_det[:, 0] / conversion_coeff) + 3 * curve_det[:, 0] / conversion_coeff
         v_bias = curve_bias[:, 0]
-        # measurement_values = self.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
-        measurement_values = scripts_and_functions.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
+        # measurement_values = scripts_and_functions.calculate_pull_in_out_voltage_measurement(v_bias, curve_det[:, 0])
+        measurement_values = scripts_and_functions.calculate_actuation_and_release_voltages(v_bias, curve_det[:, 0])
         plt.figure(num=4)
         number_of_graphs = len(self.ax_pull_in_meas.get_lines()[0:])
         for axes in self.ax_pull_in_meas.get_lines():
@@ -1894,7 +1879,7 @@ class Window(tk.Tk):
         self.ax_pull_in_meas.plot(v_bias, rf_detector, label='Cell {}'.format(self.test_pull_in_cell.get()),
                                   color='#1f77b4')
         self.ax_pull_in_meas.set(xlabel='Bias voltage (V)')
-        self.ax_pull_in_meas.set(ylabel='Isolation (dB)')
+        self.ax_pull_in_meas.set(ylabel='Isolation (V)')
         self.ax_pull_in_meas.grid(visible=True)
         self.ax_pull_in_meas.legend(fancybox=True, shadow=True)
         self.canvas_v_pull_in_meas.draw()
@@ -1903,23 +1888,16 @@ class Window(tk.Tk):
         self.text_pull_out_plus_test.delete("1.0", "end")
         self.text_pull_out_minus_test.delete("1.0", "end")
         self.text_iso_pull_in_plus_test.delete("1.0", "end")
-        self.text_iso_pull_out_plus_test.delete("1.0", "end")
         self.text_iso_pull_in_minus_test.delete("1.0", "end")
-        self.text_iso_pull_out_minus_test.delete("1.0", "end")
-        self.text_pull_in_plus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_plus'])
-        self.text_pull_in_minus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullin_minus'])
-        self.text_pull_out_plus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_plus'])
-        self.text_pull_out_minus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['Vpullout_minus'])
+        self.text_pull_in_plus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['vpullin_plus'])
+        self.text_pull_in_minus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['vpullin_minus'])
+        self.text_pull_out_plus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['vpullout_plus'])
+        self.text_pull_out_minus_test.insert(index="%d.%d" % (0, 0), chars=measurement_values['vpullout_minus'])
         self.text_iso_pull_in_plus_test.insert(index="%d.%d" % (0, 0),
-                                               chars=measurement_values['Isolation_at_pullin_plus'])
-        self.text_iso_pull_out_plus_test.insert(index="%d.%d" % (0, 0),
-                                                chars=measurement_values['Isolation_at_pullout_plus'])
+                                               chars=measurement_values['ninetypercent_iso_ascent'])
         self.text_iso_pull_in_minus_test.insert(index="%d.%d" % (0, 0),
-                                                chars=measurement_values['Isolation_at_pullin_minus'])
-        self.text_iso_pull_out_minus_test.insert(index="%d.%d" % (0, 0),
-                                                 chars=measurement_values['Isolation_at_pullout_minus'])
-        # except:
-        #     print("Error in trace pull down function [Line 905]")
+                                                chars=measurement_values['ninetypercent_iso_descent'])
+
 
     def plot_s3p(self):  # Display function that calls skrf Module to figure s3p files (used in display TAB)
         entered_filename = self.s3p_file_name_combobox.get()
@@ -1987,10 +1965,10 @@ class Window(tk.Tk):
             v_bias = data_np[:, 0].copy()
             print(v_bias, end='\n')
             v_log_amp = data_np[:, 1].copy()
-            max_iso = np.max(3 * v_log_amp / 0.040)
-            min_iso = np.min(3 * v_log_amp / 0.040) - 3
+            max_iso = np.max(v_log_amp)
+            min_iso = np.min(v_log_amp)
             max_v_bias = np.max(v_bias)
-            iso = 3 * v_log_amp / 0.040 - max_iso
+            iso = v_log_amp - max_iso
             plt.figure(num=3)
             self.ax_pull_in.plot(v_bias, iso,
                                  label="{}".format(f)[:-4])  # removesuffixe non fonctionnel dans python 3.6
@@ -2010,131 +1988,27 @@ class Window(tk.Tk):
             data_np = np.loadtxt(f, delimiter=',', unpack=True, skiprows=1)
             v_bias = data_np[:, 0].copy()
             v_log_amp = data_np[:, 1].copy()
-            # Acquiring the indexes that correspond to both positive and negative bias triangles
-            # The indexes are extracted by slicing voltages (for positive bias) > 2V and <-2 V (for negative bias)
-            positive_bias = np.extract((v_bias > 2), v_bias)
-            negative_bias = np.extract((v_bias < -2), v_bias)
 
-            print(f'positive bias array:\n {positive_bias}\nnegative bias array:\n{negative_bias}')
-
-            # Position of the first positive bias index along v_bias array
-            first_index_pos = np.where(v_bias == positive_bias[0])[0]
-            print(f'first index pos array={first_index_pos}')
-            # Position of the first negative bias index along v_bias array
-            first_index_neg = np.where(v_bias == negative_bias[0])[0]
-            print(f'first index neg array={first_index_neg}')
-            # Position of the last negative bias index along v_bias array
-            last_index_neg = np.where(v_bias == negative_bias[-1])[0]
-            # Calculating the max and min indexes in both casses
-            max_positive_bias_index = np.argmax(positive_bias)
-            min_positive_bias_index = 0
-            max_negative_bias_index = 0
-            min_negative_bias_index = np.argmin(negative_bias)
-
-            # Creating the ascent and descent portion of the graph for v_bias and v_log converted to normalized
-            # isolation
-            positive_ascent = positive_bias[0:max_positive_bias_index]
-            positive_descent = positive_bias[max_positive_bias_index:len(positive_bias)]
-
-            # Calculating normalized isolation factor
-            normalize_iso = np.max(3 * v_log_amp[first_index_pos[0]:max_positive_bias_index] / 0.040)
-
-            iso_ascent = 3 * v_log_amp[
-                             first_index_pos[0]:first_index_pos[0] + max_positive_bias_index] / 0.040 - normalize_iso
-            iso_max_ascent = np.min(iso_ascent)
-
-            iso_descent = 3 * v_log_amp[first_index_pos[0] + max_positive_bias_index:first_index_pos[0] + len(
-                positive_bias)] / 0.040 - normalize_iso
-            iso_min_descent = np.min(iso_descent)
-            # ==============================================================================
-            # Calculation Vpull in as isolation passing below 90% max isolation in dB mark
-            # Calculation Vpull out as isolation passing above 90% max isolation in dB mark
-            pullin_index_pos = int(np.where(iso_ascent <= 0.9 * iso_max_ascent)[0][0])
-            vpullin = positive_bias[pullin_index_pos]
-
-            tenpercent_iso = 0.1 * iso_min_descent
-            ninetypercent_iso = 0.9 * iso_max_ascent
-            try:
-                pullout_index_pos = int(np.where(iso_descent >= 0.1 * iso_min_descent)[0][0])
-                vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
-            except IndexError as e:
-                print({e.args}, end='\n')
-                pullout_index_pos = int(len(iso_descent) - 1)
-                vpullout = positive_bias[max_positive_bias_index + pullout_index_pos]
-            # ============================================================================== Creating the ascent and
-            # descent portion of the graph for v_bias and v_log converted to normalized isolation
-            negative_descent = negative_bias[0:min_negative_bias_index]
-            negative_ascent = negative_bias[min_negative_bias_index:len(negative_bias)]
-
-            # Calculating normalized isolation factor
-            normalized_iso_minus = np.max(3 * v_log_amp[first_index_neg[0]:first_index_neg[
-                                                                               0] + min_negative_bias_index] / 0.040)
-            # This is extracted from the detector V/dB characteristics
-
-            iso_descent_minus = 3 * v_log_amp[
-                                    first_index_neg[0]:first_index_neg[0] + min_negative_bias_index] / (
-                                        0.040 - normalized_iso_minus)
-            iso_min_descent_minus = np.min(iso_descent_minus)
-            print(
-                f'first_index_neg={first_index_neg[0]}\nmin_negative_bias_index={min_negative_bias_index}'
-                f'\nlast_index_neg={last_index_neg[0]}')
-            iso_ascent_minus = 3 * v_log_amp[first_index_neg[0] + min_negative_bias_index:last_index_neg[
-                -1]] / 0.040 - normalized_iso_minus
-            try:
-                iso_min_ascent = np.min(iso_ascent_minus)
-            except ValueError as e:
-                print('Value ERROR')
-
-            # Calculation Vpull in negative as isolation passing below 90% max isolation in dB mark (downwards)
-            # Calculation Vpull out negative as isolation passing above 10% off isolation in dB mark (upwards)
-            try:
-                pullin_index_minus = int(np.where(iso_descent_minus <= 0.9 * iso_min_descent)[0][0])
-                vpullin_minus = negative_bias[pullin_index_minus]
-            except IndexError as e:
-                print({e.args}, end='\n')
-            pullin_index_minus = int(len(iso_descent_minus) - 1)
-            vpullin_minus = negative_bias[pullin_index_minus]
-
-            tenpercent_iso_ascent = 0.1 * iso_min_ascent
-            ninetypercent_iso_descent = 0.9 * iso_min_descent
-
-            pullout_index_minus = int(np.where(iso_ascent_minus >= 0.1 * iso_min_ascent)[0][0])
-            vpullout_minus = negative_bias[min_negative_bias_index + pullout_index_minus]
-            # print('vpullin = {} | Isolation measured = {}\nvpullout = {} | Isolation measured = {} \nvpullin_minus
-            # = {} | Isolation measured = {}\nVpullout_minus = {} | Isolation measured = {} \n'.format(vpullin,
-            # ninetypercent_iso, vpullout, tenpercent_iso, vpullin_minus, ninetypercent_iso_descent, vpullout_minus,
-            # tenpercent_iso_ascent))
+            calculations = scripts_and_functions.calculate_actuation_and_release_voltages(v_bias=v_bias, v_logamp=v_log_amp)
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Isolation_at_pullout_minus = {} dB \n'.format(
-                                        round(tenpercent_iso_ascent, ndigits=2)))
-            self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='vpullout_minus = {} V | \t'.format(round(vpullout_minus, ndigits=2)))
+                                    chars='vpullout_minus = {} V | \t'.format(calculations['vpullout_minus']))
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
                                     chars='Isolation_at_pullin_minus = {} dB \n'.format(
-                                        round(ninetypercent_iso_descent, ndigits=2)))
+                                        calculations['ninetypercent_iso_descent']))
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='vpullin_minus = {} V | \t'.format(round(vpullin_minus, ndigits=2)))
+                                    chars='vpullin_minus = {} V | \t'.format(calculations['vpullin_minus']))
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Isolation_at_pullout_plus = {} dB  \n'.format(
-                                        round(tenpercent_iso, ndigits=2)))
-            self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Vpullout_plus = {} V | \t'.format(round(vpullout, ndigits=2)))
+                                    chars='Vpullout_plus = {} V | \t'.format(calculations['vpullout_plus']))
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Isolation_at_pullin_plus = {} dB \n'.format(
-                                        round(ninetypercent_iso, ndigits=2)))
+                                    chars='Isolation_at_pullin_plus = {} dB \n'.format(calculations['ninetypercent_iso_ascent']))
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Vpullin_plus = {} V | \t'.format(round(vpullin, ndigits=2)))
+                                    chars='Vpullin_plus = {} V | \t'.format(calculations['vpullin_plus']))
 
-            pull_dict = {'Vpullin_plus': vpullin, 'Vpullout_plus': vpullout,
-                         'Isolation_at_pullin_plus': ninetypercent_iso, 'Isolation_at_pullout_plus': tenpercent_iso,
-                         'vpullin_minus': vpullin_minus, 'vpullout_minus': vpullout_minus,
-                         'Isolation_at_pullin_minus': ninetypercent_iso_descent,
-                         'Isolation_at_pullout_minus': tenpercent_iso_ascent}
-            return pull_dict
+            return calculations
 
     def delete_axs_s3p(self):  # Delete last drawn line in s3p display tab (in ax_s3p)
         try:
@@ -2327,7 +2201,7 @@ class Window(tk.Tk):
 
         # Clear previous data and plots
         self.file_df = pd.DataFrame(columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus",
-                                             "iso_ascent", "iso_descent_minus", "switching_time",
+                                             "absolute_isolation", "switching_time",
                                              "amplitude_variation", "release_time", "cycles"])
 
         self.update_plot()
@@ -2344,7 +2218,7 @@ class Window(tk.Tk):
                     self.test_cycling_ret.get(),
                     self.test_cycling_cell.get(),
                     self.test_cycling_device.get(),
-                    self.test_cycling_var_nb_cycles.get(),
+                    int(self.test_cycling_var_nb_cycles.get()),
                     self.test_cycling_var_bias.get()
                 ),
                 events=self.test_cycling_events.get(),
