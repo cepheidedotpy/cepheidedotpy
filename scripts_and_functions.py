@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 import pandas as pd
 import time
@@ -12,7 +10,7 @@ import pyvisa
 import RsInstrument
 from RsInstrument import *
 from dir_and_var_declaration import zva_init, sig_gen_init, osc_init, rf_gen_init, powermeter_init
-from functools import wraps, partial
+from functools import wraps
 from scipy.signal import savgol_filter, get_window, convolve
 from matplotlib.ticker import FuncFormatter
 
@@ -39,6 +37,33 @@ rf_gen: RsInstrument = rf_gen_init(rf_gen_type='smb')
 
 # VNA parameter definition
 # dir_and_var_declaration.zva_directories(zva)
+
+def timing_wrapper(func):
+    """
+    A decorator that times the execution of the given function and
+    displays the result in days, hours, minutes, and seconds.
+    """
+
+    def wrapper(*args, **kwargs):
+        start_time = time.time()  # Record the start time
+        result = func(*args, **kwargs)  # Call the function
+        end_time = time.time()  # Record the end time
+
+        # Calculate elapsed time in seconds
+        elapsed_time = end_time - start_time
+
+        # Convert to days, hours, minutes, seconds
+        days = int(elapsed_time // (24 * 3600))
+        hours = int((elapsed_time % (24 * 3600)) // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = elapsed_time % 60
+
+        # Display the result in a formatted string
+        print(f"Execution time for {func.__name__}: "
+              f"{days}d {hours}h {minutes}m {seconds:.2f}s")
+        return result
+
+    return wrapper
 
 
 def sig_gen_opc_control(function):
@@ -596,7 +621,7 @@ def setup_rf_synth(frequency: float = 10, power: float = -10,
     rf_gen.write('OUTP ON')
 
 
-def get_channel_info(channel=4):
+def get_channel_info(channel: int = 4) -> dict:
     try:
         osc.write('Data:Source CH{}'.format(channel))
         osc.write('Data:ENCdg ASCII')
@@ -949,7 +974,6 @@ def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
     # print(width_pulse_rf_gen)
 
 
-@powermeter_opc_control
 def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple[float, float, float]:
     """
     Queries the power meter values for channels A1 and B1, applies the given offsets, and returns the results.
@@ -970,8 +994,8 @@ def get_powermeter_channels(offset_a1: float = 0, offset_b1: float = 0) -> tuple
     power_value_b2 = round(float(powermeter.query('FETC4?')) + offset_b1, ndigits=3)
     powermeter.write('INIT:CONT:ALL 0')
     # Print the queried power values
-    print(f"Power value for channel A1: {power_value_a1}")
-    print(f"Power value for channel B1: {power_value_b1}")
+    # print(f"Power value for channel A1: {power_value_a1}")
+    # print(f"Power value for channel B1: {power_value_b1}")
     return power_value_a1, power_value_b1, power_value_b2
 
 
@@ -1022,7 +1046,7 @@ def send_trig():
     return print('trigger sent')
 
 
-def get_curve_cycling(channel: int =4) -> np.array(float):
+def get_curve_cycling(channel: int = 4) -> np.array(float):
     """
     Acquire waveform data of set channel,
     functions returns an array  with the time base and values at the specified channel
@@ -1217,7 +1241,7 @@ def detect_sticking_events(df, thresholds):
     for i in range(len(df)):
         event_detected = False
         for col, threshold in thresholds.items():
-            if df.at[i, col] > abs(threshold) or df.at[i, col] < 0:
+            if df.at[i, col] > threshold or df.at[i, col] < 0:
                 event_detected = True
                 break
         sticking_events.append(1 if event_detected else 0)
@@ -1226,6 +1250,17 @@ def detect_sticking_events(df, thresholds):
     return df
 
 
+def clear_screen(delay=1.0):
+    """
+    Clears the screen after an optional delay.
+    Args:
+        delay (float): Time in seconds to wait before clearing the screen.
+    """
+    time.sleep(delay)  # Pause for the specified delay
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+
+@timing_wrapper
 def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_of_pulses_in_wf: float = 1000,
                      filename: str = "test",
                      wf_duration: float = 0.205, events: float = 100, header: str = "",
@@ -1248,9 +1283,9 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
     """
     number_of_triggers_before_acq = events  # Number of B trigger events in A -> B sequence
     number_of_triggered_acquisitions = int(number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq))
-    cycles = pd.Series(
-        np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
-        name="cycles")
+    # cycles = pd.Series(
+    #     np.arange(start=0, stop=number_of_cycles, step=number_of_pulses_in_wf * number_of_triggers_before_acq),
+    #     name="cycles")
 
     test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
     starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
@@ -1275,8 +1310,10 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
             remaining_count: float = number_of_cycles - (
                     new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
             if count == new_value:
-                print("Waiting for trigger...", end='\n')
+                # print("Waiting for trigger...", end='\n')
                 # time.sleep(1)
+                new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+
             else:
                 count = new_value
                 ch_4_detector = get_curve_cycling(channel=4)
@@ -1286,12 +1323,12 @@ def cycling_sequence(app, new_data_event, number_of_cycles: float = 1e9, number_
                 data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
                 app.file_df = pd.concat([app.file_df, data], ignore_index=True)
                 new_data_event.set()  # Signal that new data is available
-                os.system('cls')
+                clear_screen(0.1)
         except KeyboardInterrupt:
             break
     # Define thresholds for detecting sticking events
     thresholds = {
-        "amplitude_variation": -2,  # Example threshold, adjust as needed
+        "amplitude_variation": 0.5,  # Example threshold, adjust as needed
         "switching_time": 50e-6,  # Example threshold, adjust as needed
         "release_time": 50e-6  # Example threshold, adjust as needed
     }
@@ -1346,7 +1383,7 @@ def cycling_sequence_no_processing(app, new_data_event, number_of_cycles: float 
 
     count = starting_number_of_acq
     sig_gen.write("OUTput 1")
-    remaining_count = number_of_cycles
+    # remaining_count = number_of_cycles
     app.is_cycling = True
     while count < number_of_triggered_acquisitions + starting_number_of_acq:
         # Write header and DataFrame to CSV
@@ -1359,8 +1396,9 @@ def cycling_sequence_no_processing(app, new_data_event, number_of_cycles: float 
             remaining_count: float = number_of_cycles - (
                     new_value - starting_number_of_acq) * number_of_pulses_in_wf * events
             if count == new_value:
-                print("Waiting for trigger...", end='\n')
-                os.system('cls')
+                # print("Waiting for trigger...", end='\n')
+                new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+                # os.system('cls')
             else:
                 count = new_value
                 ch_4_detector = get_curve_cycling(channel=4)
@@ -1370,7 +1408,7 @@ def cycling_sequence_no_processing(app, new_data_event, number_of_cycles: float 
                 data["cycles"] = (count - starting_number_of_acq) * number_of_pulses_in_wf * events
                 app.file_df = pd.concat([app.file_df, data], ignore_index=True)
                 new_data_event.set()  # Signal that new data is available
-                os.system('cls')
+                # os.system('cls')
         except KeyboardInterrupt:
             break
     # Define thresholds for detecting sticking events
@@ -1393,12 +1431,171 @@ def cycling_sequence_no_processing(app, new_data_event, number_of_cycles: float 
     return app.file_df
 
 
-def save_waveform(waveform_ch4: np.array(float), waveform_ch2 : np.array(float), filename:str) -> None :
-    data = np.zeros(1)
-    data[:, 0] = waveform_ch4
-    data[:, 1] = waveform_ch2
+def cycling_sequence_with_escape_interrupt(app, new_data_event,
+                                           number_of_cycles: float = 1e9,
+                                           number_of_pulses_in_wf: float = 1000,
+                                           filename: str = "test",
+                                           wf_duration: float = 0.205,
+                                           events: float = 100,
+                                           header: str = "",
+                                           df_path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling",
+                                           conversion_coeff: float = 0.046):
+    """
+    Cycling test sequence outputs MEMS characteristics during the tested duration.
 
-    data.tofile()
+    This version allows an Escape key press to interrupt the sequence gracefully.
+
+    :param conversion_coeff: Conversion coefficient from DC to RF
+    :param app: Reference to the Tkinter application instance to update the plot (and check for stop).
+    :param new_data_event: Event to signal new data is available.
+    :param df_path: File path.
+    :param number_of_cycles: Total number of cycles in sequence duration.
+    :param number_of_pulses_in_wf: Number of pulses in waveform.
+    :param filename: Test sequence output filename.
+    :param wf_duration: Total duration of the waveform in the sequence.
+    :param events: Number of trigger events before oscilloscope performs an acquisition.
+    :param header: Header string to be written at the top of the CSV file.
+    :return: Pandas DataFrame (final data).
+    """
+    number_of_triggers_before_acq = events
+    number_of_triggered_acquisitions = int(
+        number_of_cycles / (number_of_pulses_in_wf * number_of_triggers_before_acq)
+    )
+
+    test_duration = wf_duration * number_of_cycles / number_of_pulses_in_wf
+    starting_number_of_acq = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+
+    print(f"Number of triggers required: {number_of_triggered_acquisitions}")
+    print(f"Starting number of triggers: {starting_number_of_acq}")
+    print(f"Number of remaining cycles: {number_of_cycles}")
+    print(f"Estimated test duration: {format_duration(test_duration)}")
+
+    count = starting_number_of_acq
+    sig_gen.write("OUTput 1")
+    remaining_count = number_of_cycles
+    app.is_cycling = True
+
+    # -- Main measurement loop --
+    while count < number_of_triggered_acquisitions + starting_number_of_acq:
+        # Periodically let Tkinter process events so the user can press Escape.
+        # (If running in a separate thread, this is less necessary, but harmless.)
+        app.update()
+
+        # Check if the user requested to stop (Escape key pressed).
+        if app.stop_requested:
+            print("ESC key pressed: stopping the cycling sequence early.")
+            break
+
+        # Write the partial data to CSV
+        with open(f"{df_path}\\{filename}.csv", 'w') as f:
+            f.write(header + '\n')
+            app.file_df.to_csv(f, index=False, header=True, sep=",")
+
+        try:
+            new_value = float(osc.query('ACQuire:NUMACq?').removesuffix('\n'))
+            remaining_count = number_of_cycles - (
+                    new_value - starting_number_of_acq
+            ) * number_of_pulses_in_wf * events
+
+            if count == new_value:
+                # The acquisition hasn't advanced; just re-query after a short wait.
+                # You may want to use time.sleep or some other logic here.
+                pass
+            else:
+                # Acquisition advanced, gather new data
+                count = new_value
+                ch_4_detector = get_curve_cycling(channel=4)
+                ch_2_bias = get_curve_cycling(channel=2)
+
+                data = extract_data_v3(
+                    rf_detector_channel=ch_4_detector,
+                    v_bias_channel=ch_2_bias,
+                    conversion_coeff=conversion_coeff
+                )
+                data["cycles"] = (
+                        (count - starting_number_of_acq)
+                        * number_of_pulses_in_wf
+                        * events
+                )
+
+                app.file_df = pd.concat([app.file_df, data], ignore_index=True)
+                new_data_event.set()  # Signal that new data is available
+                clear_screen(0.1)
+
+        except KeyboardInterrupt:
+            # If the user presses Ctrl+C in the console, we also stop gracefully.
+            print("KeyboardInterrupt detected: stopping cycling sequence.")
+            break
+
+    # --- After exiting the loop (either completed or interrupted) ---
+    # Detect “sticking events” or other final processing
+    thresholds = {
+        "amplitude_variation": 0.5,  # Example threshold, adjust as needed
+        "switching_time": 50e-6,  # Example threshold, adjust as needed
+        "release_time": 50e-6  # Example threshold, adjust as needed
+    }
+    app.file_df = detect_sticking_events(app.file_df, thresholds)
+
+    # Disable signal generator output
+    sig_gen.write("OUTput 0")
+
+    # Final save of the data to CSV
+    with open(f"{df_path}\\{filename}.csv", 'w') as f:
+        f.write(header + '\n')
+        app.file_df.to_csv(f, index=False, header=True, sep=",")
+
+    app.is_cycling = False
+    app.stop_requested = False
+    new_data_event.set()  # Signal that final data is available
+
+    print("Test complete (either finished or interrupted)!")
+    return app.file_df
+
+
+def save_waveform(waveform_ch4: np.array(np.array(float)), waveform_ch2: np.array(float), filename: str) -> np.array(
+    float):
+    data = np.zeros(shape=2)
+    info = get_channel_info(channel=4)
+    data = np.vstack((waveform_ch4[:, 0], waveform_ch2[:, 0], waveform_ch4[:, 1]))
+    np.savetxt('{}.txt'.format(filename), data, delimiter=',', newline='\n',
+               header='#waveform_ch4, waveform_ch2, time (s)')
+    return data
+
+
+def save_waveform_v2(waveform_ch4: np.ndarray, waveform_ch2: np.ndarray, filename: str) -> np.ndarray:
+    """
+    Saves waveform data to a text file and returns the combined data.
+
+    Args:
+        waveform_ch4 (np.ndarray): 2D NumPy array containing channel 4 data (e.g., time and amplitude).
+        waveform_ch2 (np.ndarray): 2D NumPy array containing channel 2 data (e.g., time and amplitude).
+        filename (str): The base name of the output file (without extension).
+
+    Returns:
+        np.ndarray: Combined data array containing selected columns from the input arrays.
+                    Shape: (3, n), where n is the number of rows in the input arrays.
+
+    Raises:
+        ValueError: If the input arrays do not have the expected shapes.
+    """
+    # Check if the input arrays are valid
+    if waveform_ch4.shape[1] < 2 or waveform_ch2.shape[1] < 1:
+        raise ValueError("Input arrays must have at least 2 columns for waveform_ch4 and 1 column for waveform_ch2.")
+
+    # Combine the data into a single array
+    data = np.vstack((waveform_ch4[:, 0], waveform_ch2[:, 0], waveform_ch4[:, 1]))
+
+    # Save the combined data to a text file
+    np.savetxt(
+        f'{filename}.txt',  # File name
+        data,  # Data to save
+        delimiter=',',  # Column delimiter
+        newline='\n',  # Row delimiter
+        header='# waveform_ch4, waveform_ch2, time (s)'  # Header for the file
+    )
+
+    return data
+
 
 def online_mode():
     try:
@@ -1840,7 +2037,7 @@ def extract_data_v2(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
 
 def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ramp_stop=0.206,
                     ramp_start_minus=0.2064,
-                    ramp_stop_minus=0.20682, delay=0.2, conversion_coeff=0.046):
+                    ramp_stop_minus=0.20682, delay=0.2):
     """
         Returns the MEMS Characteristics including Positive & Negative Pull-in voltages,
         Positive & Negative Pull-out voltages, Switching time, isolation and insertion loss variation during
@@ -1860,8 +2057,8 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
 
     # Extracting values using oscilloscope commands
     delay = float(osc.query('HORizontal:MAIn:DELay:TIMe?'))
-    switching_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
-    release_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
+    t_on_time = float(osc.query('MEASUrement:MEAS1:VALue?'))
+    t_off_time = float(osc.query('MEASUrement:MEAS2:VALue?'))
     amplitude_t0 = float(osc.query('MEASUrement:MEAS4:VALue?'))
     a1, b1, b2 = get_powermeter_channels()
 
@@ -1933,37 +2130,28 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
     # Smooth the second derivative (diff_logamp_2) using the same Savitzky-Golay filter
     smoothed_diff_logamp_2 = savgol_filter(diff_logamp_2, window_length, polyorder)
 
-    # fig, ax = plt.subplots(1, 1)
     positive_bias = v_bias_t[t0_ramp + trigger_offset: t0_plus_rampwidth + trigger_offset]
     negative_bias = v_bias_t[t0_ramp_minus + trigger_offset: t0_plus_rampwidth_minus + trigger_offset]
 
-    # ax.plot(smoothed_diff_logamp_2, label='smoothed_diff_logamp_2')
-    # ax.plot(v_logamp_t[2*window_length:], label='v_logamp_t')
-    # ax.plot(v_bias_t[2*window_length:]/800, label='v_bias_t')
-
-    # ax.plot(positive_bias)
-    # ax.plot(negative_bias)
-    # plt.show()
-
     # Finding the first index of positive bias in v_bias array
     first_index_pos = t0_ramp  # ========> Defined by the cursor on the oscilloscope
-    print(f'first_index_pos = {first_index_pos}')
+    # print(f'first_index_pos = {first_index_pos}')
 
     # Finding the last index of positive bias in v_bias array
     last_index_pos = t0_plus_rampwidth  # ========> Defined by the cursor on the oscilloscope
-    print(f'last_index_pos = {last_index_pos}')
+    # print(f'last_index_pos = {last_index_pos}')
 
     # Finding the first index of negative bias in v_bias array
     first_index_neg = t0_ramp_minus  # ========> Defined by the cursor on the oscilloscope
-    print(f'first_index_neg = {first_index_neg}')
+    # print(f'first_index_neg = {first_index_neg}')
 
     # Finding the last index of negative bias in v_bias array
     last_index_neg = t0_plus_rampwidth_minus  # ========> Defined by the cursor on the oscilloscope
-    print(f'last_index_neg = {last_index_neg}')
+    # print(f'last_index_neg = {last_index_neg}')
 
     # Finding the index of the maximum positive bias (top of the triangle waveform)
     max_positive_bias_index = np.argmax(v_bias_t[t0_ramp + trigger_offset: t0_plus_rampwidth + trigger_offset])
-    print(f'max_positive_bias_index = {max_positive_bias_index} \n')
+    # print(f'max_positive_bias_index = {max_positive_bias_index} \n')
 
     # Finding the index of the minimum negative bias (bottom of the negative triangle waveform)
     min_negative_bias_index = np.argmin(
@@ -1978,8 +2166,8 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
     try:
         max_smoothed_diff_logamp_2 = int(np.argmax(smoothed_diff_logamp_2[
                                                    first_index_pos:last_index_pos]))
-        print(f'max_smoothed_diff_logamp_2 = {max_smoothed_diff_logamp_2} \n')
-        print("Max was found in positive ramp")
+        # print(f'max_smoothed_diff_logamp_2 = {max_smoothed_diff_logamp_2} \n')
+        # print("Max was found in positive ramp")
 
         pullin_index_pos = int(np.argmax(smoothed_diff_logamp_2[
                                          first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]))
@@ -1989,41 +2177,21 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
         print('Did not find an index for pull-in voltage using differentiation method')
         vpullin = 0
 
-        # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='smoothed_diff_logamp_2')
-        # ax.plot(v_logamp_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='v_logamp_t')
-        # ax.plot(v_bias_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]/3000, label='v_bias_t')
-        # ax.plot(positive_bias/3000, label='positive_bias')
-        # ax.plot(negative_bias/3000, label='negative_bias')
-        # plt.legend()
-        # plt.grid()
-        # plt.show()
-
     # Using the minimum index -> Input this index to the v bias array to determine pull-out voltage
     try:
         min_smoothed_diff_logamp_2 = int(np.argmin(smoothed_diff_logamp_2[
                                                    first_index_pos + trigger_offset + max_positive_bias_index:last_index_pos + trigger_offset]))
-        print(f'min_smoothed_diff_logamp_2 = {min_smoothed_diff_logamp_2} \n')
-        print('Min was found in negative ramp')
+        # print(f'min_smoothed_diff_logamp_2 = {min_smoothed_diff_logamp_2} \n')
+        # print('Min was found in negative ramp')
         pullout_index_pos = int(np.argmin(smoothed_diff_logamp_2[
                                           first_index_pos + trigger_offset + max_positive_bias_index:last_index_pos + trigger_offset]))
         vpullout = v_bias_t[first_index_pos + max_positive_bias_index + trigger_offset + pullout_index_pos]
-        print(f'vpullout = {vpullout}')
+        # print(f'vpullout = {vpullout}')
     except:
         print('Did not find an index for pull-out voltage using differentiation method')
         print('Min was not found in negative ramp')
         vpullout = 0  # Fallback value
 
-    # fig, ax = plt.subplots(1, 1)
-    # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='smoothed_diff_logamp_2_start')
-    # ax.plot(smoothed_diff_logamp_2[first_index_pos + trigger_offset + max_positive_bias_index :last_index_pos + trigger_offset], label='smoothed_diff_logamp_2_finish')
-    # ax.plot(v_logamp_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset], label='v_logamp_t_start')
-    # ax.plot(v_bias_t[first_index_pos + trigger_offset:first_index_pos + max_positive_bias_index + trigger_offset]/3000, label='v_bias_t')
-    # ax.plot(v_logamp_t[first_index_pos + trigger_offset + max_positive_bias_index:trigger_offset + last_index_pos], label='v_logamp_t_finish')
-    # ax.plot(positive_bias/3000, label='positive_bias')
-    # ax.plot(negative_bias/3000, label='negative_bias')
-    # plt.legend()
-    # plt.grid()
-    # plt.show()
     # =========================================================================
     # Negative Bias: Calculate pull-in and pull-out voltages using second derivative method
     # =========================================================================
@@ -2034,15 +2202,15 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
         max_smoothed_diff_logamp_2_neg = np.argmax(
             smoothed_diff_logamp_2[
             first_index_neg + trigger_offset:first_index_neg + min_negative_bias_index + trigger_offset])
-        print(f'max_smoothed_diff_logamp_2_neg = {max_smoothed_diff_logamp_2_neg} \n')
-        print("Max was found in negative ramp")
+        # print(f'max_smoothed_diff_logamp_2_neg = {max_smoothed_diff_logamp_2_neg} \n')
+        # print("Max was found in negative ramp")
 
         pullin_index_neg = int(
             np.argmin(smoothed_diff_logamp_2[
                       first_index_neg + trigger_offset:first_index_neg + min_negative_bias_index + trigger_offset]))
         vpullin_neg = v_bias_t[first_index_neg + trigger_offset + pullin_index_neg]
 
-        print(f'vpullin_neg = {vpullin_neg}')
+        # print(f'vpullin_neg = {vpullin_neg}')
         min_smoothed_diff_logamp_2 = int(np.argmin(smoothed_diff_logamp_2[
                                                    first_index_neg:last_index_neg]))
 
@@ -2057,13 +2225,13 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
     try:
         min_smoothed_diff_logamp_2_neg = np.argmin(smoothed_diff_logamp_2[
                                                    first_index_neg + trigger_offset + min_negative_bias_index:last_index_neg + trigger_offset])
-        print(f'min_smoothed_diff_logamp_2_neg = {min_smoothed_diff_logamp_2_neg} \n')
-        print("Min was found in negative ramp")
+        # print(f'min_smoothed_diff_logamp_2_neg = {min_smoothed_diff_logamp_2_neg} \n')
+        # print("Min was found in negative ramp")
 
         pullout_index_neg = int(np.argmin(smoothed_diff_logamp_2[
                                           first_index_neg + trigger_offset + min_negative_bias_index:last_index_neg + trigger_offset]))
         vpullout_neg = v_bias_t[first_index_neg + min_negative_bias_index + trigger_offset + pullout_index_neg]
-        print(f'vpullout_neg = {vpullout_neg}')
+        # print(f'vpullout_neg = {vpullout_neg}')
 
     except:
         print("Min was not found")
@@ -2073,26 +2241,13 @@ def extract_data_v3(rf_detector_channel, v_bias_channel, ramp_start=0.20559, ram
     # Creating the dictionary for DataFrame
     data = {
         'vpullin_plus': [vpullin], 'vpullin_minus': [vpullin_neg], 'vpullout_plus': [vpullout],
-        'vpullout_minus': [vpullout_neg], 'switching_time': [switching_time],
-        'amplitude_variation': [relative_amplitude], 'release_time': [release_time], 'absolute_isolation': [isolation]
+        'vpullout_minus': [vpullout_neg], 't_on_time': [t_on_time],
+        'amplitude_variation': [relative_amplitude], 't_off_time': [t_off_time], 'absolute_isolation': [isolation]
     }
     # Creating the DataFrame
     mems_characteristics = pd.DataFrame(data)
 
     return mems_characteristics
-
-    # print(f"t0_ramp = {t0_ramp}\n"
-    #       f"t0_plus_rampwidth = {t0_plus_rampwidth}\n"
-    #       f"t0_ramp_minus = {t0_ramp_minus}\n"
-    #       f"t0_plus_rampwidth_minus = {t0_plus_rampwidth_minus}\n"
-    #       f"delay = {delay}\n"
-    #       f"sample rate = {sample_rate}\n"
-    #       f"duration = {duration}"
-    #       f'sample spacing = {1 / float(sample_rate)}\n')
-    # print(f"(+) ramp starts at = {t0_ramp / float(sample_rate) + delay}\n"
-    #       f"(+) ramp stops at = {t0_plus_rampwidth / float(sample_rate) + delay}\n")
-    # print(f"(-) ramp starts at = {t0_ramp_minus / float(sample_rate) + delay}\n"
-    #       f"(-) ramp stops at = {t0_plus_rampwidth_minus / float(sample_rate) + delay}\n")
 
 
 def sig_gen_cycling_config():
@@ -2401,13 +2556,46 @@ def plot_signal_fft_noise_removal(current_data, previous_data, filter_type='none
     return current_fft_freq[positive_freq_mask], current_magnitude_filtered[positive_freq_mask]
 
 
-if __name__ == "__main__":
+def move_oscilloscope_cursor(cursor_number: int = 1, cursor_type: str = 'X', position: float = 0.206) -> None:
+    """
+    Moves a specified cursor to a designated position on a Tektronix oscilloscope.
+
+    Args:
+        cursor_number (int): The cursor number (1 or 2) to be moved.
+        cursor_type (str): The type of cursor to move ('X' for horizontal, 'Y' for vertical).
+        position (float): The position to move the cursor to. This should be within the valid range for the cursor type.
+
+    Raises:
+        ValueError: If the cursor number is not 1 or 2, or if the cursor type is neither 'X' nor 'Y'.
+        Exception: If there is an error in communication with the oscilloscope.
+
+    Returns:
+        None: This function does not return a value but moves the cursor on the oscilloscope.
+    """
+    # Validate cursor number and type
+    if cursor_number not in [1, 2]:
+        raise ValueError("Cursor number must be 1 or 2")
+    if cursor_type.upper() not in ['X', 'Y']:
+        raise ValueError("Cursor type must be 'X' for horizontal or 'Y' for vertical")
+
+    try:
+        # Construct and send the SCPI command to move the cursor
+        command = f'CURSor:SCREEN:{cursor_type.upper()}POSITION{cursor_number} {position}'
+        osc.write(command)
+        print(f"Cursor {cursor_number} moved to position {position} on {cursor_type.upper()} axis.")
+    except Exception as e:
+        print(f"Failed to move cursor due to: {str(e)}")
+
+
+def test_1() -> None:
     try:
         sig_gen.write("OUTput 1")
-        # time.sleep(10)
+        os.chdir(path=r"C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement Data\Mechanical cycling")
+        time.sleep(5)
         ch4 = get_curve_cycling(channel=4)
         ch2 = get_curve_cycling(channel=2)
-        mems_characteristics = extract_data_v3(rf_detector_channel=ch4, v_bias_channel=ch2)
+        # print(ch4[:, 1])
+        # mems_characteristics = extract_data_v3(rf_detector_channel=ch4, v_bias_channel=ch2)
         # sig_gen.write("OUTput 1")
         # print(mems_characteristics)
         # for keys, values in mems_characteristics.items():
@@ -2415,5 +2603,16 @@ if __name__ == "__main__":
         sig_gen.write("OUTput 0")
         # mems_characteristics.clear()
 
-    except IndexError:
+        wf = save_waveform(waveform_ch4=ch4, waveform_ch2=ch2, filename='test')
+        ax = plt.subplot(111)
+
+        ax.plot(wf[2], wf[0], label='1')
+        ax.plot(wf[2], wf[1], label='1')
+        plt.show()
+    except:
+        print("error")
         sig_gen.write("OUTput 0")
+
+
+if __name__ == "__main__":
+    move_oscilloscope_cursor(cursor_number=2, cursor_type='X', position=0.204)

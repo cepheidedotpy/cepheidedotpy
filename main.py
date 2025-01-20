@@ -362,42 +362,87 @@ def add_combobox(tab: ttk.LabelFrame, text: tk.StringVar, col: int, row: int, wi
     return combobox
 
 
-def close_resources():  # Calls close_all_resources to close all resources
+def close_resources() -> None:
+    """
+    A function that acts as a wrapper to close all resources.
+
+    Input:
+        None - This function does not take any arguments.
+
+    Output:
+        None - This function does not return any value. It simply calls the
+               `close_all_resources` method from the `scripts_and_functions` module
+               to ensure that any open resources (e.g., files, connections, or other
+               system resources) are properly closed and cleaned up.
+    """
     scripts_and_functions.close_all_resources()
 
 
-def call_s3p_config():
+def call_s3p_config() -> None:
     """
-    Calls the load_config function to load the s3p configuration file to the instrument.
-    Uses predefined file paths from the dir_and_var_declaration module.
+    A function that calls the `load_config` function to load the S3P configuration file to the instrument.
+
+    Input:
+        None - This function does not take any arguments.
+
+    Output:
+        None - This function does not return any value. It invokes the `load_config` function
+               with predefined file paths for the S3P configuration.
+
+    Details:
+        - Uses predefined file paths stored in the `dir_and_var_declaration.zva_parameters` dictionary:
+          - `setup_s3p`: Path to the S3P configuration file on the PC.
+          - `instrument_file`: Path to the instrument file location.
     """
-    # Call the load_config function with predefined file paths for the s3p configuration.
+    # Call the load_config function with predefined file paths for the S3P configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.zva_parameters["setup_s3p"],  # Path to the s3p configuration file on the PC.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s3p"],  # Path to the S3P configuration file on the PC.
         inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
 
-def call_s2p_config():
+def call_s2p_config() -> None:
     """
-    Calls the load_config function to load the s2p configuration file to the instrument.
-    Uses predefined file paths from the dir_and_var_declaration module.
+    A function that calls the `load_config` function to load the S2P configuration file to the instrument.
+
+    Input:
+        None - This function does not take any arguments.
+
+    Output:
+        None - This function does not return any value. It invokes the `load_config` function
+               with predefined file paths for the S2P configuration.
+
+    Details:
+        - Uses predefined file paths stored in the `dir_and_var_declaration.zva_parameters` dictionary:
+          - `setup_s2p`: Path to the S2P configuration file on the PC.
+          - `instrument_file`: Path to the instrument file location.
     """
-    # Call the load_config function with predefined file paths for the s2p configuration.
+    # Call the load_config function with predefined file paths for the S2P configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],  # Path to the s2p configuration file on the PC.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s2p"],  # Path to the S2P configuration file on the PC.
         inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
 
-def call_s1p_config():
+def call_s1p_config() -> None:
     """
-    Calls the load_config function to load the s1p configuration file to the instrument.
-    Uses predefined file paths from the dir_and_var_declaration module.
+    A function that calls the `load_config` function to load the S1P configuration file to the instrument.
+
+    Input:
+        None - This function does not accept any arguments.
+
+    Output:
+        None - This function does not return a value. Instead, it invokes the `load_config` function
+               with predefined file paths for the S1P configuration.
+
+    Details:
+        - The file paths are retrieved from the `dir_and_var_declaration.zva_parameters` dictionary:
+            - `setup_s1p` : The path to the S1P configuration file on the PC.
+            - `instrument_file` : The path to the instrument file location on the target instrument.
     """
-    # Call the load_config function with predefined file paths for the s1p configuration.
+    # Call the load_config function with predefined file paths for the S1P configuration.
     scripts_and_functions.load_config(
-        pc_file=dir_and_var_declaration.zva_parameters["setup_s1p"],  # Path to the s1p configuration file on the PC.
+        pc_file=dir_and_var_declaration.zva_parameters["setup_s1p"],  # Path to the S1P configuration file on the PC.
         inst_file=dir_and_var_declaration.zva_parameters["instrument_file"]  # Path to the instrument file location.
     )
 
@@ -532,19 +577,48 @@ def add_slider(frame, _from, to, name, variable, step, orientation: Literal["hor
     return slider
 
 
-def add_small_scale(frame, name, col, row):
+def add_small_scale(frame: ttk.Frame, name: str, col: int, row: int) -> ttk.Scale:
+    """
+    Creates a label and a smaller-length horizontal scale widget in the given frame.
+
+    Inputs:
+        frame (ttk.Frame): The parent frame where the label and scale will be placed.
+        name (str)       : The text to display on the label.
+        col (int)        : The column position (for grid geometry) of the label and scale.
+        row (int)        : The row position (for grid geometry) of the label and scale.
+
+    Output:
+        ttk.Scale: The created scale widget (not yet placed on the grid).
+
+    Details:
+        - A ttk.Label is created using the provided 'name' parameter, but the `.grid(...)`
+          call is currently commented out to show flexibility in placement.
+        - A ttk.Scale is created with a smaller length (100 pixels).
+        - The scale's style ("TScale") is configured for appearance, including thickness.
+        - This function returns the scale widget so that it can be placed or manipulated later.
+    """
+
+    # Create a label to display the provided name.
     label = ttk.Label(frame, text=name)
     # label.grid(column=col, row=row, padx=5, pady=5)
+    # (Commented out for flexibility in positioning)
 
-    # Create a scale with a smaller length
+    # Create a horizontal scale with a smaller length (100px by default).
     scale = ttk.Scale(frame, from_=0, to=100, orient=tk.HORIZONTAL, length=100)
     # scale.grid(column=col + 1, row=row, padx=5, pady=5)
+    # (Commented out for flexibility in positioning)
 
-    # Use padding to adjust the appearance
+    # Configure the appearance of the scale via style settings.
     scale.configure(style="TScale")
     s = ttk.Style()
-    s.configure(style="TScale", thickness=10)  # Adjust thickness as needed
+    s.configure("TScale", thickness=10)  # Adjust thickness as needed
+
+    # Return the scale so the caller can place it or further configure it.
     return scale
+
+
+def reset_zva():  # Reset zva using the IP address at Resource Page (used in TAB5)
+    scripts_and_functions.setup_zva_with_rst(dir_and_var_declaration.zva_parameters['ip_zva'])
 
 
 class Window(tk.Tk):
@@ -625,7 +699,8 @@ class Window(tk.Tk):
 
         self.file_df: pd.DataFrame = pd.DataFrame(
             columns=["vpullin_plus", "vpullin_minus", "vpullout_plus", "vpullout_minus", "switching_time",
-                     "amplitude_variation", "release_time", "absolute_isolation", "cycles", "sticking events"])
+                     "amplitude_variation", "release_time", "absolute_isolation", "cycles", "sticking events"],
+            dtype=np.float64, data=None)
 
         self.file_power_sweep = pd.DataFrame(columns=['Power Input DUT Avg (dBm)', 'Power Output DUT Avg (dBm)'])
 
@@ -655,6 +730,18 @@ class Window(tk.Tk):
         self.data_thread = threading.Thread(target=self.run_new_data_event)
         self.data_thread.daemon = True  # Ensures the thread will close when the main program exits
         self.data_thread.start()
+
+        # Flag to indicate if the user wants to stop the cycling.
+        self.stop_requested = False
+
+        # Bind the Escape key to set the flag.
+        self.bind("<Escape>", self.on_escape_press)
+
+    def on_escape_press(self, event):
+        """
+        Event handler that sets the stop flag when Escape key is pressed.
+        """
+        self.stop_requested = True
 
     def configure_window(self):
         s = ttk.Style()
@@ -924,7 +1011,8 @@ class Window(tk.Tk):
 
             # Sliders creation
             self.slider_isolation = add_slider(frame=frame_v_pull_in_graph, _from=0, to=-2,
-                                               name="Detector voltage (dB)", variable=self.scale_isolation_value, step=0.1,
+                                               name="Detector voltage (dB)", variable=self.scale_isolation_value,
+                                               step=0.1,
                                                orientation=tk.VERTICAL)
             self.slider_voltage = add_slider(frame=frame_v_pull_in_sliders, _from=0, to=50,
                                              name="Voltage upper limit (V)", variable=self.scale_voltage_value, step=5)
@@ -1262,7 +1350,7 @@ class Window(tk.Tk):
             add_button(tab=frame_snp_gene_controls, button_name='Comms prep', command=scripts_and_functions.comprep_zva,
                        col=0, row=1).grid(
                 ipadx=tab_pad_x, ipady=tab_pad_x)
-            add_button(tab=frame_snp_gene_controls, button_name='Reset ZVA', command=self.reset_zva, col=0, row=2).grid(
+            add_button(tab=frame_snp_gene_controls, button_name='Reset ZVA', command=reset_zva, col=0, row=2).grid(
                 ipadx=tab_pad_x,
                 ipady=tab_pad_x)
             add_button(tab=frame_snp_gene_controls, button_name='Exit',
@@ -1471,9 +1559,7 @@ class Window(tk.Tk):
                        col=0, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
             add_button(tab=frame_cycling_comp_info, button_name="Start Cycling", command=self.cycling_test,
                        col=1, row=8).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
-            add_button(tab=frame_oscilloscope, button_name="Set event count",
-                       command=lambda: [scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())],
-                       col=1, row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
 
             self.test_cycling_dir = tk.StringVar(value=r'C:\Users\TEMIS\Desktop\TEMIS MEMS LAB\Measurement '
                                                        r'Data\Mechanical cycling')
@@ -1487,7 +1573,8 @@ class Window(tk.Tk):
             self.test_cycling_events = tk.DoubleVar(value=100)
             self.test_cycling_gen_power = tk.DoubleVar(value=0)
             self.test_cycling_gen_frequency = tk.DoubleVar(value=10)
-            self.test_cycling_detector_conversion = tk.DoubleVar(value=0.040)
+            self.test_cycling_cursor_1_position = tk.StringVar(value='0.203')
+            self.test_cycling_cursor_2_position = tk.StringVar(value='0.203')
 
             self.entered_cycling_dir = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_dir, width=20, col=1, row=0)
@@ -1501,10 +1588,10 @@ class Window(tk.Tk):
                 frame_cycling_comp_info, text_var=self.test_cycling_device, width=20, col=1, row=4)
             self.entered_cycling_var_bias = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_var_nb_cycles, width=20, col=1, row=5)
-            self.entered_file_name = add_entry(
-                frame_cycling_comp_info, text_var=self.test_cycling_file_comment, width=20, col=1, row=7)
             self.entered_test_cycling_events = add_entry(
                 frame_cycling_comp_info, text_var=self.test_cycling_events, width=20, col=1, row=6)
+            self.entered_file_name = add_entry(
+                frame_cycling_comp_info, text_var=self.test_cycling_file_comment, width=20, col=1, row=7)
 
             add_label(frame_sig_gen, label_name='Bias voltage', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
                                                                                    ipady=tab_pad_x)
@@ -1531,19 +1618,47 @@ class Window(tk.Tk):
                        command=lambda: self.set_symmetrical_voltage_bias(voltage=self.test_cycling_var_bias.get()),
                        col=1,
                        row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_sig_gen, button_name='Output ON/OFF',
+                       command=lambda: [scripts_and_functions.sig_gen_cycling_config()], col=2,
+                       row=3).grid(
+                ipadx=tab_pad_x, ipady=tab_pad_x)
 
             add_label(frame_oscilloscope,
-                      label_name='Detector conversion\n coefficient', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
-                                                                                         ipady=tab_pad_x)
-            self.entered_var_cycling_detector = add_entry(frame_oscilloscope,
-                                                          text_var=self.test_cycling_detector_conversion,
-                                                          width=15, col=1, row=0)
+                      label_name='Set cursor 1 position', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x,
+                                                                              ipady=tab_pad_x)
             add_label(frame_oscilloscope,
-                      label_name='V', col=2, row=0).grid(sticky='e', ipadx=tab_pad_x,
+                      label_name='Set cursor 2 position', col=0, row=1).grid(sticky='e', ipadx=tab_pad_x,
+                                                                              ipady=tab_pad_x)
+            self.entered_var_cycling_cursor_1 = add_entry(frame_oscilloscope,
+                                                          text_var=self.test_cycling_cursor_1_position,
+                                                          width=15, col=1, row=0)
+            self.entered_var_cycling_cursor_2 = add_entry(frame_oscilloscope,
+                                                          text_var=self.test_cycling_cursor_2_position,
+                                                          width=15, col=1, row=1)
+            add_label(frame_oscilloscope,
+                      label_name='s', col=2, row=0).grid(sticky='w', ipadx=tab_pad_x,
                                                          ipady=tab_pad_x)
+            add_label(frame_oscilloscope,
+                      label_name='s', col=2, row=1).grid(sticky='w', ipadx=tab_pad_x,
+                                                         ipady=tab_pad_x)
+            add_button(tab=frame_oscilloscope, button_name='Set Cursor 1',
+                       command=lambda: [scripts_and_functions.move_oscilloscope_cursor(
+                           cursor_number=1, cursor_type='X',
+                           position=self.entered_var_cycling_cursor_1.get())], col=3,
+                       row=0).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
+            add_button(tab=frame_oscilloscope, button_name='Set Cursor 2',
+                       command=lambda: [scripts_and_functions.move_oscilloscope_cursor(
+                           cursor_number=2, cursor_type='X',
+                           position=self.entered_var_cycling_cursor_2.get())], col=3,
+                       row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+
             add_button(tab=frame_oscilloscope, button_name='Cycling config',
                        command=scripts_and_functions.osc_cycling_config, col=0,
-                       row=1).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+                       row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
+            add_button(tab=frame_oscilloscope, button_name="Set event count",
+                       command=lambda: [scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())],
+                       col=1, row=2).grid(ipadx=tab_pad_x, ipady=tab_pad_x)
 
             add_label(frame_rf_gen,
                       label_name='RF Power', col=0, row=0).grid(sticky='e', ipadx=tab_pad_x, ipady=tab_pad_x)
@@ -1674,22 +1789,23 @@ class Window(tk.Tk):
             # Plot the data
             if not self.file_df.empty:
                 cycles_so_far = self.file_df["cycles"]
-                self.ax_cycling_pull_in.plot(cycles_so_far, self.file_df["vpullin_plus"])
+                self.ax_cycling_pull_in.scatter(x=cycles_so_far, y=self.file_df["vpullin_plus"], marker='*')
                 self.ax_cycling_pull_in.grid("both")
 
-                self.ax_cycling_pull_out.plot(cycles_so_far, self.file_df["vpullout_plus"])
+                self.ax_cycling_pull_out.scatter(x=cycles_so_far, y=self.file_df["vpullout_plus"], marker='*')
                 self.ax_cycling_pull_out.grid("both")
 
-                self.ax_cycling_isolation.plot(cycles_so_far, self.file_df["absolute_isolation"])
+                self.ax_cycling_isolation.scatter(x=cycles_so_far, y=self.file_df["absolute_isolation"], marker='*')
                 self.ax_cycling_isolation.grid("both")
 
-                self.ax_cycling_insertion_loss.plot(cycles_so_far, self.file_df["amplitude_variation"])
+                self.ax_cycling_insertion_loss.scatter(x=cycles_so_far, y=self.file_df["amplitude_variation"],
+                                                       marker='*')
                 self.ax_cycling_insertion_loss.grid("both")
 
-                self.ax_cycling_t_down.plot(cycles_so_far, self.file_df["switching_time"])
+                self.ax_cycling_t_down.scatter(x=cycles_so_far, y=self.file_df["t_on_time"], marker='*')
                 self.ax_cycling_t_down.grid("both")
 
-                self.ax_cycling_t_up.plot(cycles_so_far, self.file_df["release_time"])
+                self.ax_cycling_t_up.scatter(x=cycles_so_far, y=self.file_df["t_off_time"], marker='*')
                 self.ax_cycling_t_up.grid("both")
 
             self.canvas_cycling.draw()
@@ -1717,8 +1833,6 @@ class Window(tk.Tk):
         self.destroy()
 
     # ZVA Functions ---------------------------------------------------------------
-    def reset_zva(self):  # Reset zva using the IP address at Resource Page (used in TAB5)
-        scripts_and_functions.setup_zva_with_rst(dir_and_var_declaration.zva_parameters['ip_zva'])
 
     def set_f_start(self):  # Configure ZVA f_start (used in TAB5)
         fstart = self.f_start.get()
@@ -1898,7 +2012,6 @@ class Window(tk.Tk):
         self.text_iso_pull_in_minus_test.insert(index="%d.%d" % (0, 0),
                                                 chars=measurement_values['ninetypercent_iso_descent'])
 
-
     def plot_s3p(self):  # Display function that calls skrf Module to figure s3p files (used in display TAB)
         entered_filename = self.s3p_file_name_combobox.get()
         print(entered_filename + '\n')
@@ -1989,7 +2102,8 @@ class Window(tk.Tk):
             v_bias = data_np[:, 0].copy()
             v_log_amp = data_np[:, 1].copy()
 
-            calculations = scripts_and_functions.calculate_actuation_and_release_voltages(v_bias=v_bias, v_logamp=v_log_amp)
+            calculations = scripts_and_functions.calculate_actuation_and_release_voltages(v_bias=v_bias,
+                                                                                          v_logamp=v_log_amp)
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
                                     chars='vpullout_minus = {} V | \t'.format(calculations['vpullout_minus']))
@@ -2004,7 +2118,8 @@ class Window(tk.Tk):
                                     chars='Vpullout_plus = {} V | \t'.format(calculations['vpullout_plus']))
 
             self.text_scroll.insert(index="%d.%d" % (1, 0),
-                                    chars='Isolation_at_pullin_plus = {} dB \n'.format(calculations['ninetypercent_iso_ascent']))
+                                    chars='Isolation_at_pullin_plus = {} dB \n'.format(
+                                        calculations['ninetypercent_iso_ascent']))
             self.text_scroll.insert(index="%d.%d" % (1, 0),
                                     chars='Vpullin_plus = {} V | \t'.format(calculations['vpullin_plus']))
 
@@ -2208,7 +2323,7 @@ class Window(tk.Tk):
         scripts_and_functions.set_osc_event_count(self.test_cycling_events.get())
 
         def run_cycling_sequence():
-            scripts_and_functions.cycling_sequence(
+            scripts_and_functions.cycling_sequence_with_escape_interrupt(
                 self,
                 self.new_data_event,
                 number_of_cycles=(self.test_cycling_var_nb_cycles.get()) * 1e5,
@@ -2224,8 +2339,7 @@ class Window(tk.Tk):
                 events=self.test_cycling_events.get(),
                 df_path=self.test_cycling_dir.get(),
                 header=r"Comment:{},frequency:10GHz,Convertion coeff volts/dB:3*V/{}".format(
-                    self.test_cycling_file_comment.get(), self.test_cycling_detector_conversion.get()),
-                conversion_coeff=self.test_cycling_detector_conversion.get()
+                    self.test_cycling_file_comment.get())
             )
 
         threading.Thread(target=run_cycling_sequence, daemon=True).start()
