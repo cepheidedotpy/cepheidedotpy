@@ -1039,8 +1039,8 @@ class Window(tk.Tk, Toplevel):
         Rstest.print_error_log()
         self.set_txt()
 
-    # sig_gen Functions -----------------------------------------------------------
-    def reset_sig_gen(self):  # Reset sig_gen using the IP address at Ressource Page (used in TAB4)
+    # signal_Generator Functions -----------------------------------------------------------
+    def reset_sig_gen(self):  # Reset signal_Generator using the IP address at Ressource Page (used in TAB4)
         ip = self.sig_gen_inst.get()
         Rstest.setup_sig_gen_ramp_with_rst(ip)
 
@@ -1053,7 +1053,7 @@ class Window(tk.Tk, Toplevel):
         except:
             print("Error")
 
-    def set_pulse_gen(self):  # Configure sig_gen bias voltage, pulse width and prf (used in TAB5)
+    def set_pulse_gen(self):  # Configure signal_Generator bias voltage, pulse width and prf (used in TAB5)
         self.set_Bias_Voltage()
         self.set_PRF()
         self.set_pulse_width()
@@ -1061,14 +1061,14 @@ class Window(tk.Tk, Toplevel):
         self.text2.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
-            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse width (used in TAB4)
+            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure signal_Generator ramp bias voltage and pulse width (used in TAB4)
         self.set_bias_pullin()
         self.set_ramp_width()
         self.text4.delete("1.0", "end")
         self.text4.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_pulsemode(
-            self):  # Calls inst_command module's configuration_sig_gen() to reset the sig_gen and sends an error log (used in TAB7)
+            self):  # Calls inst_command module's configuration_sig_gen() to reset the signal_Generator and sends an error log (used in TAB7)
         Rstest.configuration_sig_gen()
         self.text14.delete("1.0", "end")
         self.text14.insert(index="%d.%d" % (0, 0), chars=Rstest.sig_gen_set_output_log())
@@ -1106,7 +1106,7 @@ class Window(tk.Tk, Toplevel):
 
     # Plots functions -------------------------------------------------------------
     def trace_pulldown(
-            self):  # Measurement function that calls inst_command Module to trigger sig_gen to figure pull in trace and display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
+            self):  # Measurement function that calls inst_command Module to trigger signal_Generator to figure pull in trace and display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         try:
             Rstest.sig_gen.write('TRIG')
             curve_det = Rstest.get_curve(channel=4)

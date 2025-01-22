@@ -35,13 +35,13 @@ RsInstrument.assert_minimum_version('1.5.0')
 zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
 sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
 osc = rm.open_resource('TCPIP0::169.254.242.241::inst0::INSTR')
-# rf_gen = RsInstrument('TCPIP0::192.168.0.5::inst0::INSTR')
+# rf_Generator = RsInstrument('TCPIP0::192.168.0.5::inst0::INSTR')
 # powermeter = rm.open_resource('TCPIP0::192.168.0.83::inst0::INSTR')
 
 idn = zva.query_str('*IDN?')
 idn2 = sig_gen.query('*IDN?')
 idn3 = osc.query('*IDN?')
-# idn4 = rf_gen.query('*IDN?')
+# idn4 = rf_Generator.query('*IDN?')
 
 print(idn, end='\n')
 print(idn2, end='\n')
@@ -154,7 +154,7 @@ def extract_data(rf_detector_channel, v_bias_channel, ramp_start=0.0253, ramp_st
     # pass
 
 #
-# sig_gen.write('TRIG')
+# signal_Generator.write('TRIG')
 # curve_det = get_curve_cycling(channel=4)
 # curve_bias = get_curve_cycling(channel=2)
 #

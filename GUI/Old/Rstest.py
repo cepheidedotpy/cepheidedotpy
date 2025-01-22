@@ -91,7 +91,7 @@ except RsInstrException as e:
     print(e.args[0])
     print('Status Error \n')
 # finally:
-#     rf_gen.visa_timeout = 5000
+#     rf_Generator.visa_timeout = 5000
 
 
 try:
@@ -148,12 +148,12 @@ def ramp_width(width):  # Set ramp length (µs) in pull down voltage test
     try:
         sig_gen.write('SOURce1:FUNCtion:RAMP:SYMMetry 50')  # selecting pulse function
         sig_gen.write('FREQuency {}'.format(frequence_gen))
-        # sig_gen.write("SOURce:VOLTage:OFFSET 0")
-        # sig_gen.write("SOURce:VOLTage:LOW -1")
-        # sig_gen.write("SOURce:VOLTage:HIGH 1")
-        # sig_gen.write('SOURce:BURSt:NCYCles MINimum') # set burst cycles to 0
+        # signal_Generator.write("SOURce:VOLTage:OFFSET 0")
+        # signal_Generator.write("SOURce:VOLTage:LOW -1")
+        # signal_Generator.write("SOURce:VOLTage:HIGH 1")
+        # signal_Generator.write('SOURce:BURSt:NCYCles MINimum') # set burst cycles to 0
         sig_gen.write('OUTPut 1')  # turn on output
-        # sig_gen.write('OUTPut:SYNC:MODE NORMal')
+        # signal_Generator.write('OUTPut:SYNC:MODE NORMal')
         error_log = sig_gen.query('SYSTem:ERRor?')
         error = error_log.split(sep=',')[0]
         print(error, error_log, sep='\n', end='\n')
@@ -444,7 +444,7 @@ def setup_sig_gen_ramp_with_rst(ip):
 def configuration_sig_gen(frequence_gen=150, amplitude=1, pulse_width=0.001333):
     try:
         sig_gen.write('*RST')
-        # print('Reset status A33500B: {}\n'.format(sig_gen.query('*OPC?')))
+        # print('Reset status A33500B: {}\n'.format(signal_Generator.query('*OPC?')))
         # LOADING MEM state 4
         sig_gen.write('MMEM:LOAD:STAT "STATE_4.sta"')  # Load STATE_4
         sig_gen.write('FREQuency {}'.format(1))  # set a default frequency before programming to avoid errors
@@ -678,10 +678,10 @@ def power_test_sequence(start=-30, stop=-20, step=1, sleep_duration=1):
 
 
 def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
-    # Configuration sig_gen
+    # Configuration signal_Generator
     sig_gen.write('*RST')
     sig_gen.write("MMEM:LOAD:STATe '100_us_PULSE.sta'")  # 100_us_PULSE.sta
-    # Configuration rf_gen
+    # Configuration rf_Generator
     rf_gen.write('*RST')
     rf_gen.write("*RCL 4")  # 100_us_PULSE.sta
     # Configuration powermeter
@@ -699,7 +699,7 @@ def setup_power_test_sequence(pulse_width=100, delay=30):  # in us
 
 def connect():
     machines = ['ZNA67-101810', 'A-33521B-00526', 'DPO5054-C011738', 'rssmb100a179766', '192.168.0.30']
-    machine_names = ['zva', 'sig_gen', 'osc', 'rf_gen', 'powermeter']
+    machine_names = ['zva', 'signal_Generator', 'osc', 'rf_Generator', 'powermeter']
     # machine_dict = {zip(machine_names, machines)}
     # for machine, machine_name in zip(machines, machine_names):
     #     try:
@@ -713,7 +713,7 @@ def connect():
     zva = RsInstrument('TCPIP0::ZNA67-101810::inst0::INSTR', id_query=False, reset=False)
     sig_gen = rm.open_resource('TCPIP0::A-33521B-00526::inst0::INSTR')
     osc = rm.open_resource('TCPIP0::DPO5054-C011738::inst0::INSTR')
-    # rf_gen = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR')
+    # rf_Generator = RsInstrument('TCPIP0::rssmb100a179766::inst0::INSTR')
     # powermeter = rm.open_resource('TCPIP0::192.168.0.30::inst0::INSTR')
     return zva, sig_gen, osc
 

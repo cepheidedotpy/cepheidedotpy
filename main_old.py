@@ -1319,7 +1319,7 @@ class Window(tk.Tk, Toplevel):
     def data_acquire(
             self):  # Calls scripts_and_functions module function triggered_data_acquisition() to acquire data and
         # create a S3P file
-        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.signal_Generator.write("TRIG")
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
@@ -1332,7 +1332,7 @@ class Window(tk.Tk, Toplevel):
         self.set_txt()
 
     def data_acquire_s2p(self):
-        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.signal_Generator.write("TRIG")
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
@@ -1345,7 +1345,7 @@ class Window(tk.Tk, Toplevel):
         self.set_txt()
 
     def data_acquire_s1p(self):
-        scripts_and_functions.sig_gen.write("TRIG")
+        scripts_and_functions.signal_Generator.write("TRIG")
         scripts_and_functions.time.sleep(2 + float(scripts_and_functions.zva.query_str_with_opc('SENSe1:SWEep:TIME?')))
         scripts_and_functions.triggered_data_acquisition(
             filename=self.text_file_name_s3p_test.get(index1="1.0", index2="end-1c"),
@@ -1357,10 +1357,10 @@ class Window(tk.Tk, Toplevel):
         scripts_and_functions.print_error_log()
         self.set_txt()
 
-    # sig_gen Functions -----------------------------------------------------------
-    def reset_sig_gen(self):  # Reset sig_gen using the IP address at Ressource Page (used in TAB4)
+    # signal_Generator Functions -----------------------------------------------------------
+    def reset_sig_gen(self):  # Reset signal_Generator using the IP address at Ressource Page (used in TAB4)
         ip = self.sig_gen_inst.get()
-        scripts_and_functions.setup_sig_gen_ramp_with_rst(ip)
+        scripts_and_functions.setup_signal_Generator_ramp_with_rst(ip)
 
     def acquire_pull_down_data(
             self):  # Calls scripts_and_functions module measure_pull_down_voltage() to acquire pull down voltage (
@@ -1374,7 +1374,7 @@ class Window(tk.Tk, Toplevel):
         # except:
         #     print("Error")
 
-    def set_pulse_gen(self):  # Configure sig_gen bias voltage, pulse width and prf (used in TAB5)
+    def set_pulse_gen(self):  # Configure signal_Generator bias voltage, pulse width and prf (used in TAB5)
         self.set_bias_voltage()
         self.set_prf()
         self.set_pulse_width()
@@ -1382,7 +1382,7 @@ class Window(tk.Tk, Toplevel):
         self.text_snp_debug.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_ramp(
-            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure sig_gen ramp bias voltage and pulse
+            self):  # Calls set_bias_pull_in() & set_ramp_width() to Configure signal_Generator ramp bias voltage and pulse
         # width (used in TAB4)
         self.set_bias_pull_in()
         self.set_ramp_width()
@@ -1390,7 +1390,7 @@ class Window(tk.Tk, Toplevel):
         self.text4.insert(index="%d.%d" % (0, 0), chars=scripts_and_functions.sig_gen_set_output_ramp_log())
 
     def set_pulse_gen_pulse_mode(
-            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the sig_gen and sends an
+            self):  # Calls scripts_and_functions module's configuration_sig_gen() to reset the signal_Generator and sends an
         # error log (used
         # in TAB7)
         scripts_and_functions.configuration_sig_gen()
@@ -1403,11 +1403,11 @@ class Window(tk.Tk, Toplevel):
         # an input (used in TAB5)
         bias = self.pull_in_v.get()
         scripts_and_functions.bias_voltage(bias)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def set_symmetrical_voltage_bias(self, voltage: str = '10'):
         scripts_and_functions.bias_pull_in_voltage(voltage)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def set_bias_pull_in(
             self):  # Calls scripts_and_functions modules's bias_voltage_s3p() function using the voltage provided by
@@ -1415,29 +1415,29 @@ class Window(tk.Tk, Toplevel):
         # an input (used in TAB4) !!!!FUNCTION IS LIKELY REDUNDANT!!!!
         bias = self.pull_in_v_bias.get()
         scripts_and_functions.bias_pull_in_voltage(bias)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def set_ramp_width(self):  # Calls scripts_and_functions module's ramp_width(width) to set ramp width
         width = self.ramp_width.get()
         scripts_and_functions.ramp_width(width)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def set_prf(self):  # Calls scripts_and_functions modules's set_prf(prf) to set set pulse repetition frequency
         prf = self.pulse_freq.get()
         scripts_and_functions.set_prf(prf)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def set_pulse_width(self):  # Calls scripts_and_functions modules's set_pulse_width(width) to set pulse width
         width = self.pulse_width.get()
         scripts_and_functions.set_pulse_width(width)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     # Plots functions -------------------------------------------------------------
     def trace_pull_down(self):
-        # Measurement function that calls scripts_and_functions Module to trigger sig_gen to figure pull in trace and
+        # Measurement function that calls scripts_and_functions Module to trigger signal_Generator to figure pull in trace and
         # display the measurement values in the text_file_name_s3p_test boxes(used in TAB6)
         # try:
-        scripts_and_functions.sig_gen.write('TRIG')
+        scripts_and_functions.signal_Generator.write('TRIG')
         curve_det = scripts_and_functions.get_curve(channel=4)
         curve_bias = scripts_and_functions.get_curve(channel=2)
         t = curve_det[:, 1]
@@ -1853,12 +1853,12 @@ class Window(tk.Tk, Toplevel):
 
     def send_trig(self):
         scripts_and_functions.trigger_measurement_zva()
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def sig_gen_cycling_config(self):
-        scripts_and_functions.sig_gen_cycling_config()
+        scripts_and_functions.signal_Generator_cycling_config()
         time.sleep(3)
-        self.error_log(scripts_and_functions.sig_gen)
+        self.error_log(scripts_and_functions.signal_Generator)
 
     def cycling_test(self):
         print("Started cycling")
